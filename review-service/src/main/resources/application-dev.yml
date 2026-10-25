@@ -1,0 +1,5 @@
+# MongoDB Atlas dùng chung. Biến ${...} đọc từ file .env ở thư mục gốc.
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://${ATLAS_USER}:${ATLAS_PASSWORD}@${ATLAS_HOST}/review?retryWrites=true&w=majority&maxPoolSize=10

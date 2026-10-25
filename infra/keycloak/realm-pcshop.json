@@ -1,0 +1,108 @@
+{
+  "realm": "pcshop",
+  "enabled": true,
+  "displayName": "PC Shop",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+
+  "roles": {
+    "realm": [
+      { "name": "CUSTOMER", "description": "Khách hàng" },
+      { "name": "STAFF", "description": "Nhân viên" },
+      { "name": "ADMIN", "description": "Quản trị viên" }
+    ],
+    "client": {
+      "pcshop-backend": [
+        { "name": "product:write", "description": "Thêm/sửa sản phẩm, đổi giá" },
+        { "name": "order:update-status", "description": "Chuyển trạng thái đơn hàng" },
+        { "name": "inventory:write", "description": "Nhập/điều chỉnh tồn kho" },
+        { "name": "knowledge:write", "description": "Quản lý kho tri thức RAG" }
+      ]
+    }
+  },
+
+  "clients": [
+    {
+      "clientId": "pcshop-web",
+      "name": "Frontend PC Shop",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": { "pkce.code.challenge.method": "S256" }
+    },
+    {
+      "clientId": "pcshop-backend",
+      "name": "Backend services",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "backend-secret-local",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    }
+  ],
+
+  "users": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "username": "customer1",
+      "email": "customer1@pcshop.local",
+      "firstName": "Khách",
+      "lastName": "Một",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "123456", "temporary": false }],
+      "realmRoles": ["CUSTOMER"]
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "username": "customer2",
+      "email": "customer2@pcshop.local",
+      "firstName": "Khách",
+      "lastName": "Hai",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "123456", "temporary": false }],
+      "realmRoles": ["CUSTOMER"]
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "username": "staff1",
+      "email": "staff1@pcshop.local",
+      "firstName": "Nhân",
+      "lastName": "Viên",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "123456", "temporary": false }],
+      "realmRoles": ["STAFF"],
+      "clientRoles": { "pcshop-backend": ["order:update-status", "inventory:write"] }
+    },
+    {
+      "id": "99999999-9999-9999-9999-999999999999",
+      "username": "admin1",
+      "email": "admin1@pcshop.local",
+      "firstName": "Quản",
+      "lastName": "Trị",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "123456", "temporary": false }],
+      "realmRoles": ["ADMIN", "STAFF"],
+      "clientRoles": {
+        "pcshop-backend": ["product:write", "order:update-status", "inventory:write", "knowledge:write"]
+      }
+    },
+    {
+      "username": "service-account-pcshop-backend",
+      "enabled": true,
+      "serviceAccountClientId": "pcshop-backend",
+      "clientRoles": { "realm-management": ["view-users", "manage-users"] }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="All services [dev]" type="CompoundRunConfigurationType">
+    <toRun name="gateway [dev]" type="SpringBootApplicationConfigurationType" />
+    <toRun name="cart-service [dev]" type="SpringBootApplicationConfigurationType" />
+    <toRun name="ordering-service [dev]" type="SpringBootApplicationConfigurationType" />
+    <toRun name="review-service [dev]" type="SpringBootApplicationConfigurationType" />
+    <toRun name="customer-service [dev]" type="QuarkusRunConfigurationType" />
+    <toRun name="catalog-service [dev]" type="QuarkusRunConfigurationType" />
+    <toRun name="inventory-service [dev]" type="QuarkusRunConfigurationType" />
+    <toRun name="ai-service [dev]" type="QuarkusRunConfigurationType" />
+    <toRun name="media-service [dev]" type="QuarkusRunConfigurationType" />
+    <toRun name="notification-service [dev]" type="QuarkusRunConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>

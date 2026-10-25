@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="gateway [dev]" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" folderName="dev">
+    <module name="gateway" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.pcshop.gateway.GatewayApplication" />
+    <option name="ACTIVE_PROFILES" value="dev" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=dev" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/gateway" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

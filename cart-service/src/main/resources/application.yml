@@ -1,0 +1,32 @@
+# Cấu hình chung cho mọi profile. Kết nối hạ tầng nằm trong application-local.yml / application-dev.yml.
+server:
+  port: 8083
+
+spring:
+  application:
+    name: cart-service
+  profiles:
+    default: dev
+  # Đọc file .env ở thư mục gốc repo (biến cho profile dev); không có file thì bỏ qua
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Có jwk-set-uri thì service khởi động được cả khi Keycloak chưa chạy;
+          # issuer-uri vẫn được dùng để kiểm tra claim "iss".
+          issuer-uri: http://localhost:8180/realms/pcshop
+          jwk-set-uri: http://localhost:8180/realms/pcshop/protocol/openid-connect/certs
+
+pcshop:
+  security:
+    permission-client-id: pcshop-backend
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

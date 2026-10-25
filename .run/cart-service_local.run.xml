@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="cart-service [local]" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" folderName="local">
+    <module name="cart-service" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.pcshop.cart.CartApplication" />
+    <option name="ACTIVE_PROFILES" value="local" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=local" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/cart-service" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

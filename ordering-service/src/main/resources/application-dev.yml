@@ -1,0 +1,16 @@
+# Supabase dùng chung. Biến ${...} đọc từ file .env ở thư mục gốc (xem .env.example).
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://${SUPABASE_DB_HOST}:5432/postgres?schema=ordering
+    username: ${SUPABASE_DB_USER}
+    password: ${SUPABASE_DB_PASSWORD}
+    pool:
+      max-size: 5            # gói free giới hạn số kết nối
+  flyway:
+    url: jdbc:postgresql://${SUPABASE_DB_HOST}:5432/postgres
+    user: ${SUPABASE_DB_USER}
+    password: ${SUPABASE_DB_PASSWORD}
+    schemas: ordering
+    locations: classpath:db/migration,classpath:db/seed
+    # KHÔNG tự migrate DB chung. Người phụ trách chạy từ nhánh main với -Dspring.flyway.enabled=true (plan 7.4)
+    enabled: false

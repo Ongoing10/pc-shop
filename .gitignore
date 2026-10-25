@@ -1,0 +1,19 @@
+# Build
+target/
+*.class
+
+# IntelliJ: bỏ cấu hình cá nhân, GIỮ thư mục .run (run configuration dùng chung)
+.idea/
+*.iml
+out/
+
+# Bí mật
+.env
+*.env.local
+
+# Dữ liệu chạy local
+data/
+
+# OS
+.DS_Store
+Thumbs.db

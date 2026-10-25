@@ -1,0 +1,1191 @@
+{
+  "info": {
+    "name": "PC Shop API",
+    "description": "Toàn bộ API của PC Shop, gọi qua gateway (:8000).\n\n1. Chạy `docker compose up -d` và các service profile `local`.\n2. Mở folder **0. Auth**, chạy một request Login (token tự lưu vào biến `accessToken`).\n3. Gọi các API khác. Token hết hạn sau 5 phút: chạy lại Login hoặc Refresh token.\n\nMọi response bọc trong `{error_status, error_message, error_code, data}`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "keycloakUrl",
+      "value": "http://localhost:8180"
+    },
+    {
+      "key": "clientId",
+      "value": "pcshop-web"
+    },
+    {
+      "key": "password",
+      "value": "123456"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Auth (Keycloak)",
+      "description": "Không có API login riêng: lấy token trực tiếp từ Keycloak (:8180). Chạy một request Login trước; token hết hạn sau 5 phút.",
+      "item": [
+        {
+          "name": "Login customer1 (CUSTOMER)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/pcshop/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "pcshop",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Đăng nhập bằng customer1, token tự lưu vào biến `accessToken`. Các request khác kế thừa Auth Bearer từ collection.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "username",
+                  "value": "customer1"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('Lấy token thành công', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('accessToken', body.access_token);",
+                  "pm.collectionVariables.set('refreshToken', body.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login customer2 (CUSTOMER)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/pcshop/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "pcshop",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Đăng nhập bằng customer2, token tự lưu vào biến `accessToken`. Các request khác kế thừa Auth Bearer từ collection.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "username",
+                  "value": "customer2"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('Lấy token thành công', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('accessToken', body.access_token);",
+                  "pm.collectionVariables.set('refreshToken', body.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login staff1 (STAFF)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/pcshop/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "pcshop",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Đăng nhập bằng staff1, token tự lưu vào biến `accessToken`. Các request khác kế thừa Auth Bearer từ collection.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "username",
+                  "value": "staff1"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('Lấy token thành công', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('accessToken', body.access_token);",
+                  "pm.collectionVariables.set('refreshToken', body.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login admin1 (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/pcshop/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "pcshop",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Đăng nhập bằng admin1, token tự lưu vào biến `accessToken`. Các request khác kế thừa Auth Bearer từ collection.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "username",
+                  "value": "admin1"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}"
+                },
+                {
+                  "key": "scope",
+                  "value": "openid"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('Lấy token thành công', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('accessToken', body.access_token);",
+                  "pm.collectionVariables.set('refreshToken', body.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/pcshop/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "pcshop",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Đổi refresh token lấy access token mới.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{refreshToken}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('Lấy token thành công', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('accessToken', body.access_token);",
+                  "pm.collectionVariables.set('refreshToken', body.refresh_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Userinfo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/pcshop/protocol/openid-connect/userinfo",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "pcshop",
+                "protocol",
+                "openid-connect",
+                "userinfo"
+              ]
+            },
+            "description": "Thông tin user theo token hiện tại."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/pcshop/protocol/openid-connect/logout",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "pcshop",
+                "protocol",
+                "openid-connect",
+                "logout"
+              ]
+            },
+            "description": "Kết thúc phiên trên Keycloak (trả 204).",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "refresh_token",
+                  "value": "{{refreshToken}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Customer (8081)",
+      "description": "Hồ sơ khách hàng và quản lý user (qua Keycloak Admin API).",
+      "item": [
+        {
+          "name": "Hồ sơ của tôi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Cần đăng nhập. Lần đầu gọi sẽ tự tạo hồ sơ từ token."
+          }
+        },
+        {
+          "name": "Cập nhật hồ sơ",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Cần đăng nhập. phoneNumber dạng 0xxxxxxxxx.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"0912345678\",\n  \"gender\": 1,\n  \"birthDate\": \"2003-05-20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Danh sách user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users?keyword=customer&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "customer",
+                  "description": "Tìm theo username/email/tên"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Role ADMIN (login admin1)."
+          }
+        },
+        {
+          "name": "[ADMIN] Khóa user",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/22222222-2222-2222-2222-222222222222/lock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "22222222-2222-2222-2222-222222222222",
+                "lock"
+              ]
+            },
+            "description": "Role ADMIN. Khóa customer2."
+          }
+        },
+        {
+          "name": "[ADMIN] Mở khóa user",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/22222222-2222-2222-2222-222222222222/unlock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "22222222-2222-2222-2222-222222222222",
+                "unlock"
+              ]
+            },
+            "description": "Role ADMIN. Mở khóa customer2."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Catalog (8082)",
+      "description": "Công khai, không cần token.",
+      "item": [
+        {
+          "name": "Danh mục",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ]
+            },
+            "description": "8 danh mục linh kiện.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Sản phẩm theo danh mục",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?category=GPU&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "GPU",
+                  "description": "CPU, MAINBOARD, RAM, GPU, STORAGE, ..."
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Phân trang PageResponse.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết sản phẩm",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/GPU-MSI-4070S-12G",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "GPU-MSI-4070S-12G"
+              ]
+            },
+            "description": "Tìm theo SKU.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Inventory (8085)",
+      "description": "Tồn kho.",
+      "item": [
+        {
+          "name": "Tồn kho theo SKU",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/GPU-MSI-4070S-12G",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "GPU-MSI-4070S-12G"
+              ]
+            },
+            "description": "Công khai.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Điều chỉnh tồn kho",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/GPU-MSI-4070S-12G/adjust?warehouseId=1&delta=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "GPU-MSI-4070S-12G",
+                "adjust"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "1",
+                  "description": "1 = HCM-01, 2 = HN-01"
+                },
+                {
+                  "key": "delta",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Cần permission inventory:write (staff1 hoặc admin1). delta âm để giảm."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Cart (8083)",
+      "description": "Giỏ hàng lưu trong Redis, theo user của token.",
+      "item": [
+        {
+          "name": "Giỏ hàng của tôi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart"
+              ]
+            },
+            "description": "Cần đăng nhập."
+          }
+        },
+        {
+          "name": "Thêm vào giỏ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items"
+              ]
+            },
+            "description": "Cần đăng nhập.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"CPU-I5-14600K\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xóa khỏi giỏ",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items/CPU-I5-14600K",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items",
+                "CPU-I5-14600K"
+              ]
+            },
+            "description": "Cần đăng nhập."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Ordering (8084)",
+      "description": "Đơn hàng và voucher.",
+      "item": [
+        {
+          "name": "Đơn của tôi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "my"
+              ]
+            },
+            "description": "Cần đăng nhập. customer1 có đơn DH20261024000001."
+          }
+        },
+        {
+          "name": "Chi tiết đơn",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/DH20261024000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "DH20261024000001"
+              ]
+            },
+            "description": "Login customer1: 200."
+          }
+        },
+        {
+          "name": "Chi tiết đơn của người khác (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/DH20261024000002",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "DH20261024000002"
+              ]
+            },
+            "description": "Login customer1: 403 vì đơn thuộc customer2 (kiểm tra quyền sở hữu)."
+          }
+        },
+        {
+          "name": "Voucher đang hoạt động",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vouchers"
+              ]
+            },
+            "description": "Danh sách voucher còn hiệu lực."
+          }
+        },
+        {
+          "name": "[ADMIN] Tạo voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vouchers"
+              ]
+            },
+            "description": "Role ADMIN. type: 1 = %, 2 = số tiền, 3 = free ship.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM10\",\n  \"name\": \"Giảm 10%\",\n  \"type\": 1,\n  \"value\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Review (8086)",
+      "description": "Đánh giá sản phẩm (Mongo).",
+      "item": [
+        {
+          "name": "Đánh giá theo sản phẩm",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews?productId=6adcb0cc2444ef877c39129b",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "6adcb0cc2444ef877c39129b",
+                  "description": "_id của GPU-MSI-4070S-12G"
+                }
+              ]
+            },
+            "description": "productId là _id Mongo của sản phẩm."
+          }
+        },
+        {
+          "name": "Viết đánh giá",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews"
+              ]
+            },
+            "description": "Cần đăng nhập. rating 1–5.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"6adcb0cc2444ef877c39129b\",\n  \"sku\": \"GPU-MSI-4070S-12G\",\n  \"rating\": 5,\n  \"title\": \"Card mát, chơi 2K mượt\",\n  \"content\": \"Chạy ổn định, nhiệt độ thấp.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Media (8088)",
+      "description": "Upload/tải file (local: lưu ở data/uploads).",
+      "item": [
+        {
+          "name": "Upload file",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "upload"
+              ]
+            },
+            "description": "Cần đăng nhập. Chọn file ở trường `file`. bucket: products, avatars, reviews, knowledge-docs.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "bucket",
+                  "value": "products",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tải file",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/files/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "files",
+                "1"
+              ]
+            },
+            "description": "Công khai. Dùng id trả về từ Upload.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Notification (8089)",
+      "description": "",
+      "item": [
+        {
+          "name": "Thông báo của tôi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            },
+            "description": "Cần đăng nhập."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. AI (8087)",
+      "description": "Cần Ollama chạy với model qwen2.5:7b và bge-m3.",
+      "item": [
+        {
+          "name": "[ADMIN] Nạp sản phẩm vào RAG",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/knowledge/sync-products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "knowledge",
+                "sync-products"
+              ]
+            },
+            "description": "Cần permission knowledge:write (admin1). Chạy trước khi search/chat."
+          }
+        },
+        {
+          "name": "[ADMIN] Thêm tài liệu tri thức",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/knowledge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "knowledge"
+              ]
+            },
+            "description": "Cần permission knowledge:write. sourceType: 2 = GUIDE, 3 = POLICY, 4 = FAQ.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Chính sách bảo hành\",\n  \"sourceType\": 3,\n  \"sourceRef\": \"policy-warranty\",\n  \"content\": \"Linh kiện được bảo hành 36 tháng, đổi mới trong 7 ngày đầu nếu lỗi nhà sản xuất.\",\n  \"metadata\": {\n    \"topic\": \"warranty\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xem retriever trả gì",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/search?q=card chơi game 2K&category=GPU&k=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "card chơi game 2K"
+                },
+                {
+                  "key": "category",
+                  "value": "GPU",
+                  "description": "Tùy chọn"
+                },
+                {
+                  "key": "k",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Công khai.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chatbot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "chat"
+              ]
+            },
+            "description": "Công khai. Gửi lại sessionId từ response trước để giữ ngữ cảnh.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": null,\n  \"message\": \"Tư vấn card chơi game 2K, còn hàng không?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

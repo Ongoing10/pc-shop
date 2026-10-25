@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ordering-service [dev]" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" folderName="dev">
+    <module name="ordering-service" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.pcshop.ordering.OrderingApplication" />
+    <option name="ACTIVE_PROFILES" value="dev" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=dev" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/ordering-service" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

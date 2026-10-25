@@ -1,0 +1,163 @@
+# Migration MongoDB của catalog-service (Liquibase MongoDB). Mỗi changeSet chỉ chạy MỘT lần
+# (được ghi vào collection DATABASECHANGELOG). Đã chạy thì KHÔNG sửa, muốn đổi thì thêm changeSet mới.
+# Với Mongo, migration gồm: tạo index, seed dữ liệu nền, chuyển đổi dữ liệu khi đổi cấu trúc document.
+databaseChangeLog:
+
+  - changeSet:
+      id: 20261024-1000-collections-indexes
+      author: pcshop
+      changes:
+        - createCollection:
+            collectionName: categories
+        - createIndex:
+            collectionName: categories
+            keys: '{ "code": 1 }'
+            options: '{ "unique": true, "name": "uk_categories_code" }'
+        - createIndex:
+            collectionName: categories
+            keys: '{ "slug": 1 }'
+            options: '{ "unique": true, "name": "uk_categories_slug" }'
+
+        - createCollection:
+            collectionName: brands
+        - createIndex:
+            collectionName: brands
+            keys: '{ "code": 1 }'
+            options: '{ "unique": true, "name": "uk_brands_code" }'
+
+        - createCollection:
+            collectionName: products
+        - createIndex:
+            collectionName: products
+            keys: '{ "sku": 1 }'
+            options: '{ "unique": true, "name": "uk_products_sku" }'
+        - createIndex:
+            collectionName: products
+            keys: '{ "slug": 1 }'
+            options: '{ "unique": true, "name": "uk_products_slug" }'
+        - createIndex:
+            collectionName: products
+            keys: '{ "category_code": 1, "status": 1, "price": 1 }'
+            options: '{ "name": "idx_products_cat_status_price" }'
+        - createIndex:
+            collectionName: products
+            keys: '{ "category_code": 1, "compat.socket": 1 }'
+            options: '{ "name": "idx_products_cat_socket" }'
+
+        - createCollection:
+            collectionName: compatibility_rules
+        - createIndex:
+            collectionName: compatibility_rules
+            keys: '{ "code": 1 }'
+            options: '{ "unique": true, "name": "uk_compat_rules_code" }'
+
+        - createCollection:
+            collectionName: pc_builds
+        - createIndex:
+            collectionName: pc_builds
+            keys: '{ "code": 1 }'
+            options: '{ "unique": true, "name": "uk_pc_builds_code" }'
+        - createIndex:
+            collectionName: pc_builds
+            keys: '{ "user_id": 1, "created_at": -1 }'
+            options: '{ "name": "idx_pc_builds_user_created" }'
+
+        - createCollection:
+            collectionName: price_histories
+        - createIndex:
+            collectionName: price_histories
+            keys: '{ "sku": 1, "changed_at": -1 }'
+            options: '{ "name": "idx_price_histories_sku_changed" }'
+
+  - changeSet:
+      id: 20261024-1001-seed-categories-brands
+      author: pcshop
+      changes:
+        - insertMany:
+            collectionName: categories
+            documents: >
+              [
+                { "code": "CPU",       "name": "Bộ vi xử lý",      "slug": "cpu",       "pc_slot": "CPU",       "sort_order": 1, "is_active": 1 },
+                { "code": "MAINBOARD", "name": "Bo mạch chủ",      "slug": "mainboard", "pc_slot": "MAINBOARD", "sort_order": 2, "is_active": 1 },
+                { "code": "RAM",       "name": "RAM",              "slug": "ram",       "pc_slot": "RAM",       "sort_order": 3, "is_active": 1 },
+                { "code": "GPU",       "name": "Card đồ họa",      "slug": "vga",       "pc_slot": "GPU",       "sort_order": 4, "is_active": 1 },
+                { "code": "STORAGE",   "name": "Ổ cứng",           "slug": "o-cung",    "pc_slot": "STORAGE",   "sort_order": 5, "is_active": 1 },
+                { "code": "PSU",       "name": "Nguồn",            "slug": "nguon",     "pc_slot": "PSU",       "sort_order": 6, "is_active": 1 },
+                { "code": "CASE",      "name": "Vỏ case",          "slug": "case",      "pc_slot": "CASE",      "sort_order": 7, "is_active": 1 },
+                { "code": "COOLER",    "name": "Tản nhiệt",        "slug": "tan-nhiet", "pc_slot": "COOLER",    "sort_order": 8, "is_active": 1 }
+              ]
+        - insertMany:
+            collectionName: brands
+            documents: >
+              [
+                { "code": "INTEL",    "name": "Intel",    "slug": "intel",    "is_active": 1 },
+                { "code": "AMD",      "name": "AMD",      "slug": "amd",      "is_active": 1 },
+                { "code": "ASUS",     "name": "ASUS",     "slug": "asus",     "is_active": 1 },
+                { "code": "MSI",      "name": "MSI",      "slug": "msi",      "is_active": 1 },
+                { "code": "GIGABYTE", "name": "Gigabyte", "slug": "gigabyte", "is_active": 1 },
+                { "code": "CORSAIR",  "name": "Corsair",  "slug": "corsair",  "is_active": 1 },
+                { "code": "KINGSTON", "name": "Kingston", "slug": "kingston", "is_active": 1 }
+              ]
+
+  - changeSet:
+      id: 20261024-1002-seed-compatibility-rules
+      author: pcshop
+      changes:
+        - insertMany:
+            collectionName: compatibility_rules
+            documents: >
+              [
+                { "code": "CPU_MB_SOCKET", "name": "Socket CPU khớp mainboard", "source_category": "CPU", "target_category": "MAINBOARD",
+                  "rule_type": "EQUALS", "source_field": "socket", "target_field": "socket", "severity": 1,
+                  "message_template": "CPU {source} dùng socket {sv} không khớp mainboard {target} ({tv})", "is_active": 1 },
+                { "code": "RAM_MB_TYPE", "name": "Chuẩn RAM khớp mainboard", "source_category": "RAM", "target_category": "MAINBOARD",
+                  "rule_type": "EQUALS", "source_field": "memory_type", "target_field": "memory_type", "severity": 1,
+                  "message_template": "RAM {source} là {sv} nhưng mainboard {target} hỗ trợ {tv}", "is_active": 1 },
+                { "code": "PSU_WATTAGE", "name": "Công suất nguồn đủ cho cấu hình", "source_category": "*", "target_category": "PSU",
+                  "rule_type": "SUM_TDP_LTE_WATTAGE", "source_field": "tdp_w", "target_field": "wattage", "margin": 1.2, "severity": 1,
+                  "message_template": "Tổng công suất ước tính {sv}W vượt khả năng nguồn {target} ({tv}W, đã tính hệ số an toàn)", "is_active": 1 },
+                { "code": "GPU_CASE_LENGTH", "name": "Chiều dài VGA vừa case", "source_category": "GPU", "target_category": "CASE",
+                  "rule_type": "LTE", "source_field": "length_mm", "target_field": "max_gpu_length_mm", "severity": 1,
+                  "message_template": "VGA {source} dài {sv}mm, case {target} chỉ chứa tối đa {tv}mm", "is_active": 1 }
+              ]
+
+  - changeSet:
+      id: 20261024-1003-seed-demo-products
+      author: pcshop
+      context: seed
+      changes:
+        - insertMany:
+            collectionName: products
+            documents: >
+              [
+                { "sku": "CPU-I5-14600K", "name": "Intel Core i5-14600K", "slug": "intel-core-i5-14600k",
+                  "category_code": "CPU", "brand_code": "INTEL", "price": { "$numberDecimal": "7990000" },
+                  "short_description": "14 nhân 20 luồng, xung tối đa 5.3GHz, socket LGA1700",
+                  "specs": { "cores": 14, "threads": 20, "boost_clock_ghz": 5.3, "cache_mb": 24 },
+                  "compat": { "socket": "LGA1700", "memory_types": ["DDR4", "DDR5"], "tdp_w": 125 },
+                  "tags": ["gaming", "2K"], "warranty_months": 36, "status": 2 },
+                { "sku": "MB-ASUS-B760M-D5", "name": "ASUS TUF B760M-PLUS WIFI DDR5", "slug": "asus-tuf-b760m-plus-wifi-ddr5",
+                  "category_code": "MAINBOARD", "brand_code": "ASUS", "price": { "$numberDecimal": "4290000" },
+                  "short_description": "Mainboard mATX, socket LGA1700, hỗ trợ DDR5",
+                  "specs": { "chipset": "B760", "form_factor": "mATX", "ram_slots": 4 },
+                  "compat": { "socket": "LGA1700", "memory_type": "DDR5", "form_factor": "mATX", "ram_slots": 4, "m2_slots": 2 },
+                  "tags": ["gaming"], "warranty_months": 36, "status": 2 },
+                { "sku": "RAM-KINGSTON-32G-D5", "name": "Kingston Fury Beast 32GB (2x16GB) DDR5 6000", "slug": "kingston-fury-beast-32gb-ddr5-6000",
+                  "category_code": "RAM", "brand_code": "KINGSTON", "price": { "$numberDecimal": "2790000" },
+                  "short_description": "Kit 2x16GB DDR5 6000MHz",
+                  "specs": { "capacity_gb": 32, "speed_mhz": 6000 },
+                  "compat": { "memory_type": "DDR5", "modules": 2 },
+                  "tags": ["gaming"], "warranty_months": 36, "status": 2 },
+                { "sku": "GPU-MSI-4070S-12G", "name": "MSI GeForce RTX 4070 SUPER 12GB Ventus 2X", "slug": "msi-rtx-4070-super-12gb-ventus-2x",
+                  "category_code": "GPU", "brand_code": "MSI", "price": { "$numberDecimal": "16990000" },
+                  "short_description": "Card đồ họa chơi tốt game 2K, 12GB GDDR6X",
+                  "specs": { "vram_gb": 12, "memory_type": "GDDR6X" },
+                  "compat": { "length_mm": 242, "tdp_w": 220, "recommended_psu_w": 650 },
+                  "tags": ["gaming", "2K"], "warranty_months": 36, "status": 2 },
+                { "sku": "PSU-CORSAIR-RM750E", "name": "Corsair RM750e 750W 80 Plus Gold", "slug": "corsair-rm750e-750w",
+                  "category_code": "PSU", "brand_code": "CORSAIR", "price": { "$numberDecimal": "2690000" },
+                  "short_description": "Nguồn 750W, chuẩn 80 Plus Gold, full modular",
+                  "specs": { "efficiency": "80 Plus Gold", "modular": "full" },
+                  "compat": { "wattage": 750, "form_factor": "ATX" },
+                  "tags": [], "warranty_months": 84, "status": 2 }
+              ]

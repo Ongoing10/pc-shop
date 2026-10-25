@@ -1,0 +1,30 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: ordering-service
+  profiles:
+    default: dev
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/pcshop
+          jwk-set-uri: http://localhost:8180/realms/pcshop/protocol/openid-connect/certs
+
+pcshop:
+  security:
+    permission-client-id: pcshop-backend
+    public-get-paths:
+      - /api/v1/vouchers
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

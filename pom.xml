@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  POM gốc: CHỈ gom module (aggregator) và cấu hình chung cho các module Java thuần / Quarkus.
+  KHÔNG import spring-boot-dependencies và quarkus-bom ở đây (hai BOM ghim version khác nhau
+  cho Jackson, Netty, Kafka client... sẽ xung đột). Mỗi module tự import BOM của framework mình.
+  Các module Spring dùng spring-boot-starter-parent làm parent nên không kế thừa POM này.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.pcshop</groupId>
+    <artifactId>pc-shop</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>pc-shop</name>
+
+    <modules>
+        <!-- Dùng chung -->
+        <module>common/shared-contracts</module>
+        <module>common/shared-events</module>
+        <module>common/common-webflux</module>
+        <module>common/common-quarkus</module>
+        <!-- Spring WebFlux -->
+        <module>gateway</module>
+        <module>cart-service</module>
+        <module>ordering-service</module>
+        <module>review-service</module>
+        <!-- Quarkus -->
+        <module>customer-service</module>
+        <module>catalog-service</module>
+        <module>inventory-service</module>
+        <module>media-service</module>
+        <module>notification-service</module>
+        <module>ai-service</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Version dùng chung cho các module Quarkus (kế thừa POM này) -->
+        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+        <quarkus.platform.version>3.20.0</quarkus.platform.version>
+        <jackson-annotations.version>2.19.0</jackson-annotations.version>
+
+        <compiler-plugin.version>3.13.0</compiler-plugin.version>
+        <surefire-plugin.version>3.5.2</surefire-plugin.version>
+    </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${compiler-plugin.version}</version>
+                    <configuration>
+                        <!-- Giữ tên tham số để @PathParam/@RestQuery... không cần khai tên -->
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire-plugin.version}</version>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>${quarkus.platform.group-id}</groupId>
+                    <artifactId>quarkus-maven-plugin</artifactId>
+                    <version>${quarkus.platform.version}</version>
+                    <extensions>true</extensions>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>build</goal>
+                                <goal>generate-code</goal>
+                                <goal>generate-code-tests</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

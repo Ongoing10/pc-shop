@@ -1,0 +1,81 @@
+# Hạ tầng cho profile `local`. Các service Java chạy trực tiếp trên máy (IntelliJ),
+# chỉ hạ tầng chạy trong Docker.
+#
+#   docker compose up -d                 # Postgres, Mongo, Redis, Kafka, Keycloak
+#   docker compose --profile ai up -d    # thêm Ollama (nếu không cài Ollama trực tiếp trên Windows)
+#   docker compose down                  # dừng, GIỮ dữ liệu (volume)
+#   docker compose down -v               # dừng và XÓA SẠCH dữ liệu (Keycloak sẽ import lại realm)
+name: pc-shop
+
+services:
+  postgres:
+    # Image có sẵn pgvector. Image "postgres" thường không có, migration ai-service sẽ lỗi.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: pcshop
+      POSTGRES_USER: pcshop
+      POSTGRES_PASSWORD: pcshop
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pcshop -d pcshop"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  kafka:
+    # KRaft 1 node, mặc định quảng bá localhost:9092: đủ cho service chạy trên máy host.
+    image: apache/kafka:3.9.0
+    ports:
+      - "9092:9092"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.0
+    command: start-dev --import-realm --http-port=8180
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Cố định issuer trong token = địa chỉ mà service trên máy host dùng
+      KC_HOSTNAME: http://localhost:8180
+      # Lưu vào Postgres (schema keycloak) để không mất user khi xóa container
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/pcshop
+      KC_DB_USERNAME: pcshop
+      KC_DB_PASSWORD: pcshop
+      KC_DB_SCHEMA: keycloak
+    ports:
+      - "8180:8180"
+    volumes:
+      - ./infra/keycloak/realm-pcshop.json:/opt/keycloak/data/import/realm-pcshop.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ollama:
+    # Tùy chọn: chỉ bật khi chạy với --profile ai. Trên Windows có GPU, cài Ollama trực tiếp sẽ nhanh hơn.
+    image: ollama/ollama:latest
+    profiles: ["ai"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  pg-data:
+  mongo-data:
+  ollama-data:

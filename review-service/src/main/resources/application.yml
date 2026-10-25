@@ -1,0 +1,34 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: review-service
+  profiles:
+    default: dev
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/pcshop
+          jwk-set-uri: http://localhost:8180/realms/pcshop/protocol/openid-connect/certs
+  data:
+    mongodb:
+      # Lưu UUID theo chuẩn mới (binary subtype 4)
+      uuid-representation: standard
+
+pcshop:
+  security:
+    permission-client-id: pcshop-backend
+    public-get-paths:
+      - /api/v1/reviews
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

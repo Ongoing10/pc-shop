@@ -1,0 +1,14 @@
+# Postgres trong Docker (docker compose up -d)
+spring:
+  r2dbc:
+    # schema=ordering → search_path của kết nối, nên entity chỉ cần @Table("orders")
+    url: r2dbc:postgresql://localhost:5432/pcshop?schema=ordering
+    username: pcshop
+    password: pcshop
+  flyway:
+    url: jdbc:postgresql://localhost:5432/pcshop
+    user: pcshop
+    password: pcshop
+    schemas: ordering
+    locations: classpath:db/migration,classpath:db/seed
+    enabled: true

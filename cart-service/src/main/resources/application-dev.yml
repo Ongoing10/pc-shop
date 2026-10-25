@@ -1,0 +1,6 @@
+# Redis là dữ liệu tạm nên ở profile dev vẫn chạy trên máy mình (docker compose).
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379

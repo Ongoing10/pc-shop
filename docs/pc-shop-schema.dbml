@@ -1,0 +1,902 @@
+/*
+  SCHEMA ĐỀ TÀI: Ứng dụng web bán linh kiện PC thông minh
+  Kiến trúc Microservices tích hợp AI & RAG (Spring WebFlux + Quarkus)
+
+  Quy ước:
+  - Mỗi microservice sở hữu CSDL riêng (database-per-service), tách bằng schema:
+      PostgreSQL : identity, media, inventory, ordering, ai
+      MongoDB    : catalog, review, chat, notification  (mô tả dạng DBML để làm tài liệu, Mongo không ép schema)
+  - KHÔNG có khóa ngoại xuyên service. Các cột tham chiếu sang service khác chỉ là
+    "tham chiếu logic", ghi rõ trong note (vd: 'Tham chiếu logic: identity.users.id').
+  - Cột audit chuẩn: created_by, created_at, updated_by, updated_at (tự điền khi lưu).
+    Không có bảng audit chung: truy vết dùng bảng lịch sử theo nghiệp vụ
+    (order_status_histories, stock_movements, payments.raw_response, voucher_usages,
+    catalog.price_histories, ai_request_logs).
+  - Vòng đời bản ghi: MỖI BẢNG CHỈ MỘT CƠ CHẾ.
+      is_delete (0/1)  : chỉ identity.users (được đơn hàng, review tham chiếu).
+      status           : bảng có vòng đời nghiệp vụ (products, orders, reviews, knowledge_documents...).
+      is_active (0/1)  : danh mục cấu hình (roles, categories, brands, warehouses, vouchers, rules).
+      Không bao giờ xóa: orders, order_items, payments, refunds, voucher_usages, các bảng lịch sử/log.
+      Xóa thật         : dữ liệu tạm/kỹ thuật và dữ liệu cá nhân đã có snapshot
+                         (user_addresses, pc_builds, chat, notifications, outbox, token, document_chunks).
+  - Unique trên bảng xóa mềm dùng partial index (chỉ bản ghi is_delete = 0), tạo bằng SQL migration.
+  - Trạng thái/loại dùng integer, giá trị được liệt kê trong note từng cột.
+  - Tiền tệ: numeric(15,2), đơn vị VND.
+
+  Dữ liệu KHÔNG nằm trong DBML:
+  - Giỏ hàng (cart-service, Redis):
+      key  cart:{userId} | cart:guest:{guestKey}   (Hash)
+      field {sku} -> {"productId": "...", "quantity": 2, "addedAt": "..."}
+      TTL 30 ngày với khách vãng lai; khi đăng nhập thì merge giỏ guest vào giỏ user.
+  - Index vector (HNSW) và GIN của pgvector: tạo bằng SQL migration, xem note bảng ai.document_chunks.
+*/
+
+Project pc_shop {
+  database_type: 'PostgreSQL + MongoDB'
+  Note: 'Web bán linh kiện PC thông minh - Microservices + AI/RAG'
+}
+
+// =====================================================================
+// 1. IDENTITY SERVICE (Quarkus/WebFlux - PostgreSQL)
+// =====================================================================
+
+table identity.users {
+  id bigint [pk, increment, note: 'Khóa chính']
+  code varchar(20) [null, unique, note: 'Mã người dùng (vd: KH000123)']
+  status integer [not null, default: 2, note: 'Trạng thái: 1-ACTIVE, 2-PENDING_VERIFY (chờ xác thực email), 3-LOCKED (bị admin khóa)']
+  avatar_file_id bigint [null, note: 'Tham chiếu logic: media.files.id']
+  username varchar(50) [not null, note: 'Tên đăng nhập - unique trong các user chưa xóa (partial index)']
+  email varchar(255) [not null, note: 'Email - unique trong các user chưa xóa (partial index)']
+  email_verified boolean [null, default: false, note: 'Đã xác thực email hay chưa']
+  password varchar(255) [null, note: 'Mật khẩu (đã mã hoá BCrypt)']
+  full_name varchar(255) [null, note: 'Họ và tên']
+  phone_number varchar(15) [null, note: 'Số điện thoại']
+  gender integer [null, note: 'Giới tính: 0-Khác, 1-Nam, 2-Nữ']
+  birth_date timestamp [null, note: 'Ngày sinh']
+  note varchar(255) [null, note: 'Ghi chú']
+  failed_attempts integer [not null, default: 0, note: 'Số lần đăng nhập sai liên tiếp']
+  locked_until timestamp [null, note: 'Khóa tạm thời do nhập sai nhiều lần, đến thời điểm này (khác với status = LOCKED)']
+  last_login_at timestamp [null, note: 'Lần đăng nhập gần nhất']
+  created_by bigint [null, ref: > identity.users.id, note: 'ID người tạo']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, ref: > identity.users.id, note: 'ID người cập nhật']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+  is_delete integer [not null, default: 0, note: 'Xóa mềm: 0-Đang dùng, 1-Đã xóa. Bảng DUY NHẤT dùng xóa mềm']
+
+  Note: '''Người dùng hệ thống (khách hàng, nhân viên, quản trị viên).
+  Xóa mềm vì đơn hàng, review, cấu hình PC vẫn tham chiếu tới user.
+  Partial unique index (SQL migration):
+    CREATE UNIQUE INDEX uk_users_username ON identity.users (lower(username)) WHERE is_delete = 0;
+    CREATE UNIQUE INDEX uk_users_email    ON identity.users (lower(email))    WHERE is_delete = 0;'''
+
+  indexes {
+    phone_number [name: 'idx_users_phone_number']
+    full_name [name: 'idx_users_full_name']
+  }
+}
+
+table identity.roles {
+  id bigint [pk, increment, note: 'Khóa chính']
+  code varchar(20) [null, unique, note: 'Mã vai trò: CUSTOMER, STAFF, ADMIN']
+  name varchar(255) [null, note: 'Tên vai trò']
+  is_active integer [null, note: 'Trạng thái hoạt động']
+  note varchar(255) [null, note: 'Ghi chú']
+  created_by bigint [null, ref: > identity.users.id, note: 'ID người tạo']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, ref: > identity.users.id, note: 'ID người cập nhật']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Vai trò (Role) trong hệ thống'
+
+  indexes {
+    code [name: 'idx_roles_code']
+    name [name: 'idx_roles_name']
+  }
+}
+
+table identity.permissions {
+  id bigint [pk, increment, note: 'Khóa chính']
+  code varchar(100) [null, unique, note: 'Mã quyền, vd: PRODUCT_CREATE, ORDER_UPDATE_STATUS, KNOWLEDGE_REINDEX']
+  name varchar(100) [null, note: 'Tên quyền']
+  module varchar(50) [null, note: 'Nhóm chức năng: PRODUCT, ORDER, INVENTORY, AI, USER...']
+  created_by bigint [null, ref: > identity.users.id, note: 'ID người tạo']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, ref: > identity.users.id, note: 'ID người cập nhật']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Danh sách quyền hạn (Permissions) trong hệ thống'
+}
+
+table identity.role_permissions {
+  role_id bigint [not null, ref: > identity.roles.id, note: 'Vai trò']
+  permission_id bigint [not null, ref: > identity.permissions.id, note: 'Quyền hạn']
+  created_by bigint [null, note: 'ID người tạo']
+  created_at timestamp [null, note: 'Thời gian tạo']
+
+  Note: 'Bảng trung gian role - permission, khóa chính là (role_id, permission_id)'
+
+  indexes {
+    (role_id, permission_id) [pk]
+  }
+}
+
+table identity.user_roles {
+  user_id bigint [not null, ref: > identity.users.id, note: 'Người dùng']
+  role_id bigint [not null, ref: > identity.roles.id, note: 'Vai trò']
+  created_by bigint [null, note: 'ID người tạo']
+  created_at timestamp [null, note: 'Thời gian tạo']
+
+  Note: 'Bảng trung gian user - role, khóa chính là (user_id, role_id)'
+
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+table identity.user_addresses {
+  id bigint [pk, increment, note: 'Khóa chính']
+  user_id bigint [not null, ref: > identity.users.id, note: 'Người dùng sở hữu địa chỉ']
+  receiver_name varchar(255) [null, note: 'Tên người nhận']
+  receiver_phone varchar(15) [null, note: 'SĐT người nhận']
+  province_code varchar(10) [null, note: 'Mã tỉnh/thành phố']
+  province_name varchar(100) [null, note: 'Tên tỉnh/thành phố']
+  ward_code varchar(10) [null, note: 'Mã phường/xã (mô hình hành chính 2 cấp)']
+  ward_name varchar(100) [null, note: 'Tên phường/xã']
+  address_detail varchar(255) [null, note: 'Số nhà, tên đường']
+  is_default boolean [null, default: false, note: 'Địa chỉ mặc định']
+  created_by bigint [null, ref: > identity.users.id, note: 'ID người tạo']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, ref: > identity.users.id, note: 'ID người cập nhật']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Sổ địa chỉ giao hàng của khách hàng. Xóa thật: đơn hàng đã lưu snapshot địa chỉ'
+
+  indexes {
+    user_id [name: 'idx_user_addresses_user_id']
+  }
+}
+
+table identity.refresh_tokens {
+  id bigint [pk, increment, note: 'Khóa chính']
+  user_id bigint [not null, ref: > identity.users.id, note: 'Người dùng']
+  token_hash varchar(255) [not null, unique, note: 'Hash của refresh token (không lưu token gốc)']
+  device_info varchar(255) [null, note: 'Thiết bị / user-agent']
+  ip_address varchar(45) [null, note: 'Địa chỉ IP']
+  expires_at timestamp [not null, note: 'Thời điểm hết hạn']
+  revoked boolean [null, default: false, note: 'Đã thu hồi hay chưa']
+  created_at timestamp [null, note: 'Thời gian tạo']
+
+  Note: 'Refresh token phục vụ đăng nhập JWT. Job định kỳ xóa thật token đã hết hạn hoặc đã thu hồi'
+
+  indexes {
+    user_id [name: 'idx_refresh_tokens_user_id']
+  }
+}
+
+// =====================================================================
+// 2. MEDIA SERVICE (Quarkus - PostgreSQL; file ở Supabase Storage (dev) hoặc ổ đĩa (local))
+// =====================================================================
+
+table media.files {
+  id bigint [pk, increment, note: 'Khóa chính']
+  file_name varchar(255) [null, note: 'Tên file gốc']
+  storage_type integer [not null, note: 'Nơi lưu: 1-SUPABASE (Supabase Storage, profile dev và ảnh seed), 2-LOCAL_DISK (ổ đĩa, profile local)']
+  object_key varchar(500) [null, note: 'Key của file trong bucket hoặc đường dẫn tương đối trên ổ đĩa (không lưu bytea trong DB)']
+  bucket varchar(100) [null, note: 'Bucket lưu trữ: products, avatars, reviews (public), knowledge-docs (private)']
+  url varchar(500) [null, note: 'URL truy cập công khai/CDN']
+  file_type varchar(100) [null, note: 'Loại file (extension)']
+  mime_type varchar(100) [null, note: 'MIME type (vd: application/pdf, image/png)']
+  file_size bigint [null, note: 'Dung lượng file (byte)']
+  checksum varchar(64) [null, note: 'SHA-256 để phát hiện file trùng']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Bảng quản lý tệp tin (ảnh sản phẩm, avatar, tài liệu tri thức cho RAG). Xóa thật cả bản ghi lẫn file trong storage, do service sở hữu file yêu cầu. Supabase Storage không có versioning: file đã xóa không khôi phục được'
+}
+
+// =====================================================================
+// 3. INVENTORY SERVICE (Quarkus - PostgreSQL)
+// =====================================================================
+
+table inventory.warehouses {
+  id bigint [pk, increment, note: 'Khóa chính']
+  code varchar(20) [null, unique, note: 'Mã kho']
+  name varchar(255) [null, note: 'Tên kho']
+  address varchar(500) [null, note: 'Địa chỉ kho']
+  is_active integer [null, note: 'Trạng thái hoạt động']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Danh sách kho hàng'
+}
+
+table inventory.inventories {
+  id bigint [pk, increment, note: 'Khóa chính']
+  product_id varchar(24) [not null, note: 'Tham chiếu logic: catalog.products._id (ObjectId)']
+  sku varchar(50) [not null, note: 'Mã SKU sản phẩm']
+  warehouse_id bigint [not null, ref: > inventory.warehouses.id, note: 'Kho chứa']
+  quantity integer [not null, default: 0, note: 'Số lượng thực tế trong kho']
+  reserved_quantity integer [not null, default: 0, note: 'Số lượng đang được giữ cho đơn chưa hoàn tất']
+  min_quantity integer [null, default: 0, note: 'Ngưỡng cảnh báo sắp hết hàng']
+  version integer [not null, default: 0, note: 'Optimistic lock, tránh bán vượt tồn kho khi đặt hàng đồng thời']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Tồn kho theo SKU và kho. Số lượng có thể bán = quantity - reserved_quantity'
+
+  indexes {
+    (sku, warehouse_id) [unique, name: 'uk_inventories_sku_warehouse']
+    product_id [name: 'idx_inventories_product_id']
+  }
+}
+
+table inventory.stock_reservations {
+  id bigint [pk, increment, note: 'Khóa chính']
+  order_code varchar(30) [not null, note: 'Tham chiếu logic: ordering.orders.code']
+  sku varchar(50) [not null, note: 'Mã SKU']
+  warehouse_id bigint [not null, ref: > inventory.warehouses.id, note: 'Kho giữ hàng']
+  quantity integer [not null, note: 'Số lượng giữ']
+  status integer [not null, note: 'Trạng thái: 1-HOLD, 2-CONFIRMED, 3-RELEASED, 4-EXPIRED']
+  expires_at timestamp [null, note: 'Hết hạn giữ hàng (đơn chưa thanh toán sẽ tự nhả)']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Giữ chỗ tồn kho - một bước trong Saga đặt hàng (bù trừ = RELEASED). Job định kỳ chuyển HOLD quá hạn sang EXPIRED và xóa thật bản ghi đã kết thúc sau 30 ngày'
+
+  indexes {
+    order_code [name: 'idx_stock_reservations_order_code']
+    (status, expires_at) [name: 'idx_stock_reservations_status_expires']
+  }
+}
+
+table inventory.stock_movements {
+  id bigint [pk, increment, note: 'Khóa chính']
+  sku varchar(50) [not null, note: 'Mã SKU']
+  warehouse_id bigint [not null, ref: > inventory.warehouses.id, note: 'Kho']
+  type integer [not null, note: 'Loại: 1-Nhập kho, 2-Xuất bán, 3-Hoàn trả, 4-Điều chỉnh kiểm kê']
+  quantity integer [not null, note: 'Số lượng thay đổi (+ nhập, - xuất)']
+  quantity_after integer [null, note: 'Tồn kho sau khi thay đổi']
+  reference_type varchar(30) [null, note: 'Loại chứng từ: ORDER, RETURN, IMPORT, ADJUST']
+  reference_code varchar(50) [null, note: 'Mã chứng từ liên quan']
+  note varchar(255) [null, note: 'Ghi chú']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+
+  Note: 'Nhật ký biến động tồn kho (chỉ thêm, không sửa)'
+
+  indexes {
+    (sku, created_at) [name: 'idx_stock_movements_sku_created']
+  }
+}
+
+table inventory.outbox_events {
+  id uuid [pk, note: 'ID sự kiện']
+  aggregate_type varchar(50) [not null, note: 'Loại aggregate: INVENTORY, RESERVATION']
+  aggregate_id varchar(50) [not null, note: 'ID aggregate']
+  event_type varchar(100) [not null, note: 'vd: stock.reserved, stock.reserve-failed, stock.low']
+  payload jsonb [not null, note: 'Nội dung sự kiện']
+  status integer [not null, default: 0, note: 'Trạng thái: 0-NEW, 1-SENT, 2-FAILED']
+  retry_count integer [null, default: 0, note: 'Số lần gửi lại']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  sent_at timestamp [null, note: 'Thời gian đã publish lên Kafka']
+
+  Note: 'Transactional Outbox: ghi cùng transaction nghiệp vụ, job đẩy lên Kafka. Bản ghi SENT được xóa thật sau 7 ngày'
+
+  indexes {
+    (status, created_at) [name: 'idx_inventory_outbox_status_created']
+  }
+}
+
+table inventory.processed_events {
+  event_id uuid [pk, note: 'ID sự kiện đã xử lý']
+  consumer varchar(100) [not null, note: 'Tên consumer']
+  processed_at timestamp [null, note: 'Thời gian xử lý']
+
+  Note: 'Chống xử lý trùng sự kiện Kafka (idempotent consumer). Xóa thật bản ghi cũ hơn thời gian lưu của topic'
+}
+
+// =====================================================================
+// 4. ORDERING SERVICE - Order & Payment (Spring WebFlux + R2DBC - PostgreSQL)
+// =====================================================================
+
+table ordering.orders {
+  id bigint [pk, increment, note: 'Khóa chính']
+  code varchar(30) [not null, unique, note: 'Mã đơn hàng (vd: DH20261022000123)']
+  user_id bigint [not null, note: 'Tham chiếu logic: identity.users.id']
+  status integer [not null, note: 'Trạng thái: 1-PENDING, 2-AWAITING_PAYMENT, 3-PAID, 4-CONFIRMED, 5-SHIPPING, 6-COMPLETED, 7-CANCELLED, 8-RETURNED']
+  payment_method integer [null, note: 'Phương thức: 1-COD, 2-VNPAY, 3-MOMO']
+  payment_status integer [null, note: 'Thanh toán: 1-UNPAID, 2-PAID, 3-REFUNDED']
+  subtotal_amount numeric(15,2) [not null, note: 'Tổng tiền hàng']
+  discount_amount numeric(15,2) [null, default: 0, note: 'Tiền giảm giá']
+  shipping_fee numeric(15,2) [null, default: 0, note: 'Phí vận chuyển']
+  total_amount numeric(15,2) [not null, note: 'Tổng thanh toán']
+  voucher_code varchar(50) [null, note: 'Mã voucher áp dụng']
+  receiver_name varchar(255) [null, note: 'Tên người nhận (snapshot)']
+  receiver_phone varchar(15) [null, note: 'SĐT người nhận (snapshot)']
+  shipping_address varchar(500) [null, note: 'Địa chỉ giao hàng đầy đủ (snapshot tại thời điểm đặt)']
+  note varchar(500) [null, note: 'Ghi chú của khách']
+  pc_build_id varchar(24) [null, note: 'Tham chiếu logic: catalog.pc_builds._id nếu đặt từ PC Builder']
+  cancel_reason varchar(255) [null, note: 'Lý do huỷ']
+  placed_at timestamp [null, note: 'Thời điểm đặt hàng']
+  completed_at timestamp [null, note: 'Thời điểm hoàn tất']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Đơn hàng. KHÔNG BAO GIỜ XÓA: hủy đơn = status CANCELLED, mọi thay đổi trạng thái ghi vào order_status_histories'
+
+  indexes {
+    (user_id, created_at) [name: 'idx_orders_user_created']
+    (status, created_at) [name: 'idx_orders_status_created']
+  }
+}
+
+table ordering.order_items {
+  id bigint [pk, increment, note: 'Khóa chính']
+  order_id bigint [not null, ref: > ordering.orders.id, note: 'Đơn hàng']
+  product_id varchar(24) [not null, note: 'Tham chiếu logic: catalog.products._id']
+  sku varchar(50) [not null, note: 'Mã SKU']
+  product_name varchar(255) [not null, note: 'Tên sản phẩm (snapshot)']
+  product_image_url varchar(500) [null, note: 'Ảnh sản phẩm (snapshot)']
+  category_code varchar(30) [null, note: 'Danh mục (snapshot), phục vụ thống kê và gợi ý mua kèm']
+  unit_price numeric(15,2) [not null, note: 'Đơn giá tại thời điểm đặt']
+  quantity integer [not null, note: 'Số lượng']
+  discount_amount numeric(15,2) [null, default: 0, note: 'Giảm giá phân bổ cho dòng']
+  line_total numeric(15,2) [not null, note: 'Thành tiền']
+  warranty_months integer [null, note: 'Số tháng bảo hành (snapshot)']
+  created_at timestamp [null, note: 'Thời gian tạo']
+
+  Note: 'Chi tiết đơn hàng - lưu snapshot để không bị ảnh hưởng khi catalog đổi giá/tên'
+
+  indexes {
+    order_id [name: 'idx_order_items_order_id']
+    sku [name: 'idx_order_items_sku']
+  }
+}
+
+table ordering.order_status_histories {
+  id bigint [pk, increment, note: 'Khóa chính']
+  order_id bigint [not null, ref: > ordering.orders.id, note: 'Đơn hàng']
+  from_status integer [null, note: 'Trạng thái cũ']
+  to_status integer [not null, note: 'Trạng thái mới']
+  reason varchar(255) [null, note: 'Lý do / ghi chú']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id (null nếu hệ thống tự chuyển)']
+  created_at timestamp [null, note: 'Thời gian chuyển trạng thái']
+
+  Note: 'Lịch sử trạng thái đơn hàng'
+
+  indexes {
+    order_id [name: 'idx_order_status_histories_order_id']
+  }
+}
+
+table ordering.vouchers {
+  id bigint [pk, increment, note: 'Khóa chính']
+  code varchar(50) [not null, unique, note: 'Mã voucher']
+  name varchar(255) [null, note: 'Tên chương trình']
+  type integer [not null, note: 'Loại: 1-Giảm theo %, 2-Giảm số tiền cố định, 3-Miễn phí vận chuyển']
+  value numeric(15,2) [not null, note: 'Giá trị giảm (% hoặc VND)']
+  max_discount_amount numeric(15,2) [null, note: 'Giảm tối đa (với loại %)']
+  min_order_amount numeric(15,2) [null, default: 0, note: 'Giá trị đơn tối thiểu']
+  applicable_categories jsonb [null, note: 'Danh mục áp dụng, vd: ["GPU","CPU"]; null = tất cả']
+  usage_limit integer [null, note: 'Tổng số lượt dùng tối đa']
+  used_count integer [null, default: 0, note: 'Số lượt đã dùng']
+  per_user_limit integer [null, default: 1, note: 'Số lượt tối đa mỗi người']
+  version bigint [not null, default: 0, note: 'Optimistic lock: nhiều đơn cùng dùng voucher thì used_count không bị ghi đè (xung đột trả 409)']
+  start_at timestamp [null, note: 'Bắt đầu hiệu lực']
+  end_at timestamp [null, note: 'Hết hiệu lực']
+  is_active integer [not null, default: 1, note: 'Hoạt động (0/1). "Xóa" voucher = ngừng hoạt động; không xóa vì voucher_usages tham chiếu']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Mã giảm giá / khuyến mãi'
+}
+
+table ordering.voucher_usages {
+  id bigint [pk, increment, note: 'Khóa chính']
+  voucher_id bigint [not null, ref: > ordering.vouchers.id, note: 'Voucher']
+  order_id bigint [not null, ref: > ordering.orders.id, note: 'Đơn hàng áp dụng']
+  user_id bigint [not null, note: 'Tham chiếu logic: identity.users.id']
+  discount_amount numeric(15,2) [not null, note: 'Số tiền đã giảm']
+  created_at timestamp [null, note: 'Thời gian sử dụng']
+
+  Note: 'Lịch sử sử dụng voucher'
+
+  indexes {
+    (voucher_id, order_id) [unique, name: 'uk_voucher_usages_voucher_order']
+    (voucher_id, user_id) [name: 'idx_voucher_usages_voucher_user']
+  }
+}
+
+table ordering.payments {
+  id bigint [pk, increment, note: 'Khóa chính']
+  order_id bigint [not null, ref: > ordering.orders.id, note: 'Đơn hàng']
+  payment_code varchar(50) [not null, unique, note: 'Mã giao dịch nội bộ (vnp_TxnRef / orderId MoMo)']
+  method integer [not null, note: 'Phương thức: 1-COD, 2-VNPAY, 3-MOMO']
+  amount numeric(15,2) [not null, note: 'Số tiền']
+  status integer [not null, note: 'Trạng thái: 1-PENDING, 2-SUCCESS, 3-FAILED, 4-EXPIRED, 5-REFUNDED']
+  provider_transaction_id varchar(100) [null, note: 'Mã giao dịch phía cổng thanh toán']
+  bank_code varchar(30) [null, note: 'Mã ngân hàng']
+  paid_at timestamp [null, note: 'Thời điểm thanh toán thành công']
+  expired_at timestamp [null, note: 'Hết hạn link thanh toán']
+  raw_response jsonb [null, note: 'Dữ liệu IPN/callback gốc để đối soát']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Giao dịch thanh toán (VNPay/MoMo sandbox, COD)'
+
+  indexes {
+    order_id [name: 'idx_payments_order_id']
+  }
+}
+
+table ordering.refunds {
+  id bigint [pk, increment, note: 'Khóa chính']
+  payment_id bigint [not null, ref: > ordering.payments.id, note: 'Giao dịch gốc']
+  amount numeric(15,2) [not null, note: 'Số tiền hoàn']
+  reason varchar(255) [null, note: 'Lý do hoàn tiền']
+  status integer [not null, note: 'Trạng thái: 1-PENDING, 2-SUCCESS, 3-FAILED']
+  provider_refund_id varchar(100) [null, note: 'Mã hoàn tiền phía cổng thanh toán']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Hoàn tiền'
+}
+
+table ordering.outbox_events {
+  id uuid [pk, note: 'ID sự kiện']
+  aggregate_type varchar(50) [not null, note: 'Loại aggregate: ORDER, PAYMENT']
+  aggregate_id varchar(50) [not null, note: 'ID aggregate']
+  event_type varchar(100) [not null, note: 'vd: order.created, order.cancelled, payment.succeeded']
+  payload jsonb [not null, note: 'Nội dung sự kiện']
+  status integer [not null, default: 0, note: 'Trạng thái: 0-NEW, 1-SENT, 2-FAILED']
+  retry_count integer [null, default: 0, note: 'Số lần gửi lại']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  sent_at timestamp [null, note: 'Thời gian đã publish lên Kafka']
+
+  Note: 'Transactional Outbox của ordering-service. Bản ghi SENT được xóa thật sau 7 ngày'
+
+  indexes {
+    (status, created_at) [name: 'idx_ordering_outbox_status_created']
+  }
+}
+
+table ordering.processed_events {
+  event_id uuid [pk, note: 'ID sự kiện đã xử lý']
+  consumer varchar(100) [not null, note: 'Tên consumer']
+  processed_at timestamp [null, note: 'Thời gian xử lý']
+
+  Note: 'Chống xử lý trùng sự kiện Kafka (idempotent consumer). Xóa thật bản ghi cũ hơn thời gian lưu của topic'
+}
+
+// =====================================================================
+// 5. AI SERVICE - RAG (Quarkus + LangChain4j - PostgreSQL + pgvector)
+// =====================================================================
+
+table ai.knowledge_documents {
+  id bigint [pk, increment, note: 'Khóa chính']
+  title varchar(255) [not null, note: 'Tiêu đề tài liệu']
+  source_type integer [not null, note: 'Nguồn: 1-PRODUCT (đồng bộ từ catalog), 2-GUIDE (hướng dẫn build PC), 3-POLICY (bảo hành/đổi trả), 4-FAQ']
+  source_ref varchar(50) [null, note: 'Tham chiếu logic: catalog.products._id hoặc media.files.id tùy source_type']
+  content_hash varchar(64) [null, note: 'SHA-256 nội dung, bỏ qua re-embed nếu không đổi']
+  status integer [not null, note: 'Trạng thái: 1-PENDING, 2-INDEXING, 3-INDEXED, 4-FAILED, 5-ARCHIVED (gỡ khỏi RAG, chunk đã bị xóa thật)']
+  chunk_count integer [null, default: 0, note: 'Số chunk đã tạo']
+  embedding_model varchar(100) [null, note: 'Model embedding đã dùng, vd: bge-m3']
+  error_message text [null, note: 'Lỗi khi index (nếu có)']
+  indexed_at timestamp [null, note: 'Thời điểm index xong']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: '''Kho tri thức cho RAG (admin quản lý, có thể re-index).
+  Gỡ tài liệu = status ARCHIVED + xóa thật toàn bộ document_chunks của nó.
+  Sản phẩm chuyển HIDDEN/DISCONTINUED (event product.hidden) thì tài liệu PRODUCT tương ứng cũng bị ARCHIVED.'''
+
+  indexes {
+    (source_type, source_ref) [name: 'idx_knowledge_documents_source']
+    status [name: 'idx_knowledge_documents_status']
+  }
+}
+
+table ai.document_chunks {
+  id bigint [pk, increment, note: 'Khóa chính']
+  document_id bigint [not null, ref: > ai.knowledge_documents.id, note: 'Tài liệu gốc']
+  chunk_index integer [not null, note: 'Thứ tự chunk trong tài liệu']
+  content text [not null, note: 'Nội dung chunk']
+  token_count integer [null, note: 'Số token']
+  metadata jsonb [null, note: 'Metadata để lọc: {"category":"GPU","brand":"ASUS","sku":"...","price":9990000}']
+  embedding "vector(1024)" [null, note: 'Vector embedding (pgvector), số chiều theo model, bge-m3 = 1024']
+  content_tsv tsvector [null, note: 'Full-text vector cho hybrid search (vector + từ khóa)']
+  created_at timestamp [null, note: 'Thời gian tạo']
+
+  Note: '''
+  Đoạn tài liệu đã được embedding. LUÔN XÓA THẬT (khi re-index hoặc gỡ tài liệu):
+  chunk còn nằm lại thì chatbot vẫn truy xuất được.
+  Index tạo bằng SQL migration (DBML chưa biểu diễn được):
+    CREATE EXTENSION IF NOT EXISTS vector;
+    CREATE INDEX idx_chunks_embedding ON ai.document_chunks USING hnsw (embedding vector_cosine_ops);
+    CREATE INDEX idx_chunks_tsv ON ai.document_chunks USING gin (content_tsv);
+    CREATE INDEX idx_chunks_metadata ON ai.document_chunks USING gin (metadata jsonb_path_ops);
+  Lưu ý: giá và tồn kho trong metadata chỉ dùng để lọc sơ bộ;
+  giá trị trả lời cho khách luôn lấy realtime qua tool calling.
+  '''
+
+  indexes {
+    (document_id, chunk_index) [unique, name: 'uk_document_chunks_doc_index']
+  }
+}
+
+table ai.ai_request_logs {
+  id bigint [pk, increment, note: 'Khóa chính']
+  session_id varchar(24) [null, note: 'Tham chiếu logic: chat.chat_sessions._id']
+  user_id bigint [null, note: 'Tham chiếu logic: identity.users.id (null với khách vãng lai)']
+  request_type integer [not null, note: 'Loại: 1-CHAT, 2-PC_BUILD, 3-COMPAT_EXPLAIN, 4-SEMANTIC_SEARCH, 5-REVIEW_SUMMARY']
+  model varchar(100) [null, note: 'Model LLM đã gọi']
+  prompt_tokens integer [null, note: 'Số token đầu vào']
+  completion_tokens integer [null, note: 'Số token đầu ra']
+  latency_ms integer [null, note: 'Độ trễ (ms)']
+  retrieved_chunk_ids "bigint[]" [null, note: 'Danh sách chunk được truy xuất']
+  tool_calls jsonb [null, note: 'Các tool đã gọi: getPrice, checkStock, checkCompatibility...']
+  status integer [not null, note: 'Trạng thái: 1-SUCCESS, 2-ERROR, 3-FALLBACK']
+  error_message text [null, note: 'Thông báo lỗi']
+  feedback smallint [null, note: 'Đánh giá của người dùng: 1-Hữu ích, -1-Không hữu ích']
+  created_at timestamp [null, note: 'Thời gian tạo']
+
+  Note: 'Log mỗi lần gọi AI - dùng cho thống kê chi phí, độ trễ và đánh giá chất lượng. Chỉ thêm, không sửa'
+
+  indexes {
+    (request_type, created_at) [name: 'idx_ai_request_logs_type_created']
+    session_id [name: 'idx_ai_request_logs_session_id']
+  }
+}
+
+table ai.eval_cases {
+  id bigint [pk, increment, note: 'Khóa chính']
+  question text [not null, note: 'Câu hỏi kiểm thử']
+  expected_answer text [null, note: 'Đáp án mong đợi']
+  expected_skus "varchar(50)[]" [null, note: 'Các SKU kỳ vọng xuất hiện trong kết quả']
+  expected_chunk_ids "bigint[]" [null, note: 'Các chunk đúng, để tính Recall@k']
+  category varchar(50) [null, note: 'Nhóm: TU_VAN, TUONG_THICH, BUILD_PC, CHINH_SACH']
+  is_active integer [null, note: 'Trạng thái hoạt động']
+  created_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at timestamp [null, note: 'Thời gian tạo']
+  updated_by bigint [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at timestamp [null, note: 'Thời gian cập nhật']
+
+  Note: 'Bộ câu hỏi đánh giá chất lượng RAG (phục vụ chương Kiểm thử & đánh giá)'
+}
+
+table ai.eval_results {
+  id bigint [pk, increment, note: 'Khóa chính']
+  case_id bigint [not null, ref: > ai.eval_cases.id, note: 'Câu hỏi kiểm thử']
+  run_code varchar(50) [not null, note: 'Mã lượt chạy, vd: RUN_NO_RAG, RUN_RAG, RUN_RAG_TOOL']
+  answer text [null, note: 'Câu trả lời sinh ra']
+  recall_at_k numeric(5,4) [null, note: 'Recall@k của bước truy xuất']
+  is_correct boolean [null, note: 'Đúng/sai (chấm tay hoặc LLM-as-judge)']
+  is_compatible boolean [null, note: 'Cấu hình gợi ý có tương thích không (với case BUILD_PC)']
+  latency_ms integer [null, note: 'Độ trễ (ms)']
+  created_at timestamp [null, note: 'Thời gian chạy']
+
+  Note: 'Kết quả từng lượt đánh giá - so sánh không RAG / RAG / RAG + tool calling'
+
+  indexes {
+    (run_code, case_id) [unique, name: 'uk_eval_results_run_case']
+  }
+}
+
+// =====================================================================
+// 6. CATALOG SERVICE (Quarkus - MongoDB)
+//    Kiểu dữ liệu theo BSON: objectId, string, int, long, decimal, bool, date, object, array
+// =====================================================================
+
+table catalog.categories {
+  "_id" objectId [pk, note: 'Khóa chính']
+  code string [unique, note: 'Mã danh mục: CPU, MAINBOARD, RAM, GPU, PSU, CASE, STORAGE, COOLER']
+  name string [note: 'Tên danh mục']
+  slug string [unique, note: 'Đường dẫn thân thiện']
+  parent_id objectId [null, ref: > catalog.categories."_id", note: 'Danh mục cha (vd: STORAGE > SSD)']
+  pc_slot string [null, note: 'Slot trong PC Builder; null nếu là phụ kiện không bắt buộc']
+  spec_schema "array<object>" [null, note: '''Định nghĩa thông số để render form & bộ lọc:
+    [{"key":"socket","label":"Socket","type":"select","filterable":true,"unit":null}, ...]''']
+  sort_order int [null, note: 'Thứ tự hiển thị']
+  is_active int [note: 'Hoạt động (0/1). Không xóa vì sản phẩm tham chiếu; ẩn danh mục = is_active 0']
+  created_by long [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at date [null, note: 'Thời gian tạo']
+  updated_by long [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at date [null, note: 'Thời gian cập nhật']
+
+  Note: 'Collection danh mục linh kiện'
+}
+
+table catalog.brands {
+  "_id" objectId [pk, note: 'Khóa chính']
+  code string [unique, note: 'Mã thương hiệu: INTEL, AMD, ASUS, MSI, GIGABYTE, CORSAIR...']
+  name string [note: 'Tên thương hiệu']
+  slug string [unique, note: 'Đường dẫn thân thiện']
+  logo_url string [null, note: 'Logo']
+  is_active int [note: 'Hoạt động (0/1). Không xóa vì sản phẩm tham chiếu']
+  created_at date [null, note: 'Thời gian tạo']
+  updated_at date [null, note: 'Thời gian cập nhật']
+
+  Note: 'Collection thương hiệu'
+}
+
+table catalog.products {
+  "_id" objectId [pk, note: 'Khóa chính']
+  sku string [unique, note: 'Mã SKU']
+  name string [note: 'Tên sản phẩm']
+  slug string [unique, note: 'Đường dẫn thân thiện']
+  category_code string [ref: > catalog.categories.code, note: 'Danh mục']
+  brand_code string [ref: > catalog.brands.code, note: 'Thương hiệu']
+  short_description string [null, note: 'Mô tả ngắn']
+  description string [null, note: 'Mô tả chi tiết (HTML/Markdown) - được đưa vào RAG']
+  price decimal [note: 'Giá bán hiện tại (nguồn chân lý về giá). Mỗi lần đổi giá ghi thêm một dòng vào price_histories']
+  original_price decimal [null, note: 'Giá gốc (hiển thị gạch ngang)']
+  images "array<object>" [null, note: '[{"file_id":123,"url":"...","is_primary":true}]']
+  specs object [note: '''Thông số hiển thị, khác nhau theo danh mục. Ví dụ CPU:
+    {"cores":14,"threads":20,"base_clock_ghz":3.5,"boost_clock_ghz":5.3,"cache_mb":24}''']
+  compat object [null, note: '''Thông số CHUẨN HÓA cho rule engine tương thích, ví dụ:
+    CPU: {"socket":"LGA1700","memory_types":["DDR4","DDR5"],"tdp_w":125}
+    MAINBOARD: {"socket":"LGA1700","memory_type":"DDR5","form_factor":"ATX","ram_slots":4,"m2_slots":3}
+    GPU: {"length_mm":336,"tdp_w":285,"recommended_psu_w":750}
+    PSU: {"wattage":850,"form_factor":"ATX"}
+    CASE: {"supported_form_factors":["ATX","mATX"],"max_gpu_length_mm":400,"max_cooler_height_mm":170}''']
+  tags "array<string>" [null, note: 'Nhãn: gaming, 2K, workstation...']
+  warranty_months int [null, note: 'Số tháng bảo hành']
+  status int [note: '''Vòng đời (thay cho xóa mềm): 1-DRAFT, 2-ACTIVE, 3-HIDDEN, 4-DISCONTINUED.
+    Chỉ ACTIVE mới hiển thị và được AI gợi ý. Chuyển sang HIDDEN/DISCONTINUED thì bắn event
+    product.hidden để AI service xóa chunk khỏi pgvector''']
+  rating_avg double [null, note: 'Điểm đánh giá trung bình (cập nhật từ review-service qua event)']
+  rating_count int [null, note: 'Số lượt đánh giá']
+  sold_count int [null, note: 'Số lượng đã bán (cập nhật từ event order.completed)']
+  embedding_synced_at date [null, note: 'Lần cuối đồng bộ sang ai.knowledge_documents']
+  created_by long [null, note: 'Tham chiếu logic: identity.users.id']
+  created_at date [null, note: 'Thời gian tạo']
+  updated_by long [null, note: 'Tham chiếu logic: identity.users.id']
+  updated_at date [null, note: 'Thời gian cập nhật']
+
+  Note: '''Collection sản phẩm - schema linh hoạt theo từng loại linh kiện.
+  Không xóa: đơn hàng, review, tồn kho tham chiếu; ngừng bán = status DISCONTINUED.
+  Index Mongo đề xuất:
+    { sku: 1 } unique, { slug: 1 } unique
+    { category_code: 1, status: 1, price: 1 }
+    { category_code: 1, "compat.socket": 1 }
+    text index { name: "text", short_description: "text", tags: "text" }'''
+}
+
+table catalog.compatibility_rules {
+  "_id" objectId [pk, note: 'Khóa chính']
+  code string [unique, note: 'Mã luật, vd: CPU_MB_SOCKET, RAM_MB_TYPE, PSU_WATTAGE, GPU_CASE_LENGTH']
+  name string [note: 'Tên luật']
+  source_category string [note: 'Danh mục nguồn, vd: CPU']
+  target_category string [note: 'Danh mục đích, vd: MAINBOARD']
+  rule_type string [note: 'Kiểu so sánh: EQUALS, IN, LTE, SUM_TDP_LTE_WATTAGE']
+  source_field string [note: 'Trường trong compat của nguồn, vd: socket']
+  target_field string [note: 'Trường trong compat của đích, vd: socket']
+  margin double [null, note: 'Hệ số an toàn, vd: 1.2 (PSU phải >= 120% tổng TDP)']
+  severity int [note: 'Mức độ: 1-ERROR (không lắp được), 2-WARNING (lắp được nhưng không tối ưu)']
+  message_template string [note: 'Thông báo, vd: "CPU {source} dùng socket {sv} không khớp mainboard {target} ({tv})"']
+  is_active int [note: 'Bật/tắt luật (0/1)']
+  created_at date [null, note: 'Thời gian tạo']
+  updated_at date [null, note: 'Thời gian cập nhật']
+
+  Note: 'Luật tương thích tất định cho rule engine. LLM chỉ dùng kết quả để diễn giải & gợi ý thay thế'
+}
+
+table catalog.pc_builds {
+  "_id" objectId [pk, note: 'Khóa chính']
+  code string [unique, note: 'Mã cấu hình (dùng để chia sẻ link)']
+  user_id long [null, note: 'Tham chiếu logic: identity.users.id (null nếu khách vãng lai)']
+  guest_key string [null, note: 'Khóa định danh khách vãng lai']
+  name string [null, note: 'Tên cấu hình']
+  purpose string [null, note: 'Nhu cầu: GAMING, DESIGN, OFFICE, AI_ML, STREAMING']
+  budget decimal [null, note: 'Ngân sách người dùng nhập']
+  items "array<object>" [note: '[{"slot":"CPU","product_id":"...","sku":"...","quantity":1,"price_at_time":7990000}]']
+  total_price decimal [null, note: 'Tổng giá tại thời điểm lưu']
+  estimated_wattage int [null, note: 'Công suất ước tính (W)']
+  compatibility_result object [null, note: '{"is_compatible":false,"checked_at":"...","issues":[{"rule_code":"...","severity":1,"message":"..."}]}']
+  is_ai_generated bool [null, note: 'Cấu hình do AI gợi ý hay người dùng tự chọn']
+  ai_explanation string [null, note: 'Giải thích lựa chọn của AI']
+  is_public bool [null, note: 'Cho phép chia sẻ công khai']
+  created_at date [null, note: 'Thời gian tạo']
+  updated_at date [null, note: 'Thời gian cập nhật']
+
+  Note: '''Cấu hình PC đã lưu (PC Builder). Xóa thật: đơn hàng đặt từ cấu hình đã có snapshot linh kiện.
+  Index: { user_id: 1, created_at: -1 }, { code: 1 } unique'''
+}
+
+table catalog.price_histories {
+  "_id" objectId [pk, note: 'Khóa chính']
+  product_id objectId [ref: > catalog.products."_id", note: 'Sản phẩm']
+  sku string [note: 'Mã SKU']
+  old_price decimal [null, note: 'Giá cũ (null nếu là giá đầu tiên)']
+  new_price decimal [note: 'Giá mới']
+  reason string [null, note: 'Lý do: PROMOTION, COST_CHANGE, CORRECTION...']
+  changed_by long [null, note: 'Tham chiếu logic: identity.users.id']
+  changed_at date [note: 'Thời điểm đổi giá']
+
+  Note: '''Lịch sử giá - audit theo nghiệp vụ, chỉ thêm, không sửa.
+  Dùng cho admin và cho AI trả lời kiểu "card này đang giảm so với tháng trước".
+  Ghi cùng lúc với cập nhật products.price.
+  Index: { sku: 1, changed_at: -1 }'''
+}
+
+// =====================================================================
+// 7. REVIEW SERVICE (Spring WebFlux - MongoDB)
+// =====================================================================
+
+table review.reviews {
+  "_id" objectId [pk, note: 'Khóa chính']
+  product_id string [note: 'Tham chiếu logic: catalog.products._id']
+  sku string [note: 'Mã SKU']
+  user_id long [note: 'Tham chiếu logic: identity.users.id']
+  user_display_name string [null, note: 'Tên hiển thị (snapshot)']
+  order_code string [null, note: 'Tham chiếu logic: ordering.orders.code - xác thực đã mua']
+  rating int [note: 'Số sao 1-5']
+  title string [null, note: 'Tiêu đề']
+  content string [null, note: 'Nội dung đánh giá']
+  images "array<object>" [null, note: '[{"file_id":456,"url":"..."}]']
+  is_verified_purchase bool [null, note: 'Đã mua hàng thật']
+  status int [note: 'Trạng thái: 1-PENDING, 2-APPROVED, 3-REJECTED, 4-DELETED_BY_USER (khách tự gỡ; thay cho xóa mềm)']
+  helpful_count int [null, note: 'Số lượt thấy hữu ích']
+  admin_reply object [null, note: '{"content":"...","replied_by":12,"replied_at":"..."}']
+  created_at date [null, note: 'Thời gian tạo']
+  updated_at date [null, note: 'Thời gian cập nhật']
+
+  Note: '''Đánh giá sản phẩm. Chỉ status APPROVED được hiển thị và tính vào rating.
+  Index: { product_id: 1, status: 1, created_at: -1 }, { user_id: 1, product_id: 1, order_code: 1 } unique'''
+}
+
+table review.review_summaries {
+  "_id" objectId [pk, note: 'Khóa chính']
+  product_id string [unique, note: 'Tham chiếu logic: catalog.products._id']
+  summary string [note: 'Tóm tắt do LLM sinh']
+  pros "array<string>" [null, note: 'Ưu điểm nổi bật']
+  cons "array<string>" [null, note: 'Nhược điểm nổi bật']
+  based_on_count int [note: 'Số review dùng để tóm tắt']
+  model string [null, note: 'Model LLM đã dùng']
+  generated_at date [note: 'Thời điểm sinh tóm tắt']
+
+  Note: 'Tóm tắt đánh giá bằng AI - sinh lại khi số review mới vượt ngưỡng'
+}
+
+// =====================================================================
+// 8. CHAT (thuộc AI service - MongoDB)
+// =====================================================================
+
+table chat.chat_sessions {
+  "_id" objectId [pk, note: 'Khóa chính']
+  user_id long [null, note: 'Tham chiếu logic: identity.users.id']
+  guest_key string [null, note: 'Khóa định danh khách vãng lai']
+  title string [null, note: 'Tiêu đề phiên (LLM tự đặt từ câu hỏi đầu)']
+  status int [note: 'Trạng thái: 1-ACTIVE, 2-CLOSED']
+  context object [null, note: 'Ngữ cảnh rút trích được: {"budget":25000000,"purpose":"GAMING","resolution":"2K","preferred_brands":["AMD"]}']
+  message_count int [null, note: 'Số tin nhắn']
+  last_message_at date [null, note: 'Thời điểm tin nhắn cuối']
+  created_at date [null, note: 'Thời gian tạo']
+  updated_at date [null, note: 'Thời gian cập nhật']
+
+  Note: '''Phiên hội thoại với AI tư vấn. Người dùng xóa phiên = xóa thật cả phiên và tin nhắn.
+  Phiên của khách vãng lai tự xóa sau 30 ngày (TTL index trên last_message_at).
+  Index: { user_id: 1, last_message_at: -1 }, { guest_key: 1 }'''
+}
+
+table chat.chat_messages {
+  "_id" objectId [pk, note: 'Khóa chính']
+  session_id objectId [ref: > chat.chat_sessions."_id", note: 'Phiên hội thoại']
+  role string [note: 'Vai trò: user, assistant, tool, system']
+  content string [note: 'Nội dung tin nhắn']
+  product_refs "array<object>" [null, note: 'Sản phẩm được gợi ý: [{"product_id":"...","sku":"...","name":"...","price_at_time":9990000}]']
+  build_ref string [null, note: 'Tham chiếu logic: catalog.pc_builds._id nếu AI tạo cấu hình']
+  tool_calls "array<object>" [null, note: '[{"name":"checkStock","args":{...},"result":{...}}]']
+  retrieved_chunk_ids "array<long>" [null, note: 'Chunk RAG đã dùng (ai.document_chunks.id)']
+  prompt_tokens int [null, note: 'Số token đầu vào']
+  completion_tokens int [null, note: 'Số token đầu ra']
+  latency_ms int [null, note: 'Độ trễ (ms)']
+  feedback int [null, note: 'Đánh giá: 1-Hữu ích, -1-Không hữu ích']
+  created_at date [null, note: 'Thời gian tạo']
+
+  Note: '''Tin nhắn trong phiên chat AI (bộ nhớ hội thoại).
+  Index: { session_id: 1, created_at: 1 }'''
+}
+
+// =====================================================================
+// 9. NOTIFICATION SERVICE (Quarkus - MongoDB)
+// =====================================================================
+
+table notification.notifications {
+  "_id" objectId [pk, note: 'Khóa chính']
+  user_id long [note: 'Tham chiếu logic: identity.users.id']
+  type string [note: 'Loại: ORDER_STATUS, PAYMENT, PROMOTION, STOCK_BACK, REVIEW_REPLY']
+  channel string [note: 'Kênh: IN_APP, EMAIL']
+  title string [note: 'Tiêu đề']
+  content string [note: 'Nội dung']
+  data object [null, note: 'Dữ liệu điều hướng: {"order_code":"DH..."}']
+  is_read bool [null, note: 'Đã đọc chưa']
+  read_at date [null, note: 'Thời điểm đọc']
+  send_status int [null, note: 'Trạng thái gửi: 1-PENDING, 2-SENT, 3-FAILED']
+  source_event_id string [null, note: 'ID sự kiện Kafka sinh ra thông báo (chống trùng)']
+  created_at date [null, note: 'Thời gian tạo']
+
+  Note: '''Thông báo người dùng (consume từ Kafka).
+  Index: { user_id: 1, is_read: 1, created_at: -1 }, { source_event_id: 1 } unique,
+         TTL { created_at: 1 } expireAfterSeconds 7776000 (tự xóa sau 90 ngày)'''
+}
+
+// =====================================================================
+// NHÓM BẢNG THEO SERVICE
+// =====================================================================
+
+TableGroup identity_service {
+  identity.users
+  identity.roles
+  identity.permissions
+  identity.role_permissions
+  identity.user_roles
+  identity.user_addresses
+  identity.refresh_tokens
+}
+
+TableGroup media_service {
+  media.files
+}
+
+TableGroup inventory_service {
+  inventory.warehouses
+  inventory.inventories
+  inventory.stock_reservations
+  inventory.stock_movements
+  inventory.outbox_events
+  inventory.processed_events
+}
+
+TableGroup ordering_service {
+  ordering.orders
+  ordering.order_items
+  ordering.order_status_histories
+  ordering.vouchers
+  ordering.voucher_usages
+  ordering.payments
+  ordering.refunds
+  ordering.outbox_events
+  ordering.processed_events
+}
+
+TableGroup ai_service {
+  ai.knowledge_documents
+  ai.document_chunks
+  ai.ai_request_logs
+  ai.eval_cases
+  ai.eval_results
+  chat.chat_sessions
+  chat.chat_messages
+}
+
+TableGroup catalog_service_mongo {
+  catalog.categories
+  catalog.brands
+  catalog.products
+  catalog.compatibility_rules
+  catalog.pc_builds
+  catalog.price_histories
+}
+
+TableGroup review_service_mongo {
+  review.reviews
+  review.review_summaries
+}
+
+TableGroup notification_service_mongo {
+  notification.notifications
+}
