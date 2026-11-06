@@ -102,7 +102,7 @@
       "username": "service-account-pcshop-backend",
       "enabled": true,
       "serviceAccountClientId": "pcshop-backend",
-      "clientRoles": { "realm-management": ["view-users", "manage-users"] }
+      "clientRoles": { "realm-management": ["view-users", "manage-users", "view-realm", "view-clients"] }
     }
   ]
 }

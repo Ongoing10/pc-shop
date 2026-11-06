@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Thư viện dùng chung cho các service Quarkus: CurrentUser, ExceptionMapper theo envelope ResponseData.
+  Thư viện dùng chung cho các service Quarkus: CurrentUser, ExceptionMapper theo envelope ResponseData,
+  X-Request-Id trong log, Swagger UI.
   Có META-INF/beans.xml để Quarkus index jar này (CDI bean và @Provider được nhận diện).
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -42,6 +43,11 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-oidc</artifactId>
+        </dependency>
+        <!-- Swagger UI: /q/swagger-ui, tài liệu: /q/openapi (cấu hình chung ở META-INF/microprofile-config.properties) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
         <!--
           Chỉ để compile AuditableEntity. optional = không kéo Hibernate sang service không dùng

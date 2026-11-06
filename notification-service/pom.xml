@@ -36,6 +36,11 @@
             <artifactId>shared-events</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Collection notification.notifications (TTL 90 ngày) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mongodb-panache</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>

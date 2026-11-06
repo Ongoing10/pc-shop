@@ -15,7 +15,7 @@ public class BusinessExceptionMapper implements ExceptionMapper<BusinessExceptio
     public Response toResponse(BusinessException ex) {
         return Response.status(ex.code().httpStatus())
                 .type(MediaType.APPLICATION_JSON)
-                .entity(ResponseData.error(ex.code(), ex.getMessage()))
+                .entity(ResponseData.error(ex.code(), ex.getMessage(), ex.details()))
                 .build();
     }
 }

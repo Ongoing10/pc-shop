@@ -26,6 +26,7 @@ pcshop:
     permission-client-id: pcshop-backend
     public-get-paths:
       - /api/v1/reviews
+      - /api/v1/reviews/*
 
 management:
   endpoints:

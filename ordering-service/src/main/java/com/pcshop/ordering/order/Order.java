@@ -12,6 +12,18 @@ import java.util.UUID;
 @Table("orders")
 public class Order extends AuditableEntity {
 
+    public static final int PENDING = 1;
+    public static final int AWAITING_PAYMENT = 2;
+    public static final int PAID = 3;
+    public static final int CONFIRMED = 4;
+    public static final int SHIPPING = 5;
+    public static final int COMPLETED = 6;
+    public static final int CANCELLED = 7;
+    public static final int RETURNED = 8;
+
+    public static final int PAYMENT_COD = 1;
+    public static final int PAYMENT_STATUS_PAID = 2;
+
     @Id
     private Long id;
     private String code;
@@ -19,16 +31,24 @@ public class Order extends AuditableEntity {
     private UUID userId;
     /** 1-PENDING, 2-AWAITING_PAYMENT, 3-PAID, 4-CONFIRMED, 5-SHIPPING, 6-COMPLETED, 7-CANCELLED, 8-RETURNED */
     private Integer status;
+    /** 1-COD, 2-VNPAY, 3-MOMO */
     private Integer paymentMethod;
+    /** 1-UNPAID, 2-PAID, 3-REFUNDED */
     private Integer paymentStatus;
     private BigDecimal subtotalAmount;
     private BigDecimal discountAmount;
     private BigDecimal shippingFee;
     private BigDecimal totalAmount;
+    private String voucherCode;
     private String receiverName;
     private String receiverPhone;
     private String shippingAddress;
+    private String note;
+    /** Tham chiếu logic: catalog.pc_builds._id */
+    private String pcBuildId;
+    private String cancelReason;
     private LocalDateTime placedAt;
+    private LocalDateTime completedAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -50,12 +70,22 @@ public class Order extends AuditableEntity {
     public void setShippingFee(BigDecimal shippingFee) { this.shippingFee = shippingFee; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public String getVoucherCode() { return voucherCode; }
+    public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
     public String getReceiverName() { return receiverName; }
     public void setReceiverName(String receiverName) { this.receiverName = receiverName; }
     public String getReceiverPhone() { return receiverPhone; }
     public void setReceiverPhone(String receiverPhone) { this.receiverPhone = receiverPhone; }
     public String getShippingAddress() { return shippingAddress; }
     public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
+    public String getPcBuildId() { return pcBuildId; }
+    public void setPcBuildId(String pcBuildId) { this.pcBuildId = pcBuildId; }
+    public String getCancelReason() { return cancelReason; }
+    public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
     public LocalDateTime getPlacedAt() { return placedAt; }
     public void setPlacedAt(LocalDateTime placedAt) { this.placedAt = placedAt; }
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
 }

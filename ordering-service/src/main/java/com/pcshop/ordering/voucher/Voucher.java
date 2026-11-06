@@ -1,6 +1,8 @@
 package com.pcshop.ordering.voucher;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pcshop.ordering.common.AuditableEntity;
+import io.r2dbc.postgresql.codec.Json;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Table;
@@ -8,9 +10,13 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Bảng ordering.vouchers (schema lấy từ search_path của kết nối). */
+/** Bảng ordering.vouchers (schema lấy từ search_path của kết nối). Không xóa: ngừng dùng = is_active 0. */
 @Table("vouchers")
 public class Voucher extends AuditableEntity {
+
+    public static final int PERCENT = 1;
+    public static final int AMOUNT = 2;
+    public static final int FREE_SHIPPING = 3;
 
     @Id
     private Long id;
@@ -21,8 +27,11 @@ public class Voucher extends AuditableEntity {
     private BigDecimal value;
     private BigDecimal maxDiscountAmount;
     private BigDecimal minOrderAmount;
+    /** Cột JSONB: mảng mã danh mục được áp dụng, null/rỗng = mọi danh mục. Đọc/ghi qua VoucherService. */
+    private Json applicableCategories;
     private Integer usageLimit;
     private Integer usedCount;
+    private Integer perUserLimit;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private Integer isActive;
@@ -45,10 +54,15 @@ public class Voucher extends AuditableEntity {
     public void setMaxDiscountAmount(BigDecimal maxDiscountAmount) { this.maxDiscountAmount = maxDiscountAmount; }
     public BigDecimal getMinOrderAmount() { return minOrderAmount; }
     public void setMinOrderAmount(BigDecimal minOrderAmount) { this.minOrderAmount = minOrderAmount; }
+    @JsonIgnore
+    public Json getApplicableCategories() { return applicableCategories; }
+    public void setApplicableCategories(Json applicableCategories) { this.applicableCategories = applicableCategories; }
     public Integer getUsageLimit() { return usageLimit; }
     public void setUsageLimit(Integer usageLimit) { this.usageLimit = usageLimit; }
     public Integer getUsedCount() { return usedCount; }
     public void setUsedCount(Integer usedCount) { this.usedCount = usedCount; }
+    public Integer getPerUserLimit() { return perUserLimit; }
+    public void setPerUserLimit(Integer perUserLimit) { this.perUserLimit = perUserLimit; }
     public LocalDateTime getStartAt() { return startAt; }
     public void setStartAt(LocalDateTime startAt) { this.startAt = startAt; }
     public LocalDateTime getEndAt() { return endAt; }

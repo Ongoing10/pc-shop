@@ -11,6 +11,27 @@ import java.util.UUID;
 @Document("reviews")
 public class Review {
 
+    public static final int PENDING = 1;
+    public static final int APPROVED = 2;
+    public static final int REJECTED = 3;
+    public static final int DELETED_BY_USER = 4;
+
+    /** Phản hồi của cửa hàng dưới review. */
+    public static class AdminReply {
+        private String content;
+        @Field("replied_by")
+        private UUID repliedBy;
+        @Field("replied_at")
+        private Instant repliedAt;
+
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+        public UUID getRepliedBy() { return repliedBy; }
+        public void setRepliedBy(UUID repliedBy) { this.repliedBy = repliedBy; }
+        public Instant getRepliedAt() { return repliedAt; }
+        public void setRepliedAt(Instant repliedAt) { this.repliedAt = repliedAt; }
+    }
+
     @Id
     private String id;
     @Field("product_id")
@@ -29,8 +50,14 @@ public class Review {
     private boolean verifiedPurchase;
     /** 1-PENDING, 2-APPROVED, 3-REJECTED, 4-DELETED_BY_USER */
     private int status;
+    @Field("helpful_count")
+    private int helpfulCount;
+    @Field("admin_reply")
+    private AdminReply adminReply;
     @Field("created_at")
     private Instant createdAt;
+    @Field("updated_at")
+    private Instant updatedAt;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -54,6 +81,12 @@ public class Review {
     public void setVerifiedPurchase(boolean verifiedPurchase) { this.verifiedPurchase = verifiedPurchase; }
     public int getStatus() { return status; }
     public void setStatus(int status) { this.status = status; }
+    public int getHelpfulCount() { return helpfulCount; }
+    public void setHelpfulCount(int helpfulCount) { this.helpfulCount = helpfulCount; }
+    public AdminReply getAdminReply() { return adminReply; }
+    public void setAdminReply(AdminReply adminReply) { this.adminReply = adminReply; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

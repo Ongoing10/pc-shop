@@ -20,6 +20,7 @@
         <!-- Dùng chung -->
         <module>common/shared-contracts</module>
         <module>common/shared-events</module>
+        <module>common/shared-excel</module>
         <module>common/common-webflux</module>
         <module>common/common-quarkus</module>
         <!-- Spring WebFlux -->

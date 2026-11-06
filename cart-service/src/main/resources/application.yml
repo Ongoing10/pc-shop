@@ -24,6 +24,14 @@ spring:
 pcshop:
   security:
     permission-client-id: pcshop-backend
+    # Khách vãng lai dùng giỏ qua header X-Guest-Key; có token thì vẫn được xác thực như thường
+    public-paths:
+      - /api/v1/cart
+      - /api/v1/cart/**
+  # Service khác luôn chạy trên máy mình ở cả 2 profile (giống gateway)
+  services:
+    catalog: http://localhost:8082
+    inventory: http://localhost:8085
 
 management:
   endpoints:

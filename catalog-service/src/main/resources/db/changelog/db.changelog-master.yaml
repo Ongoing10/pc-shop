@@ -161,3 +161,205 @@ databaseChangeLog:
                   "compat": { "wattage": 750, "form_factor": "ATX" },
                   "tags": [], "warranty_months": 84, "status": 2 }
               ]
+
+  - changeSet:
+      id: 20261025-1000-products-text-index
+      author: pcshop
+      changes:
+        # Text index cho GET /products/search. Mongo không có bộ tách từ tiếng Việt: default_language "none"
+        # để không stem/bỏ stopword tiếng Anh. Mỗi collection chỉ được một text index.
+        - createIndex:
+            collectionName: products
+            keys: '{ "name": "text", "short_description": "text", "tags": "text" }'
+            options: '{ "name": "txt_products_search", "default_language": "none", "weights": { "name": 10, "tags": 5, "short_description": 1 } }'
+        - createIndex:
+            collectionName: products
+            keys: '{ "brand_code": 1, "status": 1 }'
+            options: '{ "name": "idx_products_brand_status" }'
+
+  - changeSet:
+      id: 20261025-1001-seed-rule-form-factor
+      author: pcshop
+      changes:
+        - insertMany:
+            collectionName: compatibility_rules
+            documents: >
+              [
+                { "code": "MB_CASE_FORM_FACTOR", "name": "Kích thước mainboard vừa case", "source_category": "MAINBOARD", "target_category": "CASE",
+                  "rule_type": "IN", "source_field": "form_factor", "target_field": "supported_form_factors", "severity": 1,
+                  "message_template": "Mainboard {source} chuẩn {sv}, case {target} chỉ hỗ trợ {tv}", "is_active": 1 }
+              ]
+
+  - changeSet:
+      id: 20261025-1002-seed-more-products
+      author: pcshop
+      context: seed
+      changes:
+        # Đủ linh kiện để demo PC Builder: cấu hình hợp lệ và từng luật báo lỗi
+        # (CPU AMD + mainboard Intel, RAM DDR5 + mainboard DDR4, VGA dài + case nhỏ, nguồn 500W yếu, ATX + case mATX).
+        - insertMany:
+            collectionName: products
+            documents: >
+              [
+                { "sku": "CPU-R5-7600X", "name": "AMD Ryzen 5 7600X", "slug": "amd-ryzen-5-7600x",
+                  "category_code": "CPU", "brand_code": "AMD", "price": { "$numberDecimal": "5490000" },
+                  "short_description": "6 nhân 12 luồng, xung tối đa 5.3GHz, socket AM5",
+                  "specs": { "cores": 6, "threads": 12, "boost_clock_ghz": 5.3, "cache_mb": 32 },
+                  "compat": { "socket": "AM5", "memory_types": ["DDR5"], "tdp_w": 105 },
+                  "tags": ["gaming"], "warranty_months": 36, "status": 2 },
+                { "sku": "MB-GIGABYTE-B650M-D5", "name": "Gigabyte B650M GAMING X AX DDR5", "slug": "gigabyte-b650m-gaming-x-ax-ddr5",
+                  "category_code": "MAINBOARD", "brand_code": "GIGABYTE", "price": { "$numberDecimal": "3990000" },
+                  "short_description": "Mainboard mATX, socket AM5, hỗ trợ DDR5",
+                  "specs": { "chipset": "B650", "form_factor": "mATX", "ram_slots": 4 },
+                  "compat": { "socket": "AM5", "memory_type": "DDR5", "form_factor": "mATX", "ram_slots": 4, "m2_slots": 2 },
+                  "tags": ["gaming"], "warranty_months": 36, "status": 2 },
+                { "sku": "MB-MSI-B760-D4", "name": "MSI PRO B760-P DDR4", "slug": "msi-pro-b760-p-ddr4",
+                  "category_code": "MAINBOARD", "brand_code": "MSI", "price": { "$numberDecimal": "3590000" },
+                  "short_description": "Mainboard ATX, socket LGA1700, dùng RAM DDR4",
+                  "specs": { "chipset": "B760", "form_factor": "ATX", "ram_slots": 4 },
+                  "compat": { "socket": "LGA1700", "memory_type": "DDR4", "form_factor": "ATX", "ram_slots": 4, "m2_slots": 2 },
+                  "tags": ["office"], "warranty_months": 36, "status": 2 },
+                { "sku": "RAM-CORSAIR-16G-D4", "name": "Corsair Vengeance LPX 16GB (2x8GB) DDR4 3200", "slug": "corsair-vengeance-lpx-16gb-ddr4-3200",
+                  "category_code": "RAM", "brand_code": "CORSAIR", "price": { "$numberDecimal": "1190000" },
+                  "short_description": "Kit 2x8GB DDR4 3200MHz",
+                  "specs": { "capacity_gb": 16, "speed_mhz": 3200 },
+                  "compat": { "memory_type": "DDR4", "modules": 2 },
+                  "tags": ["office"], "warranty_months": 36, "status": 2 },
+                { "sku": "GPU-ASUS-4080S-16G", "name": "ASUS TUF Gaming GeForce RTX 4080 SUPER 16GB", "slug": "asus-tuf-rtx-4080-super-16gb",
+                  "category_code": "GPU", "brand_code": "ASUS", "price": { "$numberDecimal": "32990000" },
+                  "short_description": "Card đồ họa chơi game 4K, 16GB GDDR6X, dài 348mm",
+                  "specs": { "vram_gb": 16, "memory_type": "GDDR6X" },
+                  "compat": { "length_mm": 348, "tdp_w": 320, "recommended_psu_w": 850 },
+                  "tags": ["gaming", "4K"], "warranty_months": 36, "status": 2 },
+                { "sku": "CASE-CORSAIR-4000D", "name": "Corsair 4000D Airflow", "slug": "corsair-4000d-airflow",
+                  "category_code": "CASE", "brand_code": "CORSAIR", "price": { "$numberDecimal": "2290000" },
+                  "short_description": "Case mid-tower, hỗ trợ ATX, VGA dài tối đa 360mm",
+                  "specs": { "type": "Mid Tower", "color": "Đen" },
+                  "compat": { "supported_form_factors": ["ATX", "mATX", "ITX"], "max_gpu_length_mm": 360, "max_cooler_height_mm": 170 },
+                  "tags": ["gaming"], "warranty_months": 24, "status": 2 },
+                { "sku": "CASE-MSI-M100R", "name": "MSI MAG Forge M100R", "slug": "msi-mag-forge-m100r",
+                  "category_code": "CASE", "brand_code": "MSI", "price": { "$numberDecimal": "1090000" },
+                  "short_description": "Case mATX nhỏ gọn, VGA dài tối đa 330mm",
+                  "specs": { "type": "Mini Tower", "color": "Đen" },
+                  "compat": { "supported_form_factors": ["mATX", "ITX"], "max_gpu_length_mm": 330, "max_cooler_height_mm": 160 },
+                  "tags": [], "warranty_months": 12, "status": 2 },
+                { "sku": "PSU-MSI-A500DN", "name": "MSI MAG A500DN 500W 80 Plus", "slug": "msi-mag-a500dn-500w",
+                  "category_code": "PSU", "brand_code": "MSI", "price": { "$numberDecimal": "990000" },
+                  "short_description": "Nguồn 500W chuẩn 80 Plus, cho cấu hình văn phòng",
+                  "specs": { "efficiency": "80 Plus", "modular": "none" },
+                  "compat": { "wattage": 500, "form_factor": "ATX" },
+                  "tags": ["office"], "warranty_months": 36, "status": 2 },
+                { "sku": "COOLER-CORSAIR-H100I", "name": "Corsair iCUE H100i RGB Elite 240mm", "slug": "corsair-icue-h100i-rgb-elite",
+                  "category_code": "COOLER", "brand_code": "CORSAIR", "price": { "$numberDecimal": "3290000" },
+                  "short_description": "Tản nhiệt nước AIO 240mm, hỗ trợ LGA1700 và AM5",
+                  "specs": { "type": "AIO", "radiator_mm": 240 },
+                  "compat": { "supported_sockets": ["LGA1700", "AM5"], "height_mm": 52 },
+                  "tags": ["gaming"], "warranty_months": 60, "status": 2 },
+                { "sku": "STORAGE-KINGSTON-NV2-1T", "name": "Kingston NV2 1TB M.2 NVMe PCIe 4.0", "slug": "kingston-nv2-1tb-nvme",
+                  "category_code": "STORAGE", "brand_code": "KINGSTON", "price": { "$numberDecimal": "1590000" },
+                  "short_description": "SSD NVMe 1TB, đọc 3500MB/s",
+                  "specs": { "capacity_gb": 1000, "read_mbps": 3500 },
+                  "compat": { "interface": "M.2 NVMe" },
+                  "tags": ["gaming", "office"], "warranty_months": 36, "status": 2 },
+                { "sku": "GPU-GIGABYTE-5070-12G", "name": "Gigabyte GeForce RTX 5070 WINDFORCE 12GB", "slug": "gigabyte-rtx-5070-windforce-12gb",
+                  "category_code": "GPU", "brand_code": "GIGABYTE", "price": { "$numberDecimal": "18990000" },
+                  "short_description": "Hàng sắp về (bản nháp, chưa công bố)",
+                  "specs": { "vram_gb": 12, "memory_type": "GDDR7" },
+                  "compat": { "length_mm": 261, "tdp_w": 250, "recommended_psu_w": 650 },
+                  "tags": ["gaming", "2K"], "warranty_months": 36, "status": 1 }
+              ]
+
+  - changeSet:
+      id: 20261025-1003-seed-price-histories
+      author: pcshop
+      context: seed
+      changes:
+        # Khớp với đơn mẫu DH20261024000001 bên ordering (mua lúc giá còn cao)
+        - insertMany:
+            collectionName: price_histories
+            documents: >
+              [
+                { "sku": "CPU-I5-14600K", "old_price": null, "new_price": { "$numberDecimal": "8790000" },
+                  "reason": "INITIAL", "changed_at": { "$date": "2026-09-01T02:00:00Z" } },
+                { "sku": "CPU-I5-14600K", "old_price": { "$numberDecimal": "8790000" }, "new_price": { "$numberDecimal": "7990000" },
+                  "reason": "PROMOTION", "changed_at": { "$date": "2026-10-20T02:00:00Z" } },
+                { "sku": "GPU-MSI-4070S-12G", "old_price": null, "new_price": { "$numberDecimal": "17200000" },
+                  "reason": "INITIAL", "changed_at": { "$date": "2026-09-01T02:00:00Z" } },
+                { "sku": "GPU-MSI-4070S-12G", "old_price": { "$numberDecimal": "17200000" }, "new_price": { "$numberDecimal": "16990000" },
+                  "reason": "COST_CHANGE", "changed_at": { "$date": "2026-10-22T02:00:00Z" } }
+              ]
+
+  - changeSet:
+      id: 20261027-1000-categories-spec-schema
+      author: pcshop
+      changes:
+        # Thông số theo danh mục: cột động của file Excel sản phẩm (IMP-1/EXP-2) và form nhập của admin.
+        # group: compat (rule engine dùng, lưu ở products.compat) | specs (hiển thị, lưu ở products.specs)
+        # type: string | integer | decimal | boolean | string_list (nhiều giá trị, cách nhau dấu phẩy)
+        # Liquibase MongoDB không có updateMany: dùng runCommand lệnh "update".
+        - runCommand:
+            command: >
+              { "update": "categories", "updates": [
+                { "q": { "code": "CPU" }, "u": { "$set": { "spec_schema": [
+                  { "key": "socket", "label": "Socket", "group": "compat", "type": "string", "required": true, "options": ["LGA1700", "LGA1851", "AM4", "AM5"] },
+                  { "key": "memory_types", "label": "Chuẩn RAM hỗ trợ", "group": "compat", "type": "string_list", "required": true, "options": ["DDR4", "DDR5"] },
+                  { "key": "tdp_w", "label": "TDP", "group": "compat", "type": "integer", "required": true, "unit": "W" },
+                  { "key": "cores", "label": "Số nhân", "group": "specs", "type": "integer", "required": false },
+                  { "key": "threads", "label": "Số luồng", "group": "specs", "type": "integer", "required": false },
+                  { "key": "base_clock_ghz", "label": "Xung cơ bản", "group": "specs", "type": "decimal", "required": false, "unit": "GHz" },
+                  { "key": "boost_clock_ghz", "label": "Xung tối đa", "group": "specs", "type": "decimal", "required": false, "unit": "GHz" },
+                  { "key": "cache_mb", "label": "Bộ nhớ đệm", "group": "specs", "type": "integer", "required": false, "unit": "MB" } ] } } },
+                { "q": { "code": "MAINBOARD" }, "u": { "$set": { "spec_schema": [
+                  { "key": "socket", "label": "Socket", "group": "compat", "type": "string", "required": true, "options": ["LGA1700", "LGA1851", "AM4", "AM5"] },
+                  { "key": "memory_type", "label": "Chuẩn RAM", "group": "compat", "type": "string", "required": true, "options": ["DDR4", "DDR5"] },
+                  { "key": "form_factor", "label": "Kích thước", "group": "compat", "type": "string", "required": true, "options": ["E-ATX", "ATX", "mATX", "ITX"] },
+                  { "key": "ram_slots", "label": "Số khe RAM", "group": "compat", "type": "integer", "required": true },
+                  { "key": "m2_slots", "label": "Số khe M.2", "group": "compat", "type": "integer", "required": false },
+                  { "key": "chipset", "label": "Chipset", "group": "specs", "type": "string", "required": false } ] } } },
+                { "q": { "code": "RAM" }, "u": { "$set": { "spec_schema": [
+                  { "key": "memory_type", "label": "Chuẩn RAM", "group": "compat", "type": "string", "required": true, "options": ["DDR4", "DDR5"] },
+                  { "key": "modules", "label": "Số thanh", "group": "compat", "type": "integer", "required": true },
+                  { "key": "capacity_gb", "label": "Dung lượng", "group": "specs", "type": "integer", "required": false, "unit": "GB" },
+                  { "key": "speed_mhz", "label": "Bus", "group": "specs", "type": "integer", "required": false, "unit": "MHz" } ] } } },
+                { "q": { "code": "GPU" }, "u": { "$set": { "spec_schema": [
+                  { "key": "length_mm", "label": "Chiều dài", "group": "compat", "type": "integer", "required": true, "unit": "mm" },
+                  { "key": "tdp_w", "label": "TDP", "group": "compat", "type": "integer", "required": true, "unit": "W" },
+                  { "key": "recommended_psu_w", "label": "Nguồn đề nghị", "group": "compat", "type": "integer", "required": false, "unit": "W" },
+                  { "key": "vram_gb", "label": "VRAM", "group": "specs", "type": "integer", "required": false, "unit": "GB" },
+                  { "key": "memory_type", "label": "Loại bộ nhớ", "group": "specs", "type": "string", "required": false, "options": ["GDDR6", "GDDR6X", "GDDR7"] } ] } } },
+                { "q": { "code": "PSU" }, "u": { "$set": { "spec_schema": [
+                  { "key": "wattage", "label": "Công suất", "group": "compat", "type": "integer", "required": true, "unit": "W" },
+                  { "key": "form_factor", "label": "Chuẩn nguồn", "group": "compat", "type": "string", "required": true, "options": ["ATX", "SFX"] },
+                  { "key": "efficiency", "label": "Chứng nhận hiệu suất", "group": "specs", "type": "string", "required": false, "options": ["80 Plus", "80 Plus Bronze", "80 Plus Gold", "80 Plus Platinum", "80 Plus Titanium"] },
+                  { "key": "modular", "label": "Kiểu dây", "group": "specs", "type": "string", "required": false, "options": ["none", "semi", "full"] } ] } } },
+                { "q": { "code": "CASE" }, "u": { "$set": { "spec_schema": [
+                  { "key": "supported_form_factors", "label": "Mainboard hỗ trợ", "group": "compat", "type": "string_list", "required": true, "options": ["E-ATX", "ATX", "mATX", "ITX"] },
+                  { "key": "max_gpu_length_mm", "label": "VGA dài tối đa", "group": "compat", "type": "integer", "required": true, "unit": "mm" },
+                  { "key": "max_cooler_height_mm", "label": "Tản nhiệt cao tối đa", "group": "compat", "type": "integer", "required": true, "unit": "mm" },
+                  { "key": "type", "label": "Kiểu case", "group": "specs", "type": "string", "required": false },
+                  { "key": "color", "label": "Màu", "group": "specs", "type": "string", "required": false } ] } } },
+                { "q": { "code": "STORAGE" }, "u": { "$set": { "spec_schema": [
+                  { "key": "interface", "label": "Chuẩn kết nối", "group": "compat", "type": "string", "required": true, "options": ["SATA", "NVMe"] },
+                  { "key": "form_factor", "label": "Kích thước", "group": "compat", "type": "string", "required": false, "options": ["2.5 inch", "M.2 2280"] },
+                  { "key": "capacity_gb", "label": "Dung lượng", "group": "specs", "type": "integer", "required": false, "unit": "GB" },
+                  { "key": "read_mbps", "label": "Tốc độ đọc", "group": "specs", "type": "integer", "required": false, "unit": "MB/s" } ] } } },
+                { "q": { "code": "COOLER" }, "u": { "$set": { "spec_schema": [
+                  { "key": "supported_sockets", "label": "Socket hỗ trợ", "group": "compat", "type": "string_list", "required": true, "options": ["LGA1700", "LGA1851", "AM4", "AM5"] },
+                  { "key": "height_mm", "label": "Chiều cao", "group": "compat", "type": "integer", "required": false, "unit": "mm" },
+                  { "key": "tdp_w", "label": "TDP tản được", "group": "compat", "type": "integer", "required": false, "unit": "W" },
+                  { "key": "type", "label": "Loại tản", "group": "specs", "type": "string", "required": false, "options": ["Air", "AIO"] },
+                  { "key": "radiator_mm", "label": "Kích thước rad", "group": "specs", "type": "integer", "required": false, "unit": "mm" } ] } } }
+              ] }
+
+  - changeSet:
+      id: 20261027-1001-fix-seed-storage-interface
+      author: pcshop
+      context: seed
+      changes:
+        # spec_schema của STORAGE chỉ nhận interface SATA/NVMe; sản phẩm seed đang ghi "M.2 NVMe"
+        - runCommand:
+            command: >
+              { "update": "products", "updates": [
+                { "q": { "sku": "STORAGE-KINGSTON-NV2-1T" },
+                  "u": { "$set": { "compat.interface": "NVMe", "compat.form_factor": "M.2 2280" } } }
+              ] }

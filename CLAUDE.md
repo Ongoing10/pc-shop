@@ -8,6 +8,7 @@ Tài liệu gốc (đọc khi cần, không cần đọc hết ngay):
 - `docs/ke-hoach-de-tai-pc-shop.md`: plan đầy đủ (kiến trúc, AI/RAG, lộ trình 16 tuần, quyết định thiết kế)
 - `docs/pc-shop-schema.dbml`: thiết kế CSDL (lưu ý: phần identity/users trong DBML là thiết kế CŨ, xem "Xác thực" bên dưới)
 - `docs/api-backlog.md`: danh sách API cần có (checklist, đánh dấu [x] khi xong)
+- `docs/import-export-guide.md`: thiết kế import/export Excel (module `common/shared-excel`, cột động theo danh mục)
 - `README.md`: cách chạy, cổng, tài khoản test, xử lý sự cố
 
 ## Trạng thái hiện tại
@@ -38,9 +39,17 @@ Kiểm tra nhanh: `GET http://localhost:8082/api/v1/categories` trả 8 danh m�
   Module Spring có parent `spring-boot-starter-parent`; module Quarkus kế thừa POM gốc và tự import `quarkus-bom`.
 - **Service:** gateway(8000, Spring Cloud Gateway), customer(8081, Quarkus), catalog(8082, Quarkus+Mongo), cart(8083, WebFlux+Redis),
   ordering(8084, WebFlux+R2DBC), inventory(8085, Quarkus), review(8086, WebFlux+Mongo), ai(8087, Quarkus+LangChain4j),
-  media(8088, Quarkus), notification(8089, Quarkus).
+  media(8088, Quarkus), notification(8089, Quarkus+Mongo).
 - **CSDL:** database-per-service. Một Postgres chia schema (`customer`, `inventory`, `ordering`, `media`, `ai`, `keycloak`);
-  một Mongo chia database (`catalog`, `review`). KHÔNG có khóa ngoại xuyên service, chỉ "tham chiếu logic".
+  một Mongo chia database (`catalog`, `review`, `notification`). KHÔNG có khóa ngoại xuyên service, chỉ "tham chiếu logic".
+- **Gọi giữa service:** qua API nội bộ dạng batch (`POST /products/batch`, `POST /inventory/batch`); gọi thay mặt user thì
+  chuyển tiếp access token (ordering → cart/customer). Địa chỉ service khác khai ở `pcshop.services.*` (luôn localhost).
+- **API admin:** nằm dưới `/api/v1/admin/**` của service sở hữu dữ liệu; thêm route admin mới thì phải khai trong `GatewayConfig`.
+  Quarkus: mỗi lớp resource một `@Path` gốc riêng (vd `/api/v1/admin/warehouses`), KHÔNG để hai lớp cùng gốc `/api/v1` hay
+  `/api/v1/admin`: Quarkus chọn lớp theo `@Path` khớp dài nhất rồi mới tìm method, method ở lớp kia sẽ 404.
+- **API hàng loạt:** `.../bulk/<hành động>` hoặc `POST .../bulk-delete`, tối đa 100 phần tử, "tất cả hoặc không" qua
+  `BulkErrors` (`shared-contracts`): lỗi trả 400 kèm `data: [{id, reason}]`. "Xóa" hàng loạt theo vòng đời dữ liệu (ẩn/đổi trạng thái).
+- **Swagger:** Spring `/swagger-ui.html`, Quarkus `/q/swagger-ui` (cấu hình chung ở `common-*`). Log kèm `X-Request-Id` do gateway gắn.
 - **Profile:** `local` = DB chạy Docker trên máy; `dev` = Supabase + MongoDB Atlas dùng chung (biến trong `.env`, không commit).
   Kafka, Redis, Keycloak luôn chạy local. Profile `dev` KHÔNG tự migrate (Flyway/Liquibase tắt).
 - **Migration:** Flyway (Postgres), Liquibase MongoDB (catalog), `ensureIndex` lúc khởi động (review).

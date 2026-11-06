@@ -125,11 +125,40 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/me
 | Hồ sơ của tôi | `GET /api/v1/me` | Lần đầu tự tạo hồ sơ từ token |
 | Đơn của tôi | `GET /api/v1/orders/my` | customer1 có đơn `DH20261024000001` |
 | Quyền sở hữu | customer1 gọi `GET /api/v1/orders/DH20261024000002` | 403: đơn của customer2 |
-| Giỏ hàng | `POST /api/v1/cart/items` `{"sku":"CPU-I5-14600K","quantity":1}` | Lưu trong Redis |
+| Giỏ hàng | `POST /api/v1/cart/items` `{"sku":"CPU-I5-14600K","quantity":1}` | Lưu trong Redis; trả giỏ kèm giá, tồn kho |
+| Giỏ khách vãng lai | như trên, không gửi token, thêm header `X-Guest-Key: <16-64 ký tự>` | Đăng nhập xong gọi `POST /api/v1/cart/merge` |
+| Lọc sản phẩm | `GET /api/v1/products?category=MAINBOARD&socket=AM5&sort=price,desc` · `GET /api/v1/products/search?q=rtx` | Công khai |
+| Kiểm tra tương thích | `POST /api/v1/compatibility/check` `{"skus":["CPU-R5-7600X","MB-ASUS-B760M-D5"]}` | Báo lỗi socket (rule engine tất định) |
+| Xem trước thanh toán | customer1: thêm hàng vào giỏ rồi `POST /api/v1/checkout/preview` `{"voucherCode":"WELCOME10","addressId":1}` | Không tạo đơn |
+| Timeline đơn | `GET /api/v1/orders/DH20261005000003/timeline` | customer1 |
+| Quản lý đơn | staff1: `GET /api/v1/admin/orders?status=1` · `PATCH /api/v1/admin/orders/{code}/status` `{"status":4}` | |
+| Thống kê | admin1: `GET /api/v1/admin/stats/overview` · `/top-products` · `/low-stock` | |
+| Thao tác hàng loạt | staff1: `PATCH /api/v1/admin/reviews/bulk/approve` `{"ids":[...]}` · admin1: `PATCH /api/v1/admin/products/bulk/status` `{"skus":[...],"status":3}` | Một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]` |
+| Xem file (blob) | `GET /api/v1/media/files/{id}/view` | Bucket `knowledge-docs` cần token ADMIN |
 | Quản lý user | admin1 gọi `GET /api/v1/admin/users?keyword=customer` | customer-service gọi Keycloak Admin API |
+| Swagger | `http://localhost:808x/swagger-ui.html` (Spring) · `http://localhost:808x/q/swagger-ui` (Quarkus) | Gọi thẳng cổng service, không qua gateway |
 | Nạp sản phẩm vào RAG | admin1 gọi `POST /api/v1/ai/knowledge/sync-products` | Cần Ollama đang chạy |
 | Xem retriever trả gì | `GET /api/v1/ai/search?q=card chơi game 2K` | Công khai |
 | Chatbot | `POST /api/v1/ai/chat` `{"message":"Tư vấn card chơi game 2K"}` | Công khai; gửi lại `sessionId` để giữ ngữ cảnh |
+
+### Chạy toàn bộ collection bằng newman
+
+Cần cả 10 service đang chạy profile `local` (riêng AI không bắt buộc). Chạy từ thư mục `docs/postman`:
+
+```bash
+cd docs/postman
+npx newman run pc-shop.postman_collection.json -e pc-shop.local.postman_environment.json --working-dir . \
+  --folder "0. Auth (Keycloak)" --folder "1. Customer (8081)" --folder "2. Catalog (8082)" --folder "3. Inventory (8085)" \
+  --folder "4. Cart (8083)" --folder "5. Ordering (8084)" --folder "6. Review (8086)" --folder "7. Media (8088)" \
+  --folder "8. Notification (8089)" --folder "10. Import / Export (Excel)"
+```
+
+- Tài khoản chọn theo tên request: `[ADMIN]` → admin1, `[STAFF]` → staff1, còn lại customer1. Token tự lấy ở pre-request
+  của collection, nên trong Postman bấm chạy lẻ từng request cũng được.
+- Mã mong đợi mặc định là 2xx; tên có `(403)` hay `(200|400)` là mã khác. Ba request đổi trạng thái đơn mẫu (hủy đơn,
+  đổi trạng thái đơn, đổi trạng thái nhiều đơn) trả 200 ở lần chạy đầu và 400 từ lần sau, vì đơn đã chuyển trạng thái rồi.
+- Dữ liệu tạo mới (danh mục, SKU, kho, voucher...) gắn `runId` nên chạy lại không trùng. Mỗi lần chạy để lại một tài khoản
+  `staff<runId>` trong Keycloak (chưa có API xóa tài khoản), xóa tay trong Admin Console nếu cần.
 
 Gửi tiếng Việt bằng PowerShell 5.1 phải mã hóa UTF-8, nếu không ký tự sẽ bị lỗi:
 
@@ -185,6 +214,7 @@ Quy tắc khi dùng DB chung (plan mục 7.4):
 | Mọi request trả 401 dù có token | Token phải lấy từ `http://localhost:8180` (issuer phải khớp tuyệt đối); token hết hạn sau 5 phút |
 | Service Quarkus chờ khoảng 30 giây rồi báo lỗi OIDC | Keycloak chưa chạy xong; xem `docker compose logs -f keycloak` |
 | Sửa `realm-pcshop.json` mà không thấy thay đổi | Realm đã có trong DB thì Keycloak bỏ qua file. Muốn import lại: `docker compose down -v` (**xóa sạch dữ liệu local**) rồi `up -d` |
+| `POST /admin/users` hoặc `PUT /admin/users/{id}/roles` báo 403 từ Keycloak | Realm import trước ngày 2026-10-25 thiếu quyền. Admin Console → realm `pcshop` → Users → `service-account-pcshop-backend` → Role mapping → gán thêm `view-realm`, `view-clients` (client `realm-management`) |
 | ai-service: `Connection refused` tới 11434 | Ollama chưa chạy hoặc chưa `ollama pull` model |
 | ai-service: lỗi số chiều vector | Model embedding không phải 1024 chiều; dùng `bge-m3` hoặc viết migration đổi `vector(1024)` |
 | Postgres: `type "vector" does not exist` | Volume Postgres được tạo từ image cũ không có pgvector: `docker compose down -v` rồi `up -d` |

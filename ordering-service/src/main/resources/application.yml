@@ -22,6 +22,19 @@ pcshop:
     permission-client-id: pcshop-backend
     public-get-paths:
       - /api/v1/vouchers
+  # Service khác luôn chạy trên máy mình ở cả 2 profile (giống gateway)
+  services:
+    cart: http://localhost:8083
+    customer: http://localhost:8081
+  # Phí vận chuyển cho POST /checkout/preview (ShippingProperties)
+  shipping:
+    inner-provinces: ["79", "01"]   # tỉnh có kho: HCM, Hà Nội
+    inner-fee: 20000
+    outer-fee: 40000
+    free-threshold: 5000000
+  # Export Excel (EXP-1): số đơn tối đa mỗi lần, vượt thì yêu cầu thu hẹp bộ lọc
+  excel:
+    max-export-rows: 10000
 
 management:
   endpoints:

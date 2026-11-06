@@ -8,13 +8,25 @@ public class BusinessException extends RuntimeException {
 
     private final ErrorCode code;
 
+    /** Chi tiết đi kèm, trả ở trường {@code data} của response lỗi (vd danh sách dòng lỗi của API hàng loạt). */
+    private final Object details;
+
     public BusinessException(ErrorCode code, String message) {
+        this(code, message, null);
+    }
+
+    public BusinessException(ErrorCode code, String message, Object details) {
         super(message);
         this.code = code;
+        this.details = details;
     }
 
     public ErrorCode code() {
         return code;
+    }
+
+    public Object details() {
+        return details;
     }
 
     public static BusinessException notFound(String what, Object id) {

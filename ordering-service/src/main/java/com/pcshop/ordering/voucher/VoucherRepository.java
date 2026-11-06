@@ -8,5 +8,9 @@ public interface VoucherRepository extends R2dbcRepository<Voucher, Long> {
 
     Flux<Voucher> findAllByIsActiveOrderByIdDesc(Integer isActive);
 
+    Flux<Voucher> findAllByOrderByIdDesc();
+
     Mono<Boolean> existsByCode(String code);
+
+    Mono<Voucher> findByCode(String code);
 }

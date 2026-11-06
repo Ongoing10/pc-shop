@@ -23,4 +23,8 @@ public record ResponseData<T>(
     public static <T> ResponseData<T> error(ErrorCode code, String message) {
         return new ResponseData<>(ERROR, message, code.name(), null);
     }
+
+    public static ResponseData<Object> error(ErrorCode code, String message, Object details) {
+        return new ResponseData<>(ERROR, message, code.name(), details);
+    }
 }

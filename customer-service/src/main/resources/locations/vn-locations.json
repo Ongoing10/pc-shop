@@ -1,0 +1,66 @@
+{
+  "_note": "DỮ LIỆU TẠM: đủ 34 tỉnh/thành sau sắp xếp 2025 (mô hình 2 cấp), nhưng mới có vài phường/xã mẫu cho 6 thành phố và MÃ PHƯỜNG/XÃ LÀ MÃ TẠM, chưa khớp mã chính thức. Thay bằng danh mục đầy đủ trước khi dùng thật (giữ nguyên cấu trúc file).",
+  "provinces": [
+    { "code": "01", "name": "Thành phố Hà Nội", "wards": [
+      { "code": "01001", "name": "Phường Hoàn Kiếm" },
+      { "code": "01002", "name": "Phường Ba Đình" },
+      { "code": "01003", "name": "Phường Cầu Giấy" },
+      { "code": "01004", "name": "Phường Đống Đa" },
+      { "code": "01005", "name": "Phường Hai Bà Trưng" }
+    ] },
+    { "code": "04", "name": "Tỉnh Cao Bằng", "wards": [] },
+    { "code": "08", "name": "Tỉnh Tuyên Quang", "wards": [] },
+    { "code": "11", "name": "Tỉnh Điện Biên", "wards": [] },
+    { "code": "12", "name": "Tỉnh Lai Châu", "wards": [] },
+    { "code": "14", "name": "Tỉnh Sơn La", "wards": [] },
+    { "code": "15", "name": "Tỉnh Lào Cai", "wards": [] },
+    { "code": "19", "name": "Tỉnh Thái Nguyên", "wards": [] },
+    { "code": "20", "name": "Tỉnh Lạng Sơn", "wards": [] },
+    { "code": "22", "name": "Tỉnh Quảng Ninh", "wards": [] },
+    { "code": "24", "name": "Tỉnh Bắc Ninh", "wards": [] },
+    { "code": "25", "name": "Tỉnh Phú Thọ", "wards": [] },
+    { "code": "31", "name": "Thành phố Hải Phòng", "wards": [
+      { "code": "31001", "name": "Phường Hồng Bàng" },
+      { "code": "31002", "name": "Phường Lê Chân" },
+      { "code": "31003", "name": "Phường Ngô Quyền" }
+    ] },
+    { "code": "33", "name": "Tỉnh Hưng Yên", "wards": [] },
+    { "code": "37", "name": "Tỉnh Ninh Bình", "wards": [] },
+    { "code": "38", "name": "Tỉnh Thanh Hóa", "wards": [] },
+    { "code": "40", "name": "Tỉnh Nghệ An", "wards": [] },
+    { "code": "42", "name": "Tỉnh Hà Tĩnh", "wards": [] },
+    { "code": "44", "name": "Tỉnh Quảng Trị", "wards": [] },
+    { "code": "46", "name": "Thành phố Huế", "wards": [
+      { "code": "46001", "name": "Phường Thuận Hóa" },
+      { "code": "46002", "name": "Phường Phú Xuân" }
+    ] },
+    { "code": "48", "name": "Thành phố Đà Nẵng", "wards": [
+      { "code": "48001", "name": "Phường Hải Châu" },
+      { "code": "48002", "name": "Phường Thanh Khê" },
+      { "code": "48003", "name": "Phường Sơn Trà" }
+    ] },
+    { "code": "51", "name": "Tỉnh Quảng Ngãi", "wards": [] },
+    { "code": "52", "name": "Tỉnh Gia Lai", "wards": [] },
+    { "code": "56", "name": "Tỉnh Khánh Hòa", "wards": [] },
+    { "code": "66", "name": "Tỉnh Đắk Lắk", "wards": [] },
+    { "code": "68", "name": "Tỉnh Lâm Đồng", "wards": [] },
+    { "code": "75", "name": "Tỉnh Đồng Nai", "wards": [] },
+    { "code": "79", "name": "Thành phố Hồ Chí Minh", "wards": [
+      { "code": "79001", "name": "Phường Sài Gòn" },
+      { "code": "79002", "name": "Phường Bến Thành" },
+      { "code": "79003", "name": "Phường Tân Định" },
+      { "code": "79004", "name": "Phường Chợ Lớn" },
+      { "code": "79005", "name": "Phường Thủ Đức" }
+    ] },
+    { "code": "80", "name": "Tỉnh Tây Ninh", "wards": [] },
+    { "code": "82", "name": "Tỉnh Đồng Tháp", "wards": [] },
+    { "code": "86", "name": "Tỉnh Vĩnh Long", "wards": [] },
+    { "code": "91", "name": "Tỉnh An Giang", "wards": [] },
+    { "code": "92", "name": "Thành phố Cần Thơ", "wards": [
+      { "code": "92001", "name": "Phường Ninh Kiều" },
+      { "code": "92002", "name": "Phường Cái Răng" },
+      { "code": "92003", "name": "Phường Bình Thủy" }
+    ] },
+    { "code": "96", "name": "Tỉnh Cà Mau", "wards": [] }
+  ]
+}
