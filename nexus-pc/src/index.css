@@ -220,15 +220,11 @@ strong.price,
   flex-shrink: 0;
 }
 
-.logo i {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  background: var(--accent);
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  color: var(--on-accent);
+/* Biểu tượng logo (public/logo.svg, đã có nền cam), dùng ở header khách và khu admin */
+.logo-mark {
+  display: block;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .logo b {

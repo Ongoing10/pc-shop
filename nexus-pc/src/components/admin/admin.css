@@ -1,0 +1,277 @@
+/* ==========================================================================
+   Khu quản trị (/admin). Mọi class bắt đầu bằng admin- để không lẫn với trang khách.
+   Màu/bo góc/chiều cao chỉnh ở antdAdminTheme (src/theme/themeConfig.ts); file này chỉ lo bố cục và khoảng cách.
+   ========================================================================== */
+
+/* Nền gốc trùng màu sidebar để dải bên trái liền mạch khi trang dài hơn màn hình */
+.admin-root.ant-layout {
+  min-height: 100vh;
+  background: var(--bg-sunken);
+}
+.admin-root > .ant-layout {
+  border-inline-start: 1px solid var(--line);
+}
+
+/* Sidebar cố định, cuộn riêng */
+.admin-sider.ant-layout-sider {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+}
+.admin-brand > span {
+  font: 800 17px/1 var(--font-display);
+  font-stretch: 118%;
+  white-space: nowrap;
+}
+.admin-brand > span b {
+  color: var(--accent);
+  margin-left: 2px;
+}
+.admin-brand small {
+  display: block;
+  margin-top: 3px;
+  font: 500 11px/1 var(--font-body);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-menu.ant-menu {
+  padding-block: 8px;
+}
+.admin-menu.ant-menu .ant-menu-item-group-title {
+  padding-inline: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-header.ant-layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--line);
+  line-height: normal;
+}
+
+.admin-user.ant-btn {
+  height: auto;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-user > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-user .ant-tag {
+  margin-inline-end: 0;
+}
+
+.admin-content.ant-layout-content {
+  padding: 20px 24px 40px;
+  min-width: 0;
+}
+
+/* Tiêu đề trang */
+.admin-pagehead {
+  margin-bottom: 20px;
+}
+.admin-pagehead .ant-breadcrumb {
+  margin-bottom: 6px;
+}
+
+/* Ô bảng */
+.admin-cell-title {
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+a.admin-cell-title:hover {
+  color: var(--accent);
+}
+.admin-mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+.admin-filters {
+  margin-bottom: 16px;
+}
+
+/* Dòng bảng: lỗi hàng loạt, đang xem, đã tắt */
+.ant-table-wrapper .admin-row-error > td {
+  background: rgb(240 82 82 / 0.1);
+}
+.ant-table-wrapper .admin-row-active > td {
+  background: var(--accent-soft);
+}
+.ant-table-wrapper .admin-row-muted > td {
+  color: var(--muted);
+}
+
+/* Thanh thao tác hàng loạt và lỗi hàng loạt */
+.admin-bulkbar.ant-alert,
+.admin-bulk-errors.ant-alert {
+  margin-bottom: 12px;
+  padding-block: 8px;
+}
+.admin-bulk-errors ul {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+}
+
+/* Số đếm trên tab trạng thái đơn */
+.admin-tabcount .ant-badge-count {
+  color: var(--text-2);
+  box-shadow: none;
+}
+
+/* Chi tiết đơn */
+.admin-totals.ant-descriptions {
+  margin-top: 16px;
+  margin-inline-start: auto;
+  max-width: 360px;
+}
+.admin-totals .ant-descriptions-item-content {
+  justify-content: flex-end;
+}
+.admin-total {
+  font-size: 18px;
+  color: var(--accent);
+}
+.admin-timeline-item {
+  font-size: 13px;
+}
+.admin-timeline-reason {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-s);
+  background: var(--panel-2);
+}
+
+/* Đánh giá */
+.admin-rate.ant-rate {
+  font-size: 13px;
+}
+.admin-rate.ant-rate .ant-rate-star:not(:last-child) {
+  margin-inline-end: 2px;
+}
+.admin-sticky-card {
+  position: sticky;
+  top: 76px;
+}
+
+/* Luật tương thích */
+.admin-rule-cond .ant-tag {
+  margin-inline-end: 0;
+}
+
+/* Form sản phẩm: nút tải ảnh trong Upload picture-card */
+.admin-upload-btn {
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.admin-upload-btn div {
+  margin-top: 6px;
+}
+
+/* Import Excel */
+.admin-steps.ant-steps {
+  margin-bottom: 28px;
+}
+.admin-errlist {
+  margin: 0;
+  padding-inline-start: 16px;
+}
+
+/* Đăng nhập (/admin/login) */
+.admin-login {
+  min-height: 100vh;
+  padding: 40px 16px;
+  background:
+    radial-gradient(60% 50% at 50% 0%, var(--accent-soft), transparent 70%),
+    var(--bg-sunken);
+}
+.admin-login-box {
+  width: 100%;
+  max-width: 400px;
+}
+.admin-login-brand b {
+  display: block;
+  font: 800 22px/1 var(--font-display);
+  font-stretch: 118%;
+  color: var(--text);
+}
+.admin-login-brand b span {
+  color: var(--accent);
+  margin-left: 2px;
+}
+.admin-login-brand small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.admin-login-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  color: var(--text-2);
+}
+.admin-login-back:hover {
+  color: var(--accent);
+}
+
+/* Biểu đồ (recharts) */
+.admin-chart {
+  width: 100%;
+}
+.admin-chart .recharts-surface:focus,
+.admin-chart .recharts-wrapper:focus {
+  outline: none;
+}
+.admin-chart-tooltip {
+  padding: 8px 12px;
+  border-radius: var(--radius-s);
+  background: var(--panel-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-pop);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.admin-chart-tooltip small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-chart-tooltip b {
+  color: var(--text);
+}
+.admin-chart-hint {
+  font-size: 12px;
+}
+
+@media print {
+  .admin-sider,
+  .admin-header,
+  .admin-pagehead .ant-btn {
+    display: none !important;
+  }
+}

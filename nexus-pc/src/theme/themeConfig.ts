@@ -126,3 +126,51 @@ export const antdDarkTheme: ThemeConfig = {
     },
   },
 };
+
+/**
+ * Lớp chỉnh thêm cho khu quản trị (/admin), lồng trong ConfigProvider gốc nên kế thừa màu của antdDarkTheme.
+ * Admin dùng trên desktop, làm việc lâu: control thấp hơn, bảng dày (hàng ~40px), hover dòng rõ.
+ */
+export const antdAdminTheme: ThemeConfig = {
+  token: {
+    controlHeight: 34,
+    fontSize: 14,
+  },
+  components: {
+    Layout: {
+      siderBg: colors.backgroundSubtle,
+      headerBg: colors.backgroundSubtle,
+      bodyBg: colors.background,
+      headerHeight: 56,
+      headerPadding: '0 20px',
+      triggerBg: colors.backgroundElevated,
+    },
+    Menu: {
+      itemHeight: 38,
+      itemMarginInline: 8,
+      itemPaddingInline: 12,
+      groupTitleColor: colors.textMuted,
+      groupTitleFontSize: 11,
+      collapsedWidth: 64,
+    },
+    Table: {
+      headerBg: colors.backgroundInput,
+      headerColor: colors.textSecondary,
+      colorBgContainer: colors.backgroundElevated,
+      rowHoverBg: colors.backgroundInput,
+      rowSelectedBg: colors.primaryLight,
+      rowSelectedHoverBg: 'rgba(255, 107, 26, 0.18)',
+      cellPaddingBlock: 8,
+      cellPaddingInline: 12,
+      cellPaddingBlockSM: 6,
+      cellFontSize: 13,
+    },
+    Card: {
+      headerFontSize: 15,
+      bodyPadding: 20,
+    },
+    Statistic: {
+      contentFontSize: 26,
+    },
+  },
+};

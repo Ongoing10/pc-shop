@@ -1,0 +1,24 @@
+/** Một dòng lỗi của API hàng loạt (BulkErrors ở shared-contracts) */
+export interface BulkErrorItem {
+  id: string;
+  reason: string;
+}
+
+/** Tối đa phần tử mỗi lần gọi API hàng loạt */
+export const BULK_LIMIT = 100;
+
+/**
+ * Kiểm tra "tất cả hoặc không" như backend: trả danh sách lỗi, rỗng = được phép áp dụng cho mọi dòng.
+ * Dùng ở chế độ mock; khi ghép API thì lấy lỗi từ `data` của response 400.
+ */
+export const collectBulkErrors = <T,>(
+  rows: T[],
+  getId: (row: T) => string,
+  check: (row: T) => string | null
+): BulkErrorItem[] => {
+  if (rows.length > BULK_LIMIT) return [{ id: '*', reason: `Tối đa ${BULK_LIMIT} dòng mỗi lần` }];
+  return rows.flatMap((row) => {
+    const reason = check(row);
+    return reason ? [{ id: getId(row), reason }] : [];
+  });
+};

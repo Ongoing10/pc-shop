@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BsCpu } from 'react-icons/bs';
+import { LogoMark } from './LogoMark';
 import { useTranslation } from 'react-i18next';
 
 interface LogoProps {
@@ -12,9 +12,7 @@ export const Logo: React.FC<LogoProps> = ({ className = '' }) => {
 
   return (
     <Link to="/" className={`logo ${className}`} aria-label="NEXUS PC – Trang chủ">
-      <i aria-hidden="true">
-        <BsCpu />
-      </i>
+      <LogoMark size={36} />
       <span>
         <b>
           NEXUS<span>PC</span>
