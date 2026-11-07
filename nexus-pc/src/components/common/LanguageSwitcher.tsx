@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dropdown } from 'antd';
+import { Button, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { IoLanguageOutline } from 'react-icons/io5';
@@ -29,25 +29,14 @@ export const LanguageSwitcher: React.FC = () => {
 
   return (
     <Dropdown menu={{ items, selectedKeys: [currentLang] }} placement="bottomRight" trigger={['click']}>
-      <button
-        type="button"
+      <Button
+        size="small"
+        icon={<IoLanguageOutline style={{ fontSize: 15 }} />}
         aria-label="Đổi ngôn ngữ / Change language"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          minHeight: 28,
-          padding: '0 8px',
-          color: 'var(--text-2)',
-          background: 'none',
-          border: '1px solid var(--line-strong)',
-          borderRadius: 6,
-          fontSize: 13,
-        }}
+        style={{ height: 28, paddingInline: 8, gap: 6, background: 'transparent', color: 'var(--text-2)', fontSize: 13, fontWeight: 400 }}
       >
-        <IoLanguageOutline style={{ fontSize: 15 }} />
-        <span>{currentLang.toUpperCase()}</span>
-      </button>
+        {currentLang.toUpperCase()}
+      </Button>
     </Dropdown>
   );
 };

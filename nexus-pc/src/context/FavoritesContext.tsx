@@ -6,6 +6,7 @@ interface FavoritesContextType {
   favorites: string[];
   isFavorite: (productId: string) => boolean;
   toggleFavorite: (productId: string) => void;
+  clearFavorites: () => void;
   favoritesCount: number;
 }
 
@@ -37,12 +38,15 @@ export const FavoritesProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   };
 
+  const clearFavorites = () => setFavorites([]);
+
   return (
     <FavoritesContext.Provider
       value={{
         favorites,
         isFavorite,
         toggleFavorite,
+        clearFavorites,
         favoritesCount: favorites.length,
       }}
     >

@@ -22,22 +22,14 @@ export const CompareFloatBar: React.FC = () => {
           {t('compare.compareNow', 'So sánh ngay')}
         </Button>
       </Link>
-      <button
+      <Button
+        type="text"
+        size="small"
+        icon={<FiX style={{ fontSize: 16 }} />}
         onClick={clearCompare}
         aria-label="Clear compare list"
-        type="button"
-        style={{
-          border: 'none',
-          background: 'none',
-          color: 'var(--text-2)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          cursor: 'pointer',
-          padding: 4,
-        }}
-      >
-        <FiX style={{ fontSize: 16 }} />
-      </button>
+        style={{ color: 'var(--text-2)' }}
+      />
     </div>
   );
 };

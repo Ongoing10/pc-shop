@@ -4,7 +4,7 @@ import { CreateOrderPayload } from '../types/order';
 
 export const orderKeys = {
   all: ['orders'] as const,
-  track: (id: string) => [...orderKeys.all, 'track', id] as const,
+  detail: (code: string) => [...orderKeys.all, 'detail', code] as const,
   userList: () => [...orderKeys.all, 'user'] as const,
 };
 
@@ -14,17 +14,16 @@ export function useCreateOrder() {
   return useMutation({
     mutationFn: (payload: CreateOrderPayload) => orderService.createOrder(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.userList() });
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
     },
   });
 }
 
-export function useTrackOrder(orderId: string, enabled = false) {
+export function useOrderDetail(code: string | undefined) {
   return useQuery({
-    queryKey: orderKeys.track(orderId),
-    queryFn: () => orderService.trackOrder(orderId),
-    enabled: enabled && Boolean(orderId.trim()),
-    staleTime: 1000 * 60,
+    queryKey: orderKeys.detail(code || ''),
+    queryFn: () => orderService.getOrderByCode(code || ''),
+    enabled: Boolean(code),
   });
 }
 
@@ -32,5 +31,16 @@ export function useUserOrders() {
   return useQuery({
     queryKey: orderKeys.userList(),
     queryFn: () => orderService.getUserOrders(),
+  });
+}
+
+export function useCancelOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ code, reason }: { code: string; reason: string }) => orderService.cancelOrder(code, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+    },
   });
 }

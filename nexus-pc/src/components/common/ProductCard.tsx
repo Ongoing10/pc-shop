@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Badge, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { StarFilled } from '@ant-design/icons';
 import { FiHeart, FiShoppingCart } from 'react-icons/fi';
@@ -15,8 +16,6 @@ interface ProductCardProps {
   product: Product;
 }
 
-const LOW_STOCK = 5;
-
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { t } = useTranslation();
   const { addToCart } = useCart();
@@ -27,17 +26,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const isCompared = isComparing(product.id);
   const discount = calculateDiscountPercent(product.price, product.oldPrice);
   const outOfStock = product.stock <= 0;
-  const stockClass = outOfStock ? 'out' : product.stock <= LOW_STOCK ? 'low' : '';
-  const stockLabel = outOfStock
-    ? t('common.outOfStock', 'Hết hàng')
-    : t('common.stockShort', { count: product.stock, defaultValue: `Còn ${product.stock}` });
 
   return (
     <article className="product" data-testid={`product-card-${product.id}`}>
       <div className="pimg">
         <div className="badges">
-          {discount > 0 && <span className="badge sale">-{discount}%</span>}
-          {product.tag && <span className="badge">{product.tag}</span>}
+          {discount > 0 && (
+            <Tag bordered={false} className="badge sale">
+              -{discount}%
+            </Tag>
+          )}
+          {product.tag && (
+            <Tag bordered={false} className="badge">
+              {product.tag}
+            </Tag>
+          )}
         </div>
         <Link to={`/product/${product.id}`} tabIndex={-1} aria-hidden="true">
           <img src={product.image} alt="" loading="lazy" />
@@ -84,7 +87,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {discount > 0 && <del>{formatCurrency(product.oldPrice!)}</del>}
         </div>
         <div className="pfoot">
-          <span className={`stock ${stockClass}`}>{stockLabel}</span>
+          {outOfStock && (
+            <Badge className="stock-badge" status="error" text={t('common.outOfStock', 'Hết hàng')} />
+          )}
           <button
             type="button"
             className="add-cart"

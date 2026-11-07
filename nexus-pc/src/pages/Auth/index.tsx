@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Input, Button, Checkbox, message, Progress } from 'antd';
+import { Input, Button, Checkbox, message, Progress, Segmented } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
   UserOutlined,
   LockOutlined,
   MailOutlined,
   PhoneOutlined,
-  ThunderboltFilled,
-  CheckCircleFilled,
 } from '@ant-design/icons';
-import { FiShield, FiCheck, FiX } from 'react-icons/fi';
+import { FiCheck, FiX } from 'react-icons/fi';
 import { Logo } from '../../components/common/Logo';
+import { AuthAside } from '../../components/common/AuthAside';
 import { useAuth } from '../../context/AuthContext';
 import { evaluatePasswordStrength, checkPasswordRequirements } from '../../services/api/authService';
 
@@ -22,6 +21,9 @@ export const AuthPage: React.FC = () => {
   const { login, register, isAuthenticated } = useAuth();
 
   const initialMode = searchParams.get('tab') === 'register' ? 'register' : 'login';
+  // Chỉ nhận đường dẫn nội bộ để tránh chuyển hướng ra ngoài
+  const redirectParam = searchParams.get('redirect');
+  const redirectTo = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : '/account';
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
 
   // Login form state
@@ -51,7 +53,10 @@ export const AuthPage: React.FC = () => {
 
   const handleSwitchMode = (newMode: 'login' | 'register') => {
     setMode(newMode);
-    setSearchParams(newMode === 'register' ? { tab: 'register' } : {});
+    const next = new URLSearchParams(searchParams);
+    if (newMode === 'register') next.set('tab', 'register');
+    else next.delete('tab');
+    setSearchParams(next);
   };
 
   const regStrength = evaluatePasswordStrength(regPassword);
@@ -81,7 +86,7 @@ export const AuthPage: React.FC = () => {
         remember: rememberMe,
       });
       message.success('Đăng nhập thành công! Chào mừng bạn trở lại.');
-      navigate('/account');
+      navigate(redirectTo);
     } catch (err: any) {
       message.error(err?.message || 'Đăng nhập không thành công, vui lòng thử lại.');
     } finally {
@@ -127,7 +132,7 @@ export const AuthPage: React.FC = () => {
         password: regPassword,
       });
       message.success('Đăng ký tài khoản thành công!');
-      navigate('/account');
+      navigate(redirectTo);
     } catch (err: any) {
       message.error(err?.message || 'Đăng ký không thành công.');
     } finally {
@@ -139,53 +144,16 @@ export const AuthPage: React.FC = () => {
     <main className="auth">
       <section>
         <Logo />
-        <div
-          style={{
-            display: 'flex',
-            background: 'var(--panel-2)',
-            padding: 3,
-            borderRadius: 8,
-            border: '1px solid var(--line-strong)',
-            margin: '8px 0 16px',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => handleSwitchMode('login')}
-            style={{
-              flex: 1,
-              padding: '8px 12px',
-              border: 0,
-              borderRadius: 6,
-              background: mode === 'login' ? 'var(--accent)' : 'transparent',
-              color: mode === 'login' ? 'var(--bg)' : 'var(--muted)',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            {t('nav.login', 'ĐĂNG NHẬP')}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSwitchMode('register')}
-            style={{
-              flex: 1,
-              padding: '8px 12px',
-              border: 0,
-              borderRadius: 6,
-              background: mode === 'register' ? 'var(--accent)' : 'transparent',
-              color: mode === 'register' ? 'var(--bg)' : 'var(--muted)',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            {t('auth.btnRegister', 'ĐĂNG KÝ')}
-          </button>
-        </div>
+        <Segmented
+          block
+          className="auth-mode"
+          value={mode}
+          onChange={(v) => handleSwitchMode(v as 'login' | 'register')}
+          options={[
+            { value: 'login', label: t('nav.login', 'ĐĂNG NHẬP') },
+            { value: 'register', label: t('auth.btnRegister', 'ĐĂNG KÝ') },
+          ]}
+        />
 
         <h1>
           {mode === 'login'
@@ -197,7 +165,7 @@ export const AuthPage: React.FC = () => {
           {mode === 'login'
             ? t(
                 'auth.loginSubtitle',
-                'Đăng nhập để theo dõi đơn hàng, lưu cấu hình PC và nhận khuyến mãi.'
+                'Đăng nhập để theo dõi đơn hàng và lưu sổ địa chỉ giao hàng.'
               )
             : t(
                 'auth.registerSubtitle',
@@ -254,20 +222,9 @@ export const AuthPage: React.FC = () => {
               }}
             >
               <span>Demo: <b>khachhang@nexuspc.vn</b> / <b>123456</b></span>
-              <button
-                type="button"
-                onClick={fillDemoAccount}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--accent)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: 0,
-                }}
-              >
+              <Button type="link" size="small" onClick={fillDemoAccount} style={{ padding: 0, fontWeight: 600 }}>
                 Điền mẫu
-              </button>
+              </Button>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -412,36 +369,33 @@ export const AuthPage: React.FC = () => {
           {mode === 'login'
             ? t('auth.noAccount', 'Chưa có tài khoản?')
             : t('auth.hasAccount', 'Đã có tài khoản?')}{' '}
-          <button
+          <Button
+            type="link"
+            size="small"
             onClick={() => handleSwitchMode(mode === 'login' ? 'register' : 'login')}
-            type="button"
-            style={{ fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
+            style={{ padding: 0, fontWeight: 700 }}
           >
             {mode === 'login'
               ? t('auth.btnRegister', 'Đăng ký ngay')
               : t('auth.btnLogin', 'Đăng nhập ngay')}
-          </button>
+          </Button>
         </p>
       </section>
 
-      <aside>
-        <h2>
-          Lưu cấu hình,
-          <br />
-          <em>theo dõi đơn hàng.</em>
-        </h2>
-        <div style={{ marginTop: 24, display: 'flex', gap: 16, fontSize: 13, color: 'var(--muted)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <CheckCircleFilled style={{ color: 'var(--ok)' }} /> 100% Chính hãng
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <CheckCircleFilled style={{ color: 'var(--ok)' }} /> Bảo hành theo hãng
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <CheckCircleFilled style={{ color: 'var(--ok)' }} /> Hotline 8:00–21:30
-          </span>
-        </div>
-      </aside>
+      <AuthAside
+        title={
+          <>
+            Đơn hàng, địa chỉ,
+            <br />
+            <em>ở cùng một chỗ.</em>
+          </>
+        }
+        points={[
+          'Theo dõi trạng thái từng đơn hàng',
+          'Lưu sổ địa chỉ, đặt hàng nhanh hơn',
+          'Hotline hỗ trợ 1900 6868 · 8:00–21:30',
+        ]}
+      />
     </main>
   );
 };

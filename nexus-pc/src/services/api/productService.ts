@@ -1,4 +1,5 @@
 import { Product, Category, ProductFilterParams } from '../../types/product';
+import { PriceHistoryEntry } from '../../types/review';
 import { initialProducts, initialCategories } from './mockData';
 
 // Simulated latency helper for realistic async experience
@@ -91,6 +92,25 @@ export const productService = {
   async getFeaturedProducts(limit = 4): Promise<Product[]> {
     await delay(100);
     return initialProducts.slice(0, limit);
+  },
+
+  /**
+   * Get price history of a product (mock; real API: GET /products/{sku}/price-history)
+   */
+  async getPriceHistory(id: string): Promise<PriceHistoryEntry[]> {
+    await delay(100);
+    const product = initialProducts.find((p) => p.id === id);
+    if (!product) return [];
+    const listPrice = product.oldPrice ?? product.price;
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
+    const launchPrice = Math.round((listPrice * 1.06) / 10000) * 10000;
+    const history: PriceHistoryEntry[] = [
+      { oldPrice: launchPrice, newPrice: listPrice, reason: 'Điều chỉnh giá niêm yết', changedAt: daysAgo(120) },
+    ];
+    if (product.price < listPrice) {
+      history.push({ oldPrice: listPrice, newPrice: product.price, reason: 'Khuyến mãi', changedAt: daysAgo(18) });
+    }
+    return history;
   },
 
   /**

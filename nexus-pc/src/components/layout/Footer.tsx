@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FiHeadphones, FiMail, FiMapPin, FiShield } from 'react-icons/fi';
 import { Logo } from '../common/Logo';
+import { POLICIES } from '../../content/policies';
 
 export const Footer: React.FC = () => {
   const { t } = useTranslation();
@@ -18,6 +19,9 @@ export const Footer: React.FC = () => {
               'Linh kiện PC chính hãng, tư vấn cấu hình theo nhu cầu và ngân sách, giao hàng toàn quốc.'
             )}
           </p>
+          <Link to="/about" className="footlink-strong">
+            {t('footer.aboutTitle', 'Về NEXUS PC')}
+          </Link>
         </div>
         <div>
           <b>{t('footer.shopTitle', 'Mua sắm')}</b>
@@ -28,9 +32,18 @@ export const Footer: React.FC = () => {
         </div>
         <div>
           <b>{t('footer.supportTitle', 'Hỗ trợ khách hàng')}</b>
-          <Link to="/track-order">{t('footer.supportLink1', 'Tra cứu đơn hàng')}</Link>
+          <Link to="/account/orders">{t('footer.supportLink1', 'Tra cứu đơn hàng')}</Link>
           <Link to="/account">{t('nav.account', 'Tài khoản')}</Link>
+          <Link to="/favorites">{t('favorites.title', 'Sản phẩm yêu thích')}</Link>
           <Link to="/forgot-password">{t('auth.forgotTitle', 'Khôi phục mật khẩu')}</Link>
+        </div>
+        <div>
+          <b>{t('footer.policyTitle', 'Chính sách')}</b>
+          {POLICIES.map((p) => (
+            <Link key={p.slug} to={`/policy/${p.slug}`}>
+              {p.title}
+            </Link>
+          ))}
         </div>
         <div>
           <b>{t('footer.contactTitle', 'Liên hệ')}</b>

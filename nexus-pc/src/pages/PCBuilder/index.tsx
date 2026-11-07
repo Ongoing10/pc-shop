@@ -1,75 +1,81 @@
-import React, { useState } from 'react';
-import { Button, Drawer, Divider, message } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Alert, Button, Drawer, Divider, InputNumber, Popconfirm, Progress, Space, Switch, Tag, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DeleteOutlined } from '@ant-design/icons';
-import { BsExclamationTriangle } from 'react-icons/bs';
+import { FiSave, FiLink, FiRotateCcw, FiEdit3 } from 'react-icons/fi';
 import { CategoryIcon } from '../../components/common/CategoryIcon';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
+import { CompatibilityPanel } from '../../components/builder/CompatibilityPanel';
+import { SaveBuildModal } from '../../components/builder/SaveBuildModal';
+import { BUILDER_SLOTS, MULTI_QUANTITY_SLOTS } from '../../components/builder/slots';
 import { useProducts } from '../../hooks/useProducts';
+import { useAuth } from '../../context/AuthContext';
+import { useBuilder, MAX_SLOT_QUANTITY } from '../../context/BuilderContext';
 import { useCart } from '../../context/CartContext';
-import { BuilderSlotId, Product, RigBuild } from '../../types/product';
-import { formatCurrency, calculateRigTotal } from '../../utils/format';
+import { checkCompatibility } from '../../services/api/compatibilityService';
+import { BuilderSlotId, Product } from '../../types/product';
+import { formatCurrency } from '../../utils/format';
+import { buildShareUrl, copyToClipboard } from '../../utils/share';
 import { BuilderSkeleton, PicklistSkeleton } from '../../components/common/CustomSkeleton';
-
-interface SlotConfig {
-  id: BuilderSlotId;
-  labelKey: string;
-  defaultLabel: string;
-  shortLabel: string;
-}
-
-const BUILDER_SLOTS: SlotConfig[] = [
-  { id: 'cpu', labelKey: 'cpu', defaultLabel: 'Bộ vi xử lý (CPU)', shortLabel: 'CPU' },
-  { id: 'mainboard', labelKey: 'mainboard', defaultLabel: 'Bo mạch chủ (Mainboard)', shortLabel: 'Mainboard' },
-  { id: 'ram', labelKey: 'ram', defaultLabel: 'Bộ nhớ RAM', shortLabel: 'RAM' },
-  { id: 'gpu', labelKey: 'gpu', defaultLabel: 'Card đồ họa (VGA)', shortLabel: 'VGA' },
-  { id: 'ssd', labelKey: 'ssd', defaultLabel: 'Ổ cứng SSD', shortLabel: 'SSD' },
-  { id: 'psu', labelKey: 'psu', defaultLabel: 'Nguồn máy tính (PSU)', shortLabel: 'Nguồn' },
-  { id: 'case', labelKey: 'case', defaultLabel: 'Vỏ case máy tính', shortLabel: 'Vỏ case' },
-  { id: 'cooler', labelKey: 'cooler', defaultLabel: 'Tản nhiệt CPU', shortLabel: 'Tản nhiệt' },
-];
 
 export const PCBuilderPage: React.FC = () => {
   const { t } = useTranslation();
-  const { addToCart } = useCart();
-  const [rig, setRig] = useState<RigBuild>({});
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { addItemsToCart } = useCart();
+  const { rig, quantities, lines, editing, setPart, removePart, setQuantity, clear } = useBuilder();
   const [activeSlot, setActiveSlot] = useState<BuilderSlotId | null>(null);
+  const [onlyCompatible, setOnlyCompatible] = useState(false);
+  const [saveMode, setSaveMode] = useState<'closed' | 'save' | 'saveAsNew'>('closed');
 
   const { data: allProducts = [], isLoading } = useProducts();
 
-  const total = calculateRigTotal(rig);
-  const selectedCount = Object.keys(rig).length;
+  const total = lines.reduce((sum, l) => sum + l.product.price * l.quantity, 0);
+  const selectedCount = lines.length;
   const progressPercent = (selectedCount / BUILDER_SLOTS.length) * 100;
+  const compatibility = useMemo(() => checkCompatibility(lines), [lines]);
+  const psuWattage = rig.psu?.compat?.wattage;
 
   const currentSlotConfig = BUILDER_SLOTS.find((s) => s.id === activeSlot);
-  const availablePartsForSlot = activeSlot
-    ? allProducts.filter((p) => p.category === activeSlot)
-    : [];
+
+  // Với mỗi linh kiện trong ngăn chọn: thay vào slot thì có phát sinh lỗi mới không
+  const candidates = useMemo(() => {
+    if (!activeSlot) return [];
+    const others = lines.filter((l) => l.slot !== activeSlot);
+    const baseErrors = new Set(
+      checkCompatibility(others).issues.filter((i) => i.severity === 'ERROR').map((i) => i.ruleCode)
+    );
+    return allProducts
+      .filter((p) => p.category === activeSlot)
+      .map((p) => {
+        const result = checkCompatibility([...others, { product: p, quantity: 1 }]);
+        const newIssue = result.issues.find((i) => i.severity === 'ERROR' && !baseErrors.has(i.ruleCode));
+        return { product: p, issue: newIssue };
+      });
+  }, [activeSlot, allProducts, lines]);
+
+  const visibleCandidates = onlyCompatible ? candidates.filter((c) => !c.issue) : candidates;
 
   const handleSelectProduct = (product: Product) => {
     if (activeSlot) {
-      setRig((prev) => ({ ...prev, [activeSlot]: product }));
+      setPart(activeSlot, product);
       setActiveSlot(null);
       message.success(`Đã thêm ${product.name} vào cấu hình`);
     }
   };
 
-  const handleRemoveSlot = (slotId: BuilderSlotId) => {
-    setRig((prev) => {
-      const next = { ...prev };
-      delete next[slotId];
-      return next;
-    });
+  const handleAddAllToCart = () => {
+    addItemsToCart(lines.map((l) => ({ product: l.product, quantity: l.quantity })));
   };
 
-  const handleAddAllToCart = () => {
-    const productsToAdd = Object.values(rig).filter((p): p is Product => Boolean(p));
-    if (productsToAdd.length === 0) return;
-
-    productsToAdd.forEach((p) => {
-      addToCart(p, 1);
-    });
-    message.success(`Đã thêm ${productsToAdd.length} linh kiện vào giỏ hàng`);
+  const requireLogin = (next: 'save' | 'saveAsNew') => {
+    if (!isAuthenticated) {
+      message.info(t('builder.loginToSave', 'Đăng nhập để lưu và chia sẻ cấu hình.'));
+      navigate('/login?redirect=/builder');
+      return;
+    }
+    setSaveMode(next);
   };
 
   return (
@@ -81,7 +87,53 @@ export const PCBuilderPage: React.FC = () => {
           <h1>{t('builder.title', 'PC Builder')}</h1>
           <p>{t('builder.subtitle', 'Tự tay lựa chọn linh kiện và xây dựng cấu hình theo ngân sách.')}</p>
         </div>
+        <div className="pagehead-actions">
+          {selectedCount > 0 && (
+            <Popconfirm
+              title={t('builder.resetConfirm', 'Bỏ hết linh kiện và bắt đầu cấu hình mới?')}
+              okText={t('builder.reset', 'Làm mới')}
+              cancelText={t('common.cancel', 'Hủy')}
+              onConfirm={clear}
+            >
+              <Button icon={<FiRotateCcw />}>{t('builder.reset', 'Làm mới')}</Button>
+            </Popconfirm>
+          )}
+          {editing?.isPublic && (
+            <Button
+              icon={<FiLink />}
+              onClick={() => copyToClipboard(buildShareUrl(editing.code), t('builder.linkCopied', 'Đã chép link chia sẻ.'))}
+            >
+              {t('builder.copyLink', 'Chép link')}
+            </Button>
+          )}
+          <Button type="primary" icon={<FiSave />} disabled={selectedCount === 0} onClick={() => requireLogin('save')}>
+            {editing ? t('builder.saveChanges', 'Lưu thay đổi') : t('builder.saveBuild', 'Lưu cấu hình')}
+          </Button>
+        </div>
       </div>
+
+      {editing && (
+        <Alert
+          className="editing-banner"
+          type="info"
+          showIcon
+          icon={<FiEdit3 />}
+          title={
+            <>
+              {t('builder.editing', 'Đang sửa cấu hình')} <b>{editing.name}</b> (#{editing.code})
+              {editing.isPublic && <Tag color="blue" style={{ marginLeft: 8 }}>{t('builds.public', 'Công khai')}</Tag>}
+            </>
+          }
+          action={
+            <Space size={12}>
+              <Button type="link" size="small" onClick={() => requireLogin('saveAsNew')}>
+                {t('builder.saveAsNew', 'Lưu thành bản mới')}
+              </Button>
+              <Link to="/account/builds">{t('builder.myBuilds', 'Cấu hình của tôi')}</Link>
+            </Space>
+          }
+        />
+      )}
 
       {isLoading ? (
         <BuilderSkeleton />
@@ -91,6 +143,7 @@ export const PCBuilderPage: React.FC = () => {
           <div className="slotlist">
             {BUILDER_SLOTS.map((slot) => {
               const product = rig[slot.id];
+              const qty = quantities[slot.id] ?? 1;
               return (
                 <div className={`slot ${product ? 'filled' : ''}`} key={slot.id}>
                   <CategoryIcon id={slot.id} />
@@ -100,7 +153,18 @@ export const PCBuilderPage: React.FC = () => {
                       {product ? product.name : t('builder.notSelected', 'Chưa chọn linh kiện')}
                     </small>
                   </span>
-                  {product && <em>{formatCurrency(product.price)}</em>}
+                  {product && MULTI_QUANTITY_SLOTS.includes(slot.id) && (
+                    <InputNumber
+                      size="small"
+                      min={1}
+                      max={MAX_SLOT_QUANTITY}
+                      value={qty}
+                      onChange={(v) => setQuantity(slot.id, v || 1)}
+                      aria-label={`Số lượng ${slot.shortLabel}`}
+                      style={{ width: 64 }}
+                    />
+                  )}
+                  {product && <em>{formatCurrency(product.price * qty)}</em>}
                   <Button
                     onClick={() => setActiveSlot(slot.id)}
                     type={product ? 'default' : 'primary'}
@@ -108,13 +172,13 @@ export const PCBuilderPage: React.FC = () => {
                     {product ? t('builder.changeComponent', 'Thay đổi') : t('builder.selectComponent', 'Chọn linh kiện')}
                   </Button>
                   {product && (
-                    <button
-                      onClick={() => handleRemoveSlot(slot.id)}
+                    <Button
+                      type="text"
+                      className="slot-remove"
+                      icon={<DeleteOutlined />}
+                      onClick={() => removePart(slot.id)}
                       aria-label={`Bỏ ${slot.shortLabel} khỏi cấu hình`}
-                      type="button"
-                    >
-                      <DeleteOutlined />
-                    </button>
+                    />
                   )}
                 </div>
               );
@@ -129,25 +193,25 @@ export const PCBuilderPage: React.FC = () => {
               <small> / {BUILDER_SLOTS.length} linh kiện</small>
             </h2>
 
-            <div
+            <Progress
               className="progress"
-              role="progressbar"
+              percent={progressPercent}
+              showInfo={false}
+              size={{ height: 4 }}
+              railColor="var(--panel-2)"
               aria-label="Số vị trí đã chọn"
-              aria-valuenow={selectedCount}
-              aria-valuemin={0}
-              aria-valuemax={BUILDER_SLOTS.length}
-            >
-              <i style={{ transform: `scaleX(${progressPercent / 100})` }} />
-            </div>
+            />
 
             <div className="summary-lines">
-              {Object.entries(rig).map(([slotKey, p]) => {
-                if (!p) return null;
-                const slotCfg = BUILDER_SLOTS.find((s) => s.id === slotKey);
+              {lines.map((l) => {
+                const slotCfg = BUILDER_SLOTS.find((s) => s.id === l.slot);
                 return (
-                  <p key={slotKey}>
-                    <span>{slotCfg?.shortLabel}</span>
-                    <b>{formatCurrency(p.price)}</b>
+                  <p key={l.slot}>
+                    <span>
+                      {slotCfg?.shortLabel}
+                      {l.quantity > 1 && ` × ${l.quantity}`}
+                    </span>
+                    <b>{formatCurrency(l.product.price * l.quantity)}</b>
                   </p>
                 );
               })}
@@ -170,15 +234,7 @@ export const PCBuilderPage: React.FC = () => {
               {t('builder.addRigToCart', 'Thêm cấu hình vào giỏ')}
             </Button>
 
-            <p className="compat-note" role="note">
-              <BsExclamationTriangle aria-hidden="true" />
-              <span>
-                {t(
-                  'builder.compatibilityNote',
-                  'Hệ thống chưa tự kiểm tra tương thích. Hãy đối chiếu socket CPU với mainboard, loại RAM và công suất nguồn.'
-                )}
-              </span>
-            </p>
+            <CompatibilityPanel result={compatibility} psuWattage={psuWattage} partCount={selectedCount} />
           </aside>
         </div>
       )}
@@ -195,20 +251,27 @@ export const PCBuilderPage: React.FC = () => {
         onClose={() => setActiveSlot(null)}
         styles={{ wrapper: { width: 480, maxWidth: '100vw' } }}
       >
+        {lines.some((l) => l.slot !== activeSlot) && (
+          <label className="switch-row" style={{ marginBottom: 12 }}>
+            <span>{t('builder.onlyCompatible', 'Chỉ hiện linh kiện tương thích')}</span>
+            <Switch size="small" checked={onlyCompatible} onChange={setOnlyCompatible} />
+          </label>
+        )}
         <div className="picklist">
           {isLoading ? (
             <PicklistSkeleton count={4} />
           ) : (
-            availablePartsForSlot.map((p) => (
-              <div key={p.id}>
+            visibleCandidates.map(({ product: p, issue }) => (
+              <div key={p.id} className={issue ? 'incompatible' : ''}>
                 <img src={p.image} alt="" />
                 <span>
                   <b>{p.name}</b>
                   <div className="pick-specs">{p.specs.slice(0, 2).join(' · ')}</div>
+                  {issue && <div className="pick-issue">{issue.message}</div>}
                   <strong>{formatCurrency(p.price)}</strong>
                 </span>
                 <Button
-                  type={rig[activeSlot!]?.id === p.id ? 'default' : 'primary'}
+                  type={rig[activeSlot!]?.id === p.id ? 'default' : issue ? 'default' : 'primary'}
                   onClick={() => handleSelectProduct(p)}
                   aria-label={`${t('common.pick', 'Chọn')} ${p.name}`}
                 >
@@ -217,13 +280,21 @@ export const PCBuilderPage: React.FC = () => {
               </div>
             ))
           )}
-          {!isLoading && availablePartsForSlot.length === 0 && (
+          {!isLoading && visibleCandidates.length === 0 && (
             <div style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>
-              Không có sản phẩm nào cho danh mục này.
+              {candidates.length > 0
+                ? t('builder.noCompatibleParts', 'Không có linh kiện nào khớp với cấu hình hiện tại.')
+                : 'Không có sản phẩm nào cho danh mục này.'}
             </div>
           )}
         </div>
       </Drawer>
+
+      <SaveBuildModal
+        open={saveMode !== 'closed'}
+        asNew={saveMode === 'saveAsNew'}
+        onClose={() => setSaveMode('closed')}
+      />
     </main>
   );
 };

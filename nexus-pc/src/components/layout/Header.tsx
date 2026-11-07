@@ -1,32 +1,50 @@
 import React, { useState } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Badge, Drawer, Dropdown, MenuProps } from 'antd';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Avatar, Badge, Button, ConfigProvider, Drawer, Dropdown, Form, Input, Menu, MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { MenuOutlined, SearchOutlined, DownOutlined, LogoutOutlined } from '@ant-design/icons';
-import { FiShoppingCart, FiUser, FiTruck, FiHeadphones, FiLock, FiPackage, FiShield } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiTruck, FiHeadphones, FiLock, FiPackage, FiShield, FiInfo, FiFileText, FiHeart, FiMapPin, FiCpu, FiBell } from 'react-icons/fi';
 import { BsArrowLeftRight, BsCpu, BsGrid } from 'react-icons/bs';
 import { Logo } from '../common/Logo';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
+import { NotificationBell } from '../notification/NotificationBell';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { useCart } from '../../context/CartContext';
 import { useCompare } from '../../context/CompareContext';
 import { useAuth } from '../../context/AuthContext';
+import { useFavorites } from '../../context/FavoritesContext';
 import { useCategories } from '../../hooks/useCategories';
+import { colors } from '../../theme/colors';
+
+/** Menu ngang điều hướng: chữ trắng khi chọn, không nền; gạch chân màu nhấn chỉnh ở CSS (.nav-menu) */
+const navMenuTheme = {
+  components: {
+    Menu: {
+      itemColor: colors.textSecondary,
+      horizontalItemHoverColor: colors.textPrimary,
+      horizontalItemSelectedColor: colors.textPrimary,
+      horizontalItemSelectedBg: 'transparent',
+      horizontalLineHeight: '47px',
+      itemPaddingInline: 12,
+      activeBarHeight: 2,
+    },
+  },
+};
 
 export const Header: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { cartCount, openDrawer } = useCart();
   const { compareCount } = useCompare();
   const { user, isAuthenticated, logout } = useAuth();
+  const { favoritesCount } = useFavorites();
   const { data: categories = [] } = useCategories();
-  const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    navigate(q ? `/products?search=${encodeURIComponent(q)}` : '/products');
+  const handleSearchSubmit = ({ q }: { q?: string }) => {
+    const query = q?.trim() ?? '';
+    navigate(query ? `/products?search=${encodeURIComponent(query)}` : '/products');
   };
 
   const handleLogout = () => {
@@ -45,12 +63,22 @@ export const Header: React.FC = () => {
     {
       key: 'orders',
       icon: <FiPackage />,
-      label: <Link to="/account">{t('account.tabOrders', 'Đơn hàng của tôi')}</Link>,
+      label: <Link to="/account/orders">{t('account.tabOrders', 'Đơn hàng của tôi')}</Link>,
     },
     {
-      key: 'change-password',
+      key: 'addresses',
+      icon: <FiMapPin />,
+      label: <Link to="/account/addresses">{t('account.tabAddresses', 'Sổ địa chỉ')}</Link>,
+    },
+    {
+      key: 'builds',
+      icon: <FiCpu />,
+      label: <Link to="/account/builds">{t('account.tabBuilds', 'Cấu hình PC đã lưu')}</Link>,
+    },
+    {
+      key: 'security',
       icon: <FiLock />,
-      label: <Link to="/change-password">{t('auth.changePasswordTitle', 'Đổi mật khẩu')}</Link>,
+      label: <Link to="/account/security">{t('account.tabSecurity', 'Bảo mật tài khoản')}</Link>,
     },
     { type: 'divider' },
     {
@@ -85,11 +113,39 @@ export const Header: React.FC = () => {
       <NavLink to="/compare">
         <BsArrowLeftRight aria-hidden="true" />
         {t('nav.compare', 'So sánh')}
-        {compareCount > 0 && <span className="count">{compareCount}</span>}
+        {compareCount > 0 && <Badge count={compareCount} color="var(--accent)" className="count-badge" />}
       </NavLink>
       <Link to="/products?sort=discount">{t('nav.deals', 'Khuyến mãi')}</Link>
     </>
   );
+
+  // Key là đường dẫn đích, bấm vào thì điều hướng
+  const navItems: Array<{ key: string; label: React.ReactNode }> = [
+    {
+      key: '/builder',
+      label: (
+        <span className="nav-tab">
+          <BsCpu aria-hidden="true" />
+          {t('nav.builder', 'PC Builder')}
+        </span>
+      ),
+    },
+    {
+      key: '/compare',
+      label: (
+        <span className="nav-tab">
+          <BsArrowLeftRight aria-hidden="true" />
+          {t('nav.compare', 'So sánh')}
+          {compareCount > 0 && <Badge count={compareCount} color="var(--accent)" className="count-badge" />}
+        </span>
+      ),
+    },
+    { key: '/products?sort=discount', label: t('nav.deals', 'Khuyến mãi') },
+  ];
+  const currentUrl = location.pathname + location.search;
+  const activeNavKeys = navItems
+    .filter(({ key }) => (key.includes('?') ? currentUrl === key : location.pathname.startsWith(key)))
+    .map(({ key }) => key);
 
   return (
     <>
@@ -126,28 +182,41 @@ export const Header: React.FC = () => {
 
           <Logo />
 
-          <form className="search" onSubmit={handleSearchSubmit} role="search">
-            <SearchOutlined aria-hidden="true" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('common.searchPlaceholder', 'Tìm linh kiện, thương hiệu, mã sản phẩm...')}
+          <Form className="search" onFinish={handleSearchSubmit} role="search">
+            <Form.Item name="q" noStyle>
+              <Input
+                type="search"
+                variant="borderless"
+                prefix={<SearchOutlined aria-hidden="true" />}
+                placeholder={t('common.searchPlaceholder', 'Tìm linh kiện, thương hiệu, mã sản phẩm...')}
+                aria-label={t('common.search', 'Tìm kiếm')}
+              />
+            </Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SearchOutlined aria-hidden="true" />}
               aria-label={t('common.search', 'Tìm kiếm')}
-            />
-            <button type="submit" aria-label={t('common.search', 'Tìm kiếm')}>
-              <SearchOutlined aria-hidden="true" />
+            >
               <span className="search-label">{t('common.search', 'Tìm kiếm')}</span>
-            </button>
-          </form>
+            </Button>
+          </Form>
 
           <div className="head-actions">
+            <Link to="/favorites" className="head-fav" aria-label={`${t('favorites.title', 'Sản phẩm yêu thích')} (${favoritesCount})`}>
+              <Badge count={favoritesCount} offset={[2, -2]} overflowCount={99} color="var(--accent)" style={{ color: 'var(--on-accent)', fontWeight: 700 }}>
+                <FiHeart style={{ fontSize: 20, color: 'var(--text)' }} aria-hidden="true" />
+              </Badge>
+            </Link>
+
+            {isAuthenticated && <NotificationBell />}
+
             {isAuthenticated && user ? (
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                 <button type="button" aria-label={t('nav.account', 'Tài khoản')}>
-                  <span className="avatar" aria-hidden="true">
+                  <Avatar className="avatar" size={32} aria-hidden="true">
                     {firstName.charAt(0).toUpperCase()}
-                  </span>
+                  </Avatar>
                   <span className="head-label">
                     {firstName}
                     <small>
@@ -183,8 +252,16 @@ export const Header: React.FC = () => {
               <DownOutlined style={{ fontSize: 13 }} />
             </button>
           </Dropdown>
-          <div className="nav-links">{navLinks}</div>
-          <Link className="nav-aside" to="/track-order">
+          <ConfigProvider theme={navMenuTheme}>
+            <Menu
+              mode="horizontal"
+              className="nav-menu"
+              items={navItems}
+              selectedKeys={activeNavKeys}
+              onClick={({ key }) => navigate(key)}
+            />
+          </ConfigProvider>
+          <Link className="nav-aside" to="/account/orders">
             <FiTruck aria-hidden="true" />
             {t('nav.trackOrder', 'Tra cứu đơn hàng')}
           </Link>
@@ -200,8 +277,18 @@ export const Header: React.FC = () => {
       >
         <div className="mobile-links" onClick={() => setMobileMenuOpen(false)}>
           {navLinks}
-          <Link to="/track-order">
+          <Link to="/account/orders">
             <FiTruck aria-hidden="true" /> {t('nav.trackOrder', 'Tra cứu đơn hàng')}
+          </Link>
+          <Link to="/favorites">
+            <FiHeart aria-hidden="true" /> {t('favorites.title', 'Sản phẩm yêu thích')}
+            {favoritesCount > 0 && <Badge count={favoritesCount} color="var(--accent)" className="count-badge" />}
+          </Link>
+          <Link to="/about">
+            <FiInfo aria-hidden="true" /> {t('footer.aboutTitle', 'Về NEXUS PC')}
+          </Link>
+          <Link to="/policy/shipping">
+            <FiFileText aria-hidden="true" /> {t('footer.policyTitle', 'Chính sách')}
           </Link>
 
           <div className="group">
@@ -218,8 +305,17 @@ export const Header: React.FC = () => {
                 <Link to="/account">
                   <FiUser aria-hidden="true" /> {t('nav.account', 'Tài khoản')}
                 </Link>
-                <Link to="/change-password">
-                  <FiLock aria-hidden="true" /> {t('auth.changePasswordTitle', 'Đổi mật khẩu')}
+                <Link to="/account/orders">
+                  <FiPackage aria-hidden="true" /> {t('account.tabOrders', 'Đơn hàng của tôi')}
+                </Link>
+                <Link to="/account/builds">
+                  <FiCpu aria-hidden="true" /> {t('account.tabBuilds', 'Cấu hình PC đã lưu')}
+                </Link>
+                <Link to="/account/notifications">
+                  <FiBell aria-hidden="true" /> {t('account.tabNotifications', 'Thông báo')}
+                </Link>
+                <Link to="/account/security">
+                  <FiLock aria-hidden="true" /> {t('account.tabSecurity', 'Bảo mật tài khoản')}
                 </Link>
                 <a
                   href="/login"

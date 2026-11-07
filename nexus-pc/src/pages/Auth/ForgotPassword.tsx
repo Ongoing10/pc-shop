@@ -10,8 +10,9 @@ import {
   MailOutlined,
   LockOutlined,
 } from '@ant-design/icons';
-import { FiShield, FiClock } from 'react-icons/fi';
+import { FiClock } from 'react-icons/fi';
 import { Logo } from '../../components/common/Logo';
+import { AuthAside } from '../../components/common/AuthAside';
 import { useAuth } from '../../context/AuthContext';
 import { evaluatePasswordStrength, checkPasswordRequirements } from '../../services/api/authService';
 
@@ -134,19 +135,14 @@ export const ForgotPasswordPage: React.FC = () => {
                 }}
               >
                 <span>Tài khoản mẫu: <b>khachhang@nexuspc.vn</b></span>
-                <button
-                  type="button"
+                <Button
+                  type="link"
+                  size="small"
                   onClick={() => setIdentifier('khachhang@nexuspc.vn')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--accent)',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
+                  style={{ padding: 0, fontWeight: 600 }}
                 >
                   Dùng mẫu
-                </button>
+                </Button>
               </div>
 
               <Button
@@ -188,16 +184,17 @@ export const ForgotPasswordPage: React.FC = () => {
 
             {demoCode && (
               <Alert
-                message={
+                title={
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>Mã OTP giả lập: <b style={{ color: 'var(--accent)', letterSpacing: 2 }}>{demoCode}</b></span>
-                    <button
-                      type="button"
+                    <Button
+                      type="link"
+                      size="small"
                       onClick={() => setOtp(demoCode)}
-                      style={{ background: 'none', border: 'none', color: 'var(--ok)', fontWeight: 600, cursor: 'pointer' }}
+                      style={{ padding: 0, color: 'var(--ok)', fontWeight: 600 }}
                     >
                       Áp dụng mã
-                    </button>
+                    </Button>
                   </div>
                 }
                 type="info"
@@ -215,13 +212,9 @@ export const ForgotPasswordPage: React.FC = () => {
                       <FiClock /> {countdown}s
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={handleRequestCode}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, cursor: 'pointer' }}
-                    >
+                    <Button type="link" size="small" onClick={handleRequestCode} style={{ padding: 0, fontSize: 13 }}>
                       {t('auth.resendOtp', 'Gửi lại mã')}
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <Input
@@ -288,22 +281,15 @@ export const ForgotPasswordPage: React.FC = () => {
               </Button>
 
               <div style={{ textAlign: 'center', marginTop: 10 }}>
-                <button
-                  type="button"
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ArrowLeftOutlined />}
                   onClick={() => setStep(1)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--muted)',
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
+                  style={{ color: 'var(--muted)', fontSize: 13 }}
                 >
-                  <ArrowLeftOutlined /> Đổi thông tin liên hệ
-                </button>
+                  Đổi thông tin liên hệ
+                </Button>
               </div>
             </form>
           </>
@@ -328,17 +314,19 @@ export const ForgotPasswordPage: React.FC = () => {
         )}
       </section>
 
-      <aside>
-        <small style={{ letterSpacing: '0.12em', color: 'var(--accent)' }}>
-          <FiShield style={{ marginRight: 6, display: 'inline' }} />
-          SECURE CREDENTIAL SHIELD
-        </small>
-        <h2>
-          Protect your
-          <br />
-          <em>gaming legacy.</em>
-        </h2>
-      </aside>
+      <AuthAside
+        title={
+          <>
+            Lấy lại tài khoản
+            <br />
+            <em>trong vài phút.</em>
+          </>
+        }
+        points={[
+          'Mã OTP gửi tới email hoặc số điện thoại đã đăng ký',
+          'Đơn hàng và sổ địa chỉ được giữ nguyên',
+        ]}
+      />
     </main>
   );
 };

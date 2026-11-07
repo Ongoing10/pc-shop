@@ -1,8 +1,9 @@
 import React from 'react';
-import { Drawer, Button } from 'antd';
+import { Drawer, Button, Empty } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiTrash2, FiPlus, FiMinus, FiShoppingBag } from 'react-icons/fi';
+import { FiTrash2, FiShoppingBag } from 'react-icons/fi';
+import { QuantityStepper } from '../common/QuantityStepper';
 import { useCart } from '../../context/CartContext';
 import { formatCurrency } from '../../utils/format';
 
@@ -66,50 +67,45 @@ export const CartDrawer: React.FC = () => {
                   {item.name}
                 </Link>
                 <b>{formatCurrency(item.price)}</b>
-                <div className="qty">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.qty - 1)}
-                    aria-label={`Decrease quantity of ${item.name}`}
-                    type="button"
-                  >
-                    <FiMinus />
-                  </button>
-                  <span>{item.qty}</span>
-                  <button
-                    onClick={() => updateQuantity(item.id, item.qty + 1)}
-                    aria-label={`Increase quantity of ${item.name}`}
-                    type="button"
-                  >
-                    <FiPlus />
-                  </button>
-                </div>
+                <QuantityStepper
+                  value={item.qty}
+                  max={item.stock}
+                  itemName={item.name}
+                  onChange={(q) => updateQuantity(item.id, q)}
+                />
               </span>
-              <button
+              <Button
+                type="text"
+                className="cartitem-remove"
+                icon={<FiTrash2 style={{ fontSize: 16 }} />}
                 onClick={() => removeFromCart(item.id)}
                 aria-label={`Remove ${item.name} from cart`}
-                style={{ color: 'var(--muted)', border: 'none', background: 'none', cursor: 'pointer' }}
-                type="button"
-              >
-                <FiTrash2 style={{ fontSize: 16 }} />
-              </button>
+              />
             </div>
           ))}
         </div>
       ) : (
         <div className="emptycart">
-          <FiShoppingBag style={{ fontSize: 44, color: 'var(--muted)', margin: '0 auto 12px' }} />
-          <h3>{t('cart.emptyTitle', 'Giỏ hàng đang trống')}</h3>
-          <p>{t('cart.emptyDesc', 'Khám phá linh kiện và thêm sản phẩm bạn yêu thích.')}</p>
-          <Button
-            type="primary"
-            onClick={() => {
-              closeDrawer();
-              navigate('/products');
-            }}
-            style={{ marginTop: 14 }}
+          <Empty
+            image={<FiShoppingBag style={{ fontSize: 44, color: 'var(--muted)' }} />}
+            styles={{ image: { height: 'auto', marginBottom: 12 } }}
+            description={
+              <>
+                <h3>{t('cart.emptyTitle', 'Giỏ hàng đang trống')}</h3>
+                <p>{t('cart.emptyDesc', 'Khám phá linh kiện và thêm sản phẩm bạn yêu thích.')}</p>
+              </>
+            }
           >
-            {t('common.continueShopping', 'Tiếp tục mua sắm')}
-          </Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                closeDrawer();
+                navigate('/products');
+              }}
+            >
+              {t('common.continueShopping', 'Tiếp tục mua sắm')}
+            </Button>
+          </Empty>
         </div>
       )}
     </Drawer>

@@ -33,6 +33,21 @@ export interface Product {
   image: string;
   description?: string;
   warrantyMonths?: number;
+  compat?: ProductCompat;
+}
+
+/**
+ * Thông số chuẩn hóa để kiểm tra tương thích (giống `product.compat` của catalog-service).
+ * Chỉ khai trường mà danh mục đó có.
+ */
+export interface ProductCompat {
+  socket?: string; // CPU, mainboard
+  memoryType?: 'DDR4' | 'DDR5'; // RAM, mainboard
+  formFactor?: 'ATX' | 'mATX' | 'ITX'; // mainboard
+  tdp?: number; // W tiêu thụ ước tính (CPU, GPU)
+  wattage?: number; // W công suất nguồn (PSU)
+  supportedSockets?: string[]; // tản nhiệt
+  supportedFormFactors?: Array<'ATX' | 'mATX' | 'ITX'>; // vỏ case
 }
 
 export type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'discount' | 'rating';

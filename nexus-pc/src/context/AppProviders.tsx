@@ -10,6 +10,7 @@ import { AuthProvider } from './AuthContext';
 import { CartProvider } from './CartContext';
 import { FavoritesProvider } from './FavoritesContext';
 import { CompareProvider } from './CompareContext';
+import { BuilderProvider } from './BuilderContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,7 +42,9 @@ export const AppProviders: React.FC<{ children: ReactNode }> = ({ children }) =>
             <AuthProvider>
               <CartProvider>
                 <FavoritesProvider>
-                  <CompareProvider>{children}</CompareProvider>
+                  <CompareProvider>
+                    <BuilderProvider>{children}</BuilderProvider>
+                  </CompareProvider>
                 </FavoritesProvider>
               </CartProvider>
             </AuthProvider>

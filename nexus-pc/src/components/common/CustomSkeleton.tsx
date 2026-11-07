@@ -231,3 +231,18 @@ export const PicklistSkeleton: React.FC<{ count?: number; active?: boolean }> = 
     </div>
   );
 };
+
+/**
+ * Danh sách thẻ đơn hàng / thẻ địa chỉ / thẻ cấu hình khi đang tải
+ */
+export const OrderListSkeleton: React.FC<{ count?: number }> = ({ count = 3 }) => {
+  return (
+    <div className="grid gap-3" data-testid="order-list-skeleton">
+      {Array.from({ length: count }).map((_, idx) => (
+        <div key={idx} className="p-4 rounded-[14px] border border-[var(--line)] bg-[var(--panel-2)]">
+          <Skeleton active avatar={{ shape: 'square', size: 52 }} title={{ width: '30%' }} paragraph={{ rows: 2, width: ['60%', '40%'] }} />
+        </div>
+      ))}
+    </div>
+  );
+};

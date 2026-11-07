@@ -8,11 +8,21 @@ import { ComparePage } from '../pages/Compare';
 import { CartPage } from '../pages/Cart';
 import { CheckoutPage } from '../pages/Checkout';
 import { AccountPage } from '../pages/Account';
-import { TrackOrderPage } from '../pages/TrackOrder';
+import { OrdersPage } from '../pages/Account/OrdersPage';
+import { OrderDetailPage } from '../pages/Account/OrderDetailPage';
+import { AddressesPage } from '../pages/Account/AddressesPage';
+import { BuildsPage } from '../pages/Account/BuildsPage';
+import { NotificationsPage } from '../pages/Account/NotificationsPage';
+import { SecurityPage } from '../pages/Account/SecurityPage';
+import { FavoritesPage } from '../pages/Favorites';
+import { SharedBuildPage } from '../pages/SharedBuild';
+import { TrackOrderRedirect } from './TrackOrderRedirect';
 import { AuthPage } from '../pages/Auth';
 import { ForgotPasswordPage } from '../pages/Auth/ForgotPassword';
 import { ChangePasswordPage } from '../pages/Auth/ChangePassword';
 import { NotFoundPage } from '../pages/NotFound';
+import { AboutPage } from '../pages/About';
+import { PolicyPage } from '../pages/Policy';
 
 export interface RouteConfig {
   path: string;
@@ -81,6 +91,7 @@ export const appRoutesConfig: RouteConfig[] = [
     titleKey: 'checkout.title',
     defaultTitle: 'Thanh toán',
     showInNav: false,
+    requiresAuth: true,
   },
   {
     path: '/account',
@@ -88,19 +99,78 @@ export const appRoutesConfig: RouteConfig[] = [
     titleKey: 'nav.account',
     defaultTitle: 'Tài khoản',
     showInNav: false,
+    requiresAuth: true,
   },
   {
     path: '/account/orders',
-    element: <AccountPage />,
+    element: <OrdersPage />,
     titleKey: 'account.tabOrders',
     defaultTitle: 'Đơn hàng của tôi',
     showInNav: false,
+    requiresAuth: true,
   },
   {
+    path: '/account/orders/:code',
+    element: <OrderDetailPage />,
+    titleKey: 'orders.order',
+    defaultTitle: 'Chi tiết đơn hàng',
+    showInNav: false,
+    requiresAuth: true,
+    dynamicParams: ['code'],
+  },
+  {
+    path: '/account/addresses',
+    element: <AddressesPage />,
+    titleKey: 'account.tabAddresses',
+    defaultTitle: 'Sổ địa chỉ',
+    showInNav: false,
+    requiresAuth: true,
+  },
+  {
+    path: '/account/builds',
+    element: <BuildsPage />,
+    titleKey: 'account.tabBuilds',
+    defaultTitle: 'Cấu hình PC đã lưu',
+    showInNav: false,
+    requiresAuth: true,
+  },
+  {
+    path: '/account/notifications',
+    element: <NotificationsPage />,
+    titleKey: 'account.tabNotifications',
+    defaultTitle: 'Thông báo',
+    showInNav: false,
+    requiresAuth: true,
+  },
+  {
+    path: '/account/security',
+    element: <SecurityPage />,
+    titleKey: 'account.tabSecurity',
+    defaultTitle: 'Bảo mật tài khoản',
+    showInNav: false,
+    requiresAuth: true,
+  },
+  {
+    path: '/favorites',
+    element: <FavoritesPage />,
+    titleKey: 'favorites.title',
+    defaultTitle: 'Sản phẩm yêu thích',
+    showInNav: false,
+  },
+  {
+    path: '/build/:code',
+    element: <SharedBuildPage />,
+    titleKey: 'sharedBuild.crumb',
+    defaultTitle: 'Cấu hình chia sẻ',
+    showInNav: false,
+    dynamicParams: ['code'],
+  },
+  {
+    // Trang tra cứu cũ đã gộp vào "Đơn hàng của tôi"; giữ đường dẫn để link cũ không hỏng
     path: '/track-order',
-    element: <TrackOrderPage />,
-    titleKey: 'nav.trackOrder',
-    defaultTitle: 'Tra cứu đơn hàng',
+    element: <TrackOrderRedirect />,
+    titleKey: 'account.tabOrders',
+    defaultTitle: 'Đơn hàng của tôi',
     showInNav: false,
   },
   {
@@ -130,6 +200,21 @@ export const appRoutesConfig: RouteConfig[] = [
     titleKey: 'auth.changePasswordTitle',
     defaultTitle: 'Đổi mật khẩu',
     showInNav: false,
+  },
+  {
+    path: '/about',
+    element: <AboutPage />,
+    titleKey: 'nav.about',
+    defaultTitle: 'Về NEXUS PC',
+    showInNav: false,
+  },
+  {
+    path: '/policy/:slug?',
+    element: <PolicyPage />,
+    titleKey: 'nav.policy',
+    defaultTitle: 'Chính sách',
+    showInNav: false,
+    dynamicParams: ['slug'],
   },
   {
     path: '*',

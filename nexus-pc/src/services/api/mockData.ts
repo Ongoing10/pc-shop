@@ -27,6 +27,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=900&q=85',
     description: 'Card đồ họa thế hệ mới trang bị kiến trúc tân tiến, hỗ trợ Ray Tracing thế hệ mới, DLSS 4 và tản nhiệt chuẩn quân đội TUF Gaming bền bỉ.',
     warrantyMonths: 36,
+    compat: { tdp: 250 },
   },
   {
     id: 'cpu9700x',
@@ -43,6 +44,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1555617981-dac3880eac6e?w=900&q=85',
     description: 'Vi xử lý kiến trúc Zen 5 tiến trình 4nm tối ưu hóa điện năng và hiệu suất IPC đơn nhân cực đỉnh, hoàn hảo cho cả gaming lẫn đồ họa chuyên sâu.',
     warrantyMonths: 36,
+    compat: { socket: 'AM5', tdp: 65 },
   },
   {
     id: 'ramking',
@@ -59,6 +61,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1562976540-1502c2145186?w=900&q=85',
     description: 'Kit RAM DDR5 hiệu năng cao được chứng nhận tương thích hoàn hảo với cả nền tảng Intel thế hệ 14/15 và AMD AM5.',
     warrantyMonths: 36,
+    compat: { memoryType: 'DDR5' },
   },
   {
     id: 'ssd990',
@@ -91,6 +94,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&q=85',
     description: 'Thiết kế mỏng nhẹ hơn nhưng vẫn duy trì xung nhịp cao và quạt tản nhiệt TORX 5.0 êm ái, cân mượt mọi tựa game 4K Ray Tracing thiết lập Ultra.',
     warrantyMonths: 36,
+    compat: { tdp: 320 },
   },
   {
     id: 'cpu7800',
@@ -107,6 +111,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1555617981-dac3880eac6e?w=900&q=85',
     description: 'CPU chơi game mạnh mẽ nhất thế giới với công nghệ bộ đệm xếp chồng 3D V-Cache độc quyền, giữ khung hình FPS ổn định tuyệt đối.',
     warrantyMonths: 36,
+    compat: { socket: 'AM5', tdp: 120 },
   },
   {
     id: 'mb650',
@@ -123,6 +128,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=900&q=85',
     description: 'Dòng bo mạch chủ huyền thoại Tomahawk với dàn tản nhiệt giáp nhôm dày dặn, cấp nguồn VRM mạnh mẽ chịu tải tốt cho cả Ryzen 9.',
     warrantyMonths: 36,
+    compat: { socket: 'AM5', memoryType: 'DDR5', formFactor: 'ATX' },
   },
   {
     id: 'psu850',
@@ -138,6 +144,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=900&q=85',
     description: 'Nguồn máy tính chuẩn ATX 3.0 và PCIe 5.0 hiện đại, 100% tụ điện chất lượng cao, vận hành êm ái với chế độ Zero RPM fan.',
     warrantyMonths: 84,
+    compat: { wattage: 850 },
   },
   {
     id: 'caseh9',
@@ -153,6 +160,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&q=85',
     description: 'Vỏ case thiết kế không cột góc vô cực cực kỳ sang trọng, luồng gió lưu thông mạnh mẽ giúp toàn bộ hệ thống luôn mát mẻ.',
     warrantyMonths: 24,
+    compat: { supportedFormFactors: ['ATX', 'mATX', 'ITX'] },
   },
   {
     id: 'cooler360',
@@ -168,6 +176,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1587202372616-b43abea06c2a?w=900&q=85',
     description: 'Tản nhiệt nước All-in-One 3 quạt 120mm với mặt block gương vô cực tuyệt đẹp, giải nhiệt êm ái cho các vi xử lý đa nhân cao cấp.',
     warrantyMonths: 36,
+    compat: { supportedSockets: ['AM5', 'AM4', 'LGA1700'] },
   },
   // Additional parts to make PC builder rich & versatile
   {
@@ -185,6 +194,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=900&q=85',
     description: 'Lựa chọn card đồ họa quốc dân thế hệ 40-series tối ưu chi phí cho game thủ chiến mọi tựa game AAA ở độ phân giải 1080p và 1440p.',
     warrantyMonths: 36,
+    compat: { tdp: 115 },
   },
   {
     id: 'mb_b760',
@@ -200,6 +210,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1591488320449-011701bb6704?w=900&q=85',
     description: 'Bo mạch chủ phong cách trắng bạc cực chất cho các bộ máy tone màu sáng, trang bị đầy đủ kết nối tốc độ cao.',
     warrantyMonths: 36,
+    compat: { socket: 'LGA1700', memoryType: 'DDR4', formFactor: 'ATX' },
   },
   {
     id: 'ram_corsair',
@@ -216,6 +227,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1562976540-1502c2145186?w=900&q=85',
     description: 'Dòng RAM DDR5 với dải LED RGB tùy biến đa dạng qua phần mềm Corsair iCUE, hỗ trợ Intel XMP 3.0 và AMD EXPO.',
     warrantyMonths: 36,
+    compat: { memoryType: 'DDR5' },
   },
   {
     id: 'psu_deepcool',
@@ -231,6 +243,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=900&q=85',
     description: 'Nguồn chuẩn ATX 3.1 mới nhất mang lại độ an toàn cao nhất cho các dòng card đồ họa công suất lớn.',
     warrantyMonths: 120,
+    compat: { wattage: 750 },
   },
   {
     id: 'case_corsair',
@@ -247,6 +260,7 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&q=85',
     description: 'Vỏ case thông gió tối ưu với thiết kế quản lý dây cáp thông minh RapidRoute độc quyền của Corsair.',
     warrantyMonths: 24,
+    compat: { supportedFormFactors: ['ATX', 'mATX', 'ITX'] },
   },
   {
     id: 'cooler_thermal',
@@ -263,5 +277,6 @@ export const initialProducts: Product[] = [
     image: 'https://images.unsplash.com/photo-1587202372616-b43abea06c2a?w=900&q=85',
     description: 'Vua tản khí phân khúc phổ thông với 6 ống dẫn nhiệt mạ niken và cụm lá nhôm kép cân tốt các CPU Core i7 / Ryzen 7.',
     warrantyMonths: 24,
+    compat: { supportedSockets: ['AM4', 'AM5', 'LGA1700'] },
   },
 ];

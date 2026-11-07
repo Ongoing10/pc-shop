@@ -8,13 +8,29 @@ export interface UserProfile {
   createdAt?: string;
 }
 
+/** Sổ địa chỉ, cùng tên trường với GET /addresses (đơn vị hành chính 2 cấp tỉnh → phường/xã) */
 export interface UserAddress {
   id: string;
   isDefault: boolean;
   receiverName: string;
-  phone: string;
-  address: string;
-  city: string;
+  receiverPhone: string;
+  provinceCode: string;
+  provinceName: string;
+  wardCode: string;
+  wardName: string;
+  addressDetail: string;
+}
+
+export type UserAddressInput = Omit<UserAddress, 'id'>;
+
+export interface Province {
+  code: string;
+  name: string;
+}
+
+export interface Ward {
+  code: string;
+  name: string;
 }
 
 export interface LoginCredentials {

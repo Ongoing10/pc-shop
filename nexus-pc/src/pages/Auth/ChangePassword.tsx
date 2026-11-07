@@ -162,7 +162,7 @@ export const ChangePasswordPage: React.FC = () => {
 
           {success && (
             <Alert
-              message="Đổi mật khẩu thành công!"
+              title="Đổi mật khẩu thành công!"
               description="Mật khẩu của bạn đã được cập nhật thành công. Hãy ghi nhớ thông tin mật khẩu mới cho các lần đăng nhập tiếp theo."
               type="success"
               showIcon

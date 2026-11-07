@@ -9,6 +9,7 @@ import {
   Drawer,
   Empty,
   Button,
+  Menu,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { SearchOutlined, FilterOutlined } from '@ant-design/icons';
@@ -101,32 +102,33 @@ export const ProductsPage: React.FC = () => {
     <aside className="filters">
       <b>
         <FilterOutlined /> {t('catalog.filters', 'Bộ lọc')}
-        <button onClick={handleClearFilters} type="button">
+        <Button type="link" size="small" onClick={handleClearFilters}>
           {t('catalog.clearFilters', 'Xóa lọc')}
-        </button>
+        </Button>
       </b>
 
       <Divider />
 
       <h2>{t('catalog.categories', 'Danh mục')}</h2>
-      <button
-        className={category === 'all' ? 'sel' : ''}
-        onClick={() => handleCategorySelect('all')}
-        type="button"
-      >
-        {t('common.allProducts', 'Tất cả sản phẩm')}
-      </button>
-      {categories.map((c) => (
-        <button
-          key={c.id}
-          className={category === c.id ? 'sel' : ''}
-          onClick={() => handleCategorySelect(c.id)}
-          type="button"
-        >
-          <span>{c.name}</span>
-          <span>{c.count}</span>
-        </button>
-      ))}
+      <Menu
+        className="filter-menu"
+        mode="inline"
+        inlineIndent={10}
+        selectedKeys={[category]}
+        onClick={({ key }) => handleCategorySelect(key)}
+        items={[
+          { key: 'all', label: t('common.allProducts', 'Tất cả sản phẩm') },
+          ...categories.map((c) => ({
+            key: c.id,
+            label: (
+              <span className="filter-menu-label">
+                <span>{c.name}</span>
+                <span>{c.count}</span>
+              </span>
+            ),
+          })),
+        ]}
+      />
 
       <Divider />
 

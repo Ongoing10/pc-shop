@@ -14,49 +14,29 @@ const AUTO_SWITCH_MS = 12000;
 export default function Hero({ className = '' }: HeroProps) {
   const heroRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mode, setMode] = useState<0 | 1>(1); // 0 = Văn phòng, 1 = Gaming
-  const [shownSet, setShownSet] = useState<0 | 1>(1);
-  // Tự đổi cảnh dừng hẳn khi người dùng đã tự chọn, và tạm dừng khi đang rê chuột/focus vào hero
-  const [userPicked, setUserPicked] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [shownSet, setShownSet] = useState<0 | 1>(1); // 0 = Văn phòng, 1 = Gaming
 
   const { select } = useHeroAnimation(heroRef, canvasRef, setShownSet);
 
-  const choose = (next: 0 | 1) => {
-    setUserPicked(true);
-    setMode(next);
-    select(next);
-  };
-
+  // Tự đổi qua lại giữa cảnh Văn phòng và Gaming
   useEffect(() => {
-    if (userPicked || paused) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+    let mode: 0 | 1 = 1;
     const interval = setInterval(() => {
-      setMode((prev) => {
-        const next = prev === 0 ? 1 : 0;
-        select(next);
-        return next;
-      });
+      mode = mode === 0 ? 1 : 0;
+      select(mode);
     }, AUTO_SWITCH_MS);
 
     return () => clearInterval(interval);
-  }, [select, userPicked, paused]);
+  }, [select]);
 
   const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     e.currentTarget.style.display = 'none';
   };
 
   return (
-    <section
-      className={`hero ${className}`}
-      ref={heroRef}
-      aria-label="Chọn cấu hình PC theo nhu cầu"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
-    >
+    <section className={`hero ${className}`} ref={heroRef} aria-label="Build PC theo nhu cầu">
       {/* Layer 1: Sky backdrop */}
       <div className="sky" aria-hidden="true">
         <img src={IMAGES.bgOffice} alt="" decoding="async" onError={hideOnError} />
@@ -98,26 +78,6 @@ export default function Hero({ className = '' }: HeroProps) {
         </div>
 
         <div className="dock">
-          <div className="toggle-group" role="group" aria-label="Loại cấu hình">
-            <button
-              type="button"
-              className="toggle-btn btn-office"
-              aria-pressed={mode === 0}
-              onClick={() => choose(0)}
-            >
-              <b>{COPY.officeLabel}</b>
-              <small>{COPY.officeSub}</small>
-            </button>
-            <button
-              type="button"
-              className="toggle-btn btn-gaming"
-              aria-pressed={mode === 1}
-              onClick={() => choose(1)}
-            >
-              <b>{COPY.gamingLabel}</b>
-              <small>{COPY.gamingSub}</small>
-            </button>
-          </div>
           <p className="caption">{COPY.caption}</p>
         </div>
       </div>
