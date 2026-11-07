@@ -1,0 +1,64 @@
+/* Font cài qua npm (@fontsource), có subset vietnamese; không gọi Google Fonts. */
+@import '@fontsource/be-vietnam-pro/400.css';
+@import '@fontsource/be-vietnam-pro/500.css';
+@import '@fontsource/be-vietnam-pro/600.css';
+@import '@fontsource/be-vietnam-pro/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+@import 'tailwindcss';
+
+/* Theme "Datasheet" (docs/ui/design-brief.md mục 1.3). Tên token giữ nguyên khi chuyển sang frontend Next.js. */
+@theme {
+  --color-page: #F3F5F8;
+  --color-surface: #FFFFFF;
+  --color-sunken: #EAEEF3;
+  --color-ink: #0F1B2D;
+  --color-ink-muted: #5B6878;
+  --color-line: #D9DFE6;
+  --color-brand: #1D4ED8;
+  --color-brand-tint: #E6EDFC;
+  --color-buy: #C2410C;
+  --color-buy-hover: #9A3412;
+  --color-buy-tint: #FDEBDD;
+  --color-ok: #166534;
+  --color-ok-tint: #E7F5EC;
+  --color-warn: #7A4F00;
+  --color-warn-tint: #FFF3C4;
+  --color-warn-line: #E9B200;
+  --color-error: #B91C1C;
+  --color-error-tint: #FDECEC;
+
+  --font-sans: 'Be Vietnam Pro', 'Noto Sans', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-layer: 14px;
+
+  --shadow-raise: 0 1px 2px rgba(15, 27, 45, 0.06);
+  --shadow-layer: 0 12px 32px rgba(15, 27, 45, 0.16);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-page text-ink font-sans antialiased;
+    line-height: 1.55;
+  }
+  h1, h2, h3 {
+    line-height: 1.25;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -38,6 +38,66 @@
     {
       "key": "refreshToken",
       "value": ""
+    },
+    {
+      "key": "guestKey",
+      "value": "guest-demo-0123456789abcdef"
+    },
+    {
+      "key": "addressId",
+      "value": "1"
+    },
+    {
+      "key": "pcBuildCode",
+      "value": ""
+    },
+    {
+      "key": "reviewId",
+      "value": ""
+    },
+    {
+      "key": "fileId",
+      "value": "1"
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "runIdLower",
+      "value": ""
+    },
+    {
+      "key": "pcBuildCode2",
+      "value": ""
+    },
+    {
+      "key": "fileId2",
+      "value": ""
+    },
+    {
+      "key": "voucherVersion",
+      "value": ""
+    },
+    {
+      "key": "importId",
+      "value": ""
+    },
+    {
+      "key": "importIdInvalid",
+      "value": ""
+    },
+    {
+      "key": "stockImportId",
+      "value": ""
+    },
+    {
+      "key": "stockImportIdInvalid",
+      "value": ""
     }
   ],
   "item": [
@@ -94,6 +154,18 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Mã riêng cho lần chạy này để dữ liệu tạo mới (danh mục, SKU, kho...) không trùng với lần trước.",
+                  "const id = Date.now().toString(36).toUpperCase().slice(-6);",
+                  "pm.collectionVariables.set('runId', id);",
+                  "pm.collectionVariables.set('runIdLower', id.toLowerCase());"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -469,6 +541,205 @@
           }
         },
         {
+          "name": "Địa chỉ của tôi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "addresses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thêm địa chỉ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverName\": \"Nguyễn Văn A\",\n  \"receiverPhone\": \"0912345678\",\n  \"provinceCode\": \"79\",\n  \"wardCode\": \"79002\",\n  \"addressDetail\": \"12 Lê Lợi\",\n  \"isDefault\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('addressId', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chi tiết địa chỉ",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/addresses/{{addressId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "addresses",
+                "{{addressId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sửa địa chỉ",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/addresses/{{addressId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "addresses",
+                "{{addressId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverName\": \"Nguyễn Văn A\",\n  \"receiverPhone\": \"0912345678\",\n  \"provinceCode\": \"01\",\n  \"wardCode\": \"01001\",\n  \"addressDetail\": \"5 Tràng Tiền\",\n  \"isDefault\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đặt làm mặc định",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/addresses/{{addressId}}/default",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "addresses",
+                "{{addressId}}",
+                "default"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xóa địa chỉ",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/addresses/{{addressId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "addresses",
+                "{{addressId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tỉnh/thành",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/locations/provinces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "locations",
+                "provinces"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Phường/xã theo tỉnh",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/locations/provinces/79/wards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "locations",
+                "provinces",
+                "79",
+                "wards"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
           "name": "[ADMIN] Danh sách user",
           "request": {
             "method": "GET",
@@ -501,6 +772,27 @@
               ]
             },
             "description": "Role ADMIN (login admin1)."
+          }
+        },
+        {
+          "name": "[ADMIN] Chi tiết user (kèm role)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/33333333-3333-3333-3333-333333333333",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            },
+            "description": "Trả tài khoản Keycloak, hồ sơ, `realmRoles`, `permissions`. Cần quyền `view-clients` cho service account."
           }
         },
         {
@@ -546,6 +838,76 @@
             },
             "description": "Role ADMIN. Mở khóa customer2."
           }
+        },
+        {
+          "name": "[ADMIN] Tạo tài khoản nhân viên",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"staff{{runIdLower}}\",\n  \"email\": \"staff{{runIdLower}}@pcshop.local\",\n  \"firstName\": \"Nhân viên\",\n  \"lastName\": \"Hai\",\n  \"password\": \"123456\",\n  \"temporaryPassword\": false,\n  \"realmRoles\": [\n    \"STAFF\"\n  ],\n  \"permissions\": [\n    \"order:update-status\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Cần service account có thêm `view-realm`, `view-clients` (xem README mục 9)."
+          }
+        },
+        {
+          "name": "[ADMIN] Đặt role/permission",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/33333333-3333-3333-3333-333333333333/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "33333333-3333-3333-3333-333333333333",
+                "roles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"realmRoles\": [\n    \"STAFF\"\n  ],\n  \"permissions\": [\n    \"order:update-status\",\n    \"inventory:write\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Thay toàn bộ role của ứng dụng. Ví dụ giữ nguyên quyền gốc của staff1 (STAFF + order:update-status, inventory:write)."
+          }
         }
       ]
     },
@@ -570,6 +932,71 @@
               ]
             },
             "description": "8 danh mục linh kiện.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết danh mục",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/categories/CPU",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "CPU"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Thương hiệu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Chi tiết thương hiệu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/MSI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "MSI"
+              ]
+            },
             "auth": {
               "type": "noauth"
             }
@@ -634,6 +1061,1316 @@
               "type": "noauth"
             }
           }
+        },
+        {
+          "name": "Lọc sản phẩm",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products?category=MAINBOARD&brand=&minPrice=2000000&maxPrice=6000000&socket=AM5&memoryType=DDR5&formFactor=&sort=price,asc&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "MAINBOARD"
+                },
+                {
+                  "key": "brand",
+                  "value": ""
+                },
+                {
+                  "key": "minPrice",
+                  "value": "2000000"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "6000000"
+                },
+                {
+                  "key": "socket",
+                  "value": "AM5"
+                },
+                {
+                  "key": "memoryType",
+                  "value": "DDR5"
+                },
+                {
+                  "key": "formFactor",
+                  "value": ""
+                },
+                {
+                  "key": "sort",
+                  "value": "price,asc"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Tìm sản phẩm",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/search?q=rtx 4070&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "rtx 4070"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Facets cho bộ lọc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/facets?category=MAINBOARD",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "facets"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "MAINBOARD"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Batch theo SKU (nội bộ)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "batch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skus\": [\n    \"CPU-I5-14600K\",\n    \"GPU-MSI-4070S-12G\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Lịch sử giá",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/CPU-I5-14600K/price-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "CPU-I5-14600K",
+                "price-history"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra tương thích (lỗi socket + PSU)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/compatibility/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "compatibility",
+                "check"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skus\": [\n    \"CPU-I5-14600K\",\n    \"MB-GIGABYTE-B650M-D5\",\n    \"RAM-KINGSTON-32G-D5\",\n    \"GPU-ASUS-4080S-16G\",\n    \"CASE-MSI-M100R\",\n    \"PSU-MSI-A500DN\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra tương thích (hợp lệ)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/compatibility/check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "compatibility",
+                "check"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skus\": [\n    \"CPU-I5-14600K\",\n    \"MB-ASUS-B760M-D5\",\n    \"RAM-KINGSTON-32G-D5\",\n    \"GPU-MSI-4070S-12G\",\n    \"PSU-CORSAIR-RM750E\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Cấu hình PC của tôi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pc-builds/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pc-builds",
+                "my"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lưu cấu hình PC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pc-builds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pc-builds"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"PC chơi game 2K\",\n  \"purpose\": \"gaming\",\n  \"budget\": 40000000,\n  \"isPublic\": true,\n  \"items\": [\n    {\n      \"sku\": \"CPU-I5-14600K\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"MB-ASUS-B760M-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"RAM-KINGSTON-32G-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"GPU-MSI-4070S-12G\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"PSU-CORSAIR-RM750E\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('pcBuildCode', body.data.code);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xem cấu hình PC",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pc-builds/{{pcBuildCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pc-builds",
+                "{{pcBuildCode}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sửa cấu hình PC",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pc-builds/{{pcBuildCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pc-builds",
+                "{{pcBuildCode}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"PC chơi game 2K (bản rẻ)\",\n  \"purpose\": \"gaming\",\n  \"budget\": 30000000,\n  \"isPublic\": false,\n  \"items\": [\n    {\n      \"sku\": \"CPU-R5-7600X\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"MB-GIGABYTE-B650M-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"RAM-KINGSTON-32G-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"PSU-CORSAIR-RM750E\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xóa cấu hình PC",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pc-builds/{{pcBuildCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pc-builds",
+                "{{pcBuildCode}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lưu cấu hình PC thứ hai (để xóa hàng loạt)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pc-builds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pc-builds"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"PC chơi game 2K\",\n  \"purpose\": \"gaming\",\n  \"budget\": 40000000,\n  \"isPublic\": true,\n  \"items\": [\n    {\n      \"sku\": \"CPU-I5-14600K\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"MB-ASUS-B760M-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"RAM-KINGSTON-32G-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"GPU-MSI-4070S-12G\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"PSU-CORSAIR-RM750E\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('pcBuildCode2', body.data.code);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xóa nhiều cấu hình PC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/pc-builds/bulk-delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "pc-builds",
+                "bulk-delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codes\": [\n    \"{{pcBuildCode2}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Chỉ cấu hình của chính mình, xóa thật. Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[ADMIN] Danh mục (cả đã ẩn)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "categories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Chi tiết danh mục (cả đã ẩn)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/categories/CPU",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "categories",
+                "CPU"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Tạo danh mục",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"MON{{runId}}\",\n  \"name\": \"Màn hình {{runId}}\",\n  \"pcSlot\": null,\n  \"sortOrder\": 9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Sửa danh mục",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/categories/MON{{runId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "categories",
+                "MON{{runId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Màn hình máy tính {{runId}}\",\n  \"pcSlot\": null,\n  \"sortOrder\": 9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Ẩn/hiện danh mục",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/categories/MON{{runId}}/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "categories",
+                "MON{{runId}}",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Ẩn/hiện nhiều danh mục",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/categories/bulk/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "categories",
+                "bulk",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codes\": [\n    \"MON{{runId}}\"\n  ],\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[ADMIN] Thương hiệu (cả đã ẩn)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "brands"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Chi tiết thương hiệu (cả đã ẩn)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/brands/MSI",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "brands",
+                "MSI"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Tạo thương hiệu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "brands"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"LG{{runId}}\",\n  \"name\": \"LG {{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Sửa thương hiệu",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/brands/LG{{runId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "brands",
+                "LG{{runId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"LG Electronics {{runId}}\",\n  \"logoUrl\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Ẩn/hiện thương hiệu",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/brands/LG{{runId}}/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "brands",
+                "LG{{runId}}",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Ẩn/hiện nhiều thương hiệu",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/brands/bulk/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "brands",
+                "bulk",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codes\": [\n    \"LG{{runId}}\"\n  ],\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[ADMIN] Sản phẩm (cả DRAFT/HIDDEN)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products?status=&category=&q=&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": ""
+                },
+                {
+                  "key": "category",
+                  "value": ""
+                },
+                {
+                  "key": "q",
+                  "value": ""
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Chi tiết sản phẩm (cả DRAFT)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products/GPU-GIGABYTE-5070-12G",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products",
+                "GPU-GIGABYTE-5070-12G"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Tạo sản phẩm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"RAM-T8-{{runId}}\",\n  \"name\": \"RAM test 8GB DDR4 {{runId}}\",\n  \"categoryCode\": \"RAM\",\n  \"brandCode\": \"KINGSTON\",\n  \"shortDescription\": \"Sản phẩm tạo thử\",\n  \"price\": 590000,\n  \"originalPrice\": 690000,\n  \"specs\": {\n    \"capacity_gb\": 8\n  },\n  \"compat\": {\n    \"memory_type\": \"DDR4\"\n  },\n  \"tags\": [\n    \"test\"\n  ],\n  \"warrantyMonths\": 36,\n  \"status\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "status: 1 = DRAFT, 2 = ACTIVE."
+          }
+        },
+        {
+          "name": "[ADMIN] Sửa sản phẩm",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products/RAM-T8-{{runId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products",
+                "RAM-T8-{{runId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"RAM test 8GB DDR4 3200 {{runId}}\",\n  \"categoryCode\": \"RAM\",\n  \"brandCode\": \"KINGSTON\",\n  \"shortDescription\": \"Đã sửa\",\n  \"specs\": {\n    \"capacity_gb\": 8,\n    \"speed_mhz\": 3200\n  },\n  \"compat\": {\n    \"memory_type\": \"DDR4\"\n  },\n  \"tags\": [\n    \"test\"\n  ],\n  \"warrantyMonths\": 36\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Giá và trạng thái đổi qua 2 API riêng."
+          }
+        },
+        {
+          "name": "[ADMIN] Đổi trạng thái sản phẩm",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products/RAM-T8-{{runId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products",
+                "RAM-T8-{{runId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "1 DRAFT · 2 ACTIVE · 3 HIDDEN · 4 DISCONTINUED. Thay cho DELETE."
+          }
+        },
+        {
+          "name": "[ADMIN] Đổi giá sản phẩm",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products/RAM-T8-{{runId}}/price",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products",
+                "RAM-T8-{{runId}}",
+                "price"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 550000,\n  \"originalPrice\": 690000,\n  \"reason\": \"Khuyến mãi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Nhập catalog (tạo/sửa nhiều sản phẩm)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products",
+                "bulk"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"sku\": \"RAM-T8-{{runId}}\",\n      \"name\": \"RAM test 8GB DDR4 3200 {{runId}}\",\n      \"categoryCode\": \"RAM\",\n      \"brandCode\": \"KINGSTON\",\n      \"price\": 590000,\n      \"compat\": {\n        \"memory_type\": \"DDR4\"\n      },\n      \"warrantyMonths\": 36,\n      \"status\": 1\n    },\n    {\n      \"sku\": \"RAM-T16-{{runId}}\",\n      \"name\": \"RAM test 16GB DDR4 {{runId}}\",\n      \"categoryCode\": \"RAM\",\n      \"brandCode\": \"KINGSTON\",\n      \"price\": 990000,\n      \"compat\": {\n        \"memory_type\": \"DDR4\"\n      },\n      \"warrantyMonths\": 36,\n      \"status\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "SKU chưa có: tạo (price bắt buộc, status 1 DRAFT/2 ACTIVE). SKU đã có: sửa thông tin, đổi giá nếu `price` khác (ghi price_histories), bỏ qua status. Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[ADMIN] Đổi giá nhiều sản phẩm",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products/bulk/price",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products",
+                "bulk",
+                "price"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Khuyến mãi 11/11\",\n  \"items\": [\n    {\n      \"sku\": \"RAM-T8-{{runId}}\",\n      \"price\": 550000,\n      \"originalPrice\": 590000\n    },\n    {\n      \"sku\": \"RAM-T16-{{runId}}\",\n      \"price\": 920000\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[ADMIN] Đổi trạng thái nhiều sản phẩm",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/products/bulk/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "products",
+                "bulk",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skus\": [\n    \"RAM-T8-{{runId}}\",\n    \"RAM-T16-{{runId}}\"\n  ],\n  \"status\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Ẩn/ngừng bán hàng loạt thay cho xóa. Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[ADMIN] Luật tương thích",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/compatibility-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compatibility-rules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Chi tiết luật",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/compatibility-rules/CPU_MB_SOCKET",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compatibility-rules",
+                "CPU_MB_SOCKET"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Tạo luật",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/compatibility-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compatibility-rules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"COOLER_{{runId}}\",\n  \"name\": \"Tản nhiệt hỗ trợ socket CPU\",\n  \"sourceCategory\": \"CPU\",\n  \"targetCategory\": \"COOLER\",\n  \"ruleType\": \"IN\",\n  \"sourceField\": \"socket\",\n  \"targetField\": \"supported_sockets\",\n  \"margin\": null,\n  \"severity\": 1,\n  \"messageTemplate\": \"CPU {source} dùng socket {sv}, tản nhiệt {target} chỉ hỗ trợ {tv}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "ruleType: EQUALS · IN · LTE · SUM_TDP_LTE_WATTAGE. severity: 1 ERROR, 2 WARNING."
+          }
+        },
+        {
+          "name": "[ADMIN] Sửa luật",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/compatibility-rules/COOLER_{{runId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compatibility-rules",
+                "COOLER_{{runId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tản nhiệt hỗ trợ socket CPU\",\n  \"sourceCategory\": \"CPU\",\n  \"targetCategory\": \"COOLER\",\n  \"ruleType\": \"IN\",\n  \"sourceField\": \"socket\",\n  \"targetField\": \"supported_sockets\",\n  \"margin\": null,\n  \"severity\": 2,\n  \"messageTemplate\": \"CPU {source} dùng socket {sv}, tản nhiệt {target} có thể chỉ hỗ trợ {tv}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Bật/tắt luật",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/compatibility-rules/COOLER_{{runId}}/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compatibility-rules",
+                "COOLER_{{runId}}",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Bật/tắt nhiều luật",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/compatibility-rules/bulk/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "compatibility-rules",
+                "bulk",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codes\": [\n    \"COOLER_{{runId}}\"\n  ],\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
         }
       ]
     },
@@ -695,6 +2432,345 @@
             },
             "description": "Cần permission inventory:write (staff1 hoặc admin1). delta âm để giảm."
           }
+        },
+        {
+          "name": "Tồn kho nhiều SKU (nội bộ)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/inventory/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "batch"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skus\": [\n    \"CPU-I5-14600K\",\n    \"GPU-MSI-4070S-12G\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Danh sách kho",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/warehouses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "warehouses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Tạo kho",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/warehouses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "warehouses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"DN{{runId}}\",\n  \"name\": \"Kho Đà Nẵng {{runId}}\",\n  \"address\": \"1 Bạch Đằng, Hải Châu, Đà Nẵng\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Sửa kho",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/warehouses/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "warehouses",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kho Hồ Chí Minh\",\n  \"address\": \"TP. Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Giữ đúng tên/địa chỉ trong seed để chạy lại không làm đổi dữ liệu mẫu."
+          }
+        },
+        {
+          "name": "[ADMIN] Ngừng/mở kho",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/warehouses/1/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "warehouses",
+                "1",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Tồn kho",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/inventory?warehouseId=1&lowStock=false&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "inventory"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "1"
+                },
+                {
+                  "key": "lowStock",
+                  "value": "false"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Nhập kho",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/inventory/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "inventory",
+                "import"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": 1,\n  \"referenceCode\": \"PN-0002\",\n  \"note\": \"Nhập hàng tháng 10\",\n  \"lines\": [\n    {\n      \"sku\": \"CPU-I5-14600K\",\n      \"quantity\": 10\n    },\n    {\n      \"sku\": \"GPU-MSI-4070S-12G\",\n      \"quantity\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Cần permission `inventory:write`."
+          }
+        },
+        {
+          "name": "[STAFF] Lịch sử nhập/xuất",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/inventory/movements?sku=CPU-I5-14600K&from=2026-10-01&to=2026-10-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "inventory",
+                "movements"
+              ],
+              "query": [
+                {
+                  "key": "sku",
+                  "value": "CPU-I5-14600K"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-10-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Sắp hết hàng",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/stats/low-stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "stats",
+                "low-stock"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Chi tiết kho",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/warehouses/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "warehouses",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Ngừng/mở nhiều kho",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/warehouses/bulk/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "warehouses",
+                "bulk",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\n    1,\n    2\n  ],\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
         }
       ]
     },
@@ -702,6 +2778,24 @@
       "name": "4. Cart (8083)",
       "description": "Giỏ hàng lưu trong Redis, theo user của token.",
       "item": [
+        {
+          "name": "Xóa hết giỏ",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart"
+              ]
+            }
+          }
+        },
         {
           "name": "Giỏ hàng của tôi",
           "request": {
@@ -756,6 +2850,41 @@
           }
         },
         {
+          "name": "Đặt số lượng",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items/CPU-I5-14600K",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items",
+                "CPU-I5-14600K"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "0 = xóa khỏi giỏ."
+          }
+        },
+        {
           "name": "Xóa khỏi giỏ",
           "request": {
             "method": "DELETE",
@@ -774,6 +2903,174 @@
               ]
             },
             "description": "Cần đăng nhập."
+          }
+        },
+        {
+          "name": "Thêm nhiều món vào giỏ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items",
+                "bulk"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"sku\": \"CPU-I5-14600K\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"MB-ASUS-B760M-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"RAM-KINGSTON-32G-D5\",\n      \"quantity\": 1\n    },\n    {\n      \"sku\": \"GPU-MSI-4070S-12G\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Vd \"Thêm cả cấu hình PC vào giỏ\"; cộng dồn, tối đa 99/món. Dùng được với `X-Guest-Key`. Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[Khách] Xem giỏ",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Guest-Key",
+                "value": "{{guestKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[Khách] Thêm vào giỏ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Guest-Key",
+                "value": "{{guestKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"GPU-MSI-4070S-12G\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Giỏ khách vãng lai: header `X-Guest-Key` 16-64 ký tự, lưu 30 ngày."
+          }
+        },
+        {
+          "name": "[Khách] Thêm nhiều món",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Guest-Key",
+                "value": "{{guestKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items",
+                "bulk"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"sku\": \"RAM-KINGSTON-32G-D5\",\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Gộp giỏ khách vào tài khoản",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Guest-Key",
+                "value": "{{guestKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/merge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "merge"
+              ]
+            },
+            "description": "Gọi sau khi đăng nhập; giỏ khách bị xóa sau khi gộp."
           }
         }
       ]
@@ -819,7 +3116,7 @@
                 "DH20261024000001"
               ]
             },
-            "description": "Login customer1: 200."
+            "description": "Trả `{order, items}` (các dòng sản phẩm snapshot lúc đặt)."
           }
         },
         {
@@ -843,6 +3140,61 @@
           }
         },
         {
+          "name": "Timeline đơn",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/DH20261024000001/timeline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "DH20261024000001",
+                "timeline"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hủy đơn (200|400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/DH20261024000001/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "DH20261024000001",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Đổi ý, muốn chọn card khác\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Chỉ khi đơn đang PENDING/AWAITING_PAYMENT. Lần chạy đầu trả 200; từ lần thứ hai đơn mẫu đã bị hủy nên trả 400."
+          }
+        },
+        {
           "name": "Voucher đang hoạt động",
           "request": {
             "method": "GET",
@@ -862,6 +3214,110 @@
           }
         },
         {
+          "name": "Kiểm tra voucher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/vouchers/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "vouchers",
+                "validate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"subtotal\": 26000000,\n  \"categories\": [\n    \"CPU\",\n    \"GPU\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Xem trước thanh toán",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/checkout/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "checkout",
+                "preview"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"voucherCode\": \"WELCOME10\",\n  \"addressId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Đọc giỏ hàng hiện tại; không tạo đơn."
+          }
+        },
+        {
+          "name": "Dọn giỏ sau khi xem trước",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Danh sách voucher",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "vouchers"
+              ]
+            }
+          }
+        },
+        {
           "name": "[ADMIN] Tạo voucher",
           "request": {
             "method": "POST",
@@ -872,25 +3328,366 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/vouchers",
+              "raw": "{{baseUrl}}/api/v1/admin/vouchers",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "admin",
                 "vouchers"
               ]
             },
-            "description": "Role ADMIN. type: 1 = %, 2 = số tiền, 3 = free ship.",
+            "description": "Role ADMIN. type: 1 = %, 2 = số tiền, 3 = free ship. (Đã chuyển từ POST /vouchers sang /admin/vouchers.)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"GIAM10\",\n  \"name\": \"Giảm 10%\",\n  \"type\": 1,\n  \"value\": 10\n}",
+              "raw": "{\n  \"code\": \"GIAM{{runId}}\",\n  \"name\": \"Giảm 10%\",\n  \"type\": 1,\n  \"value\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Chi tiết voucher",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/vouchers/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "vouchers",
+                "1"
+              ]
+            },
+            "description": "Kèm `version` để gửi lại khi PUT."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('voucherVersion', body.data.version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[ADMIN] Sửa voucher",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/vouchers/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "vouchers",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Giảm 10% cho đơn đầu tiên\",\n  \"type\": 1,\n  \"value\": 10,\n  \"maxDiscountAmount\": 500000,\n  \"minOrderAmount\": 1000000,\n  \"applicableCategories\": [],\n  \"usageLimit\": 1000,\n  \"perUserLimit\": null,\n  \"startAt\": null,\n  \"endAt\": null,\n  \"version\": {{voucherVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "`version` lấy từ \"[ADMIN] Chi tiết voucher\"; sai version trả 409 (optimistic lock). Giữ đúng giá trị seed."
+          }
+        },
+        {
+          "name": "[ADMIN] Bật/tắt voucher",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/vouchers/1/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "vouchers",
+                "1",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Bật/tắt nhiều voucher",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/vouchers/bulk/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "vouchers",
+                "bulk",
+                "active"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\n    1,\n    2\n  ],\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[STAFF] Danh sách đơn",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders?status=&from=2026-10-01&to=2026-10-31&q=&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": ""
+                },
+                {
+                  "key": "from",
+                  "value": "2026-10-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                },
+                {
+                  "key": "q",
+                  "value": ""
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Chi tiết đơn",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/DH20261023000007",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "DH20261023000007"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Đổi trạng thái đơn (200|400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/DH20261023000007/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "DH20261023000007",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": 5,\n  \"reason\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Cần `order:update-status`. Đơn mẫu DH20261023000007 đang CONFIRMED(4) → SHIPPING(5); từ lần chạy thứ hai đã chuyển rồi nên trả 400. 1 PENDING · 2 AWAITING_PAYMENT · 3 PAID · 4 CONFIRMED · 5 SHIPPING · 6 COMPLETED · 7 CANCELLED · 8 RETURNED (7/8 bắt buộc reason)."
+          }
+        },
+        {
+          "name": "[STAFF] Đổi trạng thái nhiều đơn (200|400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/orders/bulk/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "orders",
+                "bulk",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codes\": [\n    \"DH20261023000007\",\n    \"DH20261018000005\"\n  ],\n  \"status\": 6,\n  \"reason\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Hai đơn mẫu đang SHIPPING(5) → COMPLETED(6), tất cả hoặc không. Từ lần chạy thứ hai đã COMPLETED nên trả 400 kèm danh sách lỗi."
+          }
+        },
+        {
+          "name": "[ADMIN] Thống kê tổng quan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/stats/overview?from=2026-10-01&to=2026-10-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "stats",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[ADMIN] Sản phẩm bán chạy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/stats/top-products?from=2026-10-01&to=2026-10-31&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "stats",
+                "top-products"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-10-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
             }
           }
         }
@@ -957,6 +3754,365 @@
                 }
               }
             }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('reviewId', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thống kê sao",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/stats?productId=6adcb0cc2444ef877c39129b",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                "stats"
+              ],
+              "query": [
+                {
+                  "key": "productId",
+                  "value": "6adcb0cc2444ef877c39129b"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Sửa đánh giá",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"title\": \"Card mát\",\n  \"content\": \"Sửa lại: hơi ồn khi tải nặng.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Chỉ khi review còn PENDING."
+          }
+        },
+        {
+          "name": "Chi tiết review (người viết, đang chờ duyệt)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "description": "Đã duyệt: công khai. Chưa duyệt: chỉ người viết hoặc nhân viên (gửi token), người khác nhận 404."
+          }
+        },
+        {
+          "name": "Chi tiết review chờ duyệt, ẩn danh (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Chờ duyệt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reviews?status=1&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "1"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Chi tiết review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Duyệt",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reviews/{{reviewId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reviews",
+                "{{reviewId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chi tiết review (đã duyệt, công khai)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Từ chối",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reviews/{{reviewId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reviews",
+                "{{reviewId}}",
+                "reject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Trả lời",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reviews/{{reviewId}}/reply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reviews",
+                "{{reviewId}}",
+                "reply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Cảm ơn bạn đã đánh giá!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[STAFF] Duyệt nhiều review",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reviews/bulk/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reviews",
+                "bulk",
+                "approve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\n    \"{{reviewId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "[STAFF] Từ chối nhiều review",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/reviews/bulk/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "reviews",
+                "bulk",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\n    \"{{reviewId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
+          }
+        },
+        {
+          "name": "Gỡ đánh giá",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/{{reviewId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                "{{reviewId}}"
+              ]
+            }
           }
         }
       ]
@@ -982,14 +4138,14 @@
                 "upload"
               ]
             },
-            "description": "Cần đăng nhập. Chọn file ở trường `file`. bucket: products, avatars, reviews, knowledge-docs.",
+            "description": "File mẫu `docs/postman/fixtures/sample.png` (newman chạy với `--working-dir docs/postman`).",
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
                   "key": "file",
                   "type": "file",
-                  "src": []
+                  "src": "fixtures/sample.png"
                 },
                 {
                   "key": "bucket",
@@ -998,7 +4154,19 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('fileId', body.data.id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Tải file",
@@ -1006,7 +4174,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/media/files/1",
+              "raw": "{{baseUrl}}/api/v1/media/files/{{fileId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1015,13 +4183,159 @@
                 "v1",
                 "media",
                 "files",
-                "1"
+                "{{fileId}}"
               ]
             },
             "description": "Công khai. Dùng id trả về từ Upload.",
             "auth": {
               "type": "noauth"
             }
+          }
+        },
+        {
+          "name": "Xem file (blob)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/files/{{fileId}}/view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "files",
+                "{{fileId}}",
+                "view"
+              ]
+            },
+            "description": "Trả nội dung file (Content-Type theo file). Bucket công khai không cần token; `knowledge-docs` cần ADMIN hoặc `knowledge:write`. Frontend: `fetch(url, {headers:{Authorization}}).then(r => r.blob())`."
+          }
+        },
+        {
+          "name": "Thông tin file",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/files/{{fileId}}/info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "files",
+                "{{fileId}}",
+                "info"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xóa file",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/files/{{fileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "files",
+                "{{fileId}}"
+              ]
+            },
+            "description": "Người upload hoặc ADMIN."
+          }
+        },
+        {
+          "name": "Upload file thứ hai (để xóa hàng loạt)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "upload"
+              ]
+            },
+            "description": "File mẫu `docs/postman/fixtures/sample.png` (newman chạy với `--working-dir docs/postman`).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/sample.png"
+                },
+                {
+                  "key": "bucket",
+                  "value": "products",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('fileId2', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xóa nhiều file",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/files/bulk-delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "files",
+                "bulk-delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [{{fileId2}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Người upload hoặc ADMIN. Tất cả hoặc không: một dòng lỗi thì không lưu gì, trả 400 kèm `data: [{id, reason}]`. Tối đa 100 phần tử."
           }
         }
       ]
@@ -1047,6 +4361,76 @@
               ]
             },
             "description": "Cần đăng nhập."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data) pm.collectionVariables.set('notificationId', body.data.content[0] && body.data.content[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Số chưa đọc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "unread-count"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đánh dấu đã đọc",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đánh dấu đọc hết",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "read-all"
+              ]
+            }
           }
         }
       ]
@@ -1186,6 +4570,1312 @@
           }
         }
       ]
+    },
+    {
+      "name": "10. Import / Export (Excel)",
+      "description": "Thiết kế: `docs/import-export-guide.md`, tóm tắt API: `docs/api-changelog.md`.\n\nFile upload lấy từ `docs/postman/fixtures/` (newman chạy với `--working-dir docs/postman`; trong Postman app, nếu báo không thấy file thì chọn lại file ở tab Body hoặc đặt Settings → Working directory = `docs/postman`).\n\nLuồng import: tải file mẫu → `validate` (không ghi DB, trả `import_id`) → [tải file kết quả có cột Lỗi] → `import`.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Chạy riêng folder này (không qua Login customer1 của folder 0) vẫn có runId cho số phiếu nhập kho.",
+              "if (!pm.collectionVariables.get('runId')) {",
+              "  const id = Date.now().toString(36).toUpperCase().slice(-6);",
+              "  pm.collectionVariables.set('runId', id);",
+              "  pm.collectionVariables.set('runIdLower', id.toLowerCase());",
+              "}"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "10.1 Sản phẩm (catalog)",
+          "description": "IMP-1, EXP-2. Quyền `product:write` (admin1).",
+          "item": [
+            {
+              "name": "[ADMIN] Tải file mẫu sản phẩm CPU",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/template?category=CPU",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "template"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "CPU"
+                    }
+                  ]
+                },
+                "description": "Cột cố định + cột động theo `spec_schema` của danh mục; sheet `Hướng dẫn` có ví dụ. Quyền `product:write`.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Tải file mẫu sản phẩm (403)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/template?category=CPU",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "template"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "CPU"
+                    }
+                  ]
+                },
+                "description": "customer1 không có `product:write`.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": []
+            },
+            {
+              "name": "[ADMIN] Tải file mẫu danh mục không tồn tại (400)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/template?category=KHONG-CO",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "template"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "KHONG-CO"
+                    }
+                  ]
+                },
+                "description": "Trả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": []
+            },
+            {
+              "name": "[STAFF] Validate file sản phẩm (403)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/validate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "validate"
+                  ]
+                },
+                "description": "staff1 không có `product:write`.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "fixtures/products-cpu-valid.xlsx"
+                    },
+                    {
+                      "key": "category",
+                      "value": "CPU",
+                      "type": "text"
+                    },
+                    {
+                      "key": "mode",
+                      "value": "UPSERT",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "[ADMIN] Validate file sản phẩm hợp lệ",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/validate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "validate"
+                  ]
+                },
+                "description": "Không ghi DB, lưu `import_id` vào biến `importId` (file giữ 1 giờ). `mode`: `CREATE_ONLY` (mặc định, SKU đã có → lỗi dòng) hoặc `UPSERT` (cập nhật). Fixture dùng UPSERT để chạy lại nhiều lần được.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "fixtures/products-cpu-valid.xlsx"
+                    },
+                    {
+                      "key": "category",
+                      "value": "CPU",
+                      "type": "text"
+                    },
+                    {
+                      "key": "mode",
+                      "value": "UPSERT",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.collectionVariables.set('importId', pm.response.json().data.import_id);",
+                      "const d = pm.response.json().data;",
+                      "pm.test('2 dòng, không lỗi', () => { pm.expect(d.total_rows).to.eql(2); pm.expect(d.invalid_rows).to.eql(0); });",
+                      "pm.test('Dropdown đã chuẩn hóa (am5 → AM5)', () => pm.expect(d.preview[1]['compat.socket']).to.eql('AM5'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Tải file kết quả kiểm tra",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/{{importId}}/result-file",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "{{importId}}",
+                    "result-file"
+                  ]
+                },
+                "description": "File đã upload + cột cuối `Lỗi`, dòng lỗi tô đỏ.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Import sản phẩm",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import"
+                  ]
+                },
+                "description": "Đọc lại file, kiểm tra lại từ đầu rồi ghi từng dòng độc lập. Xong thì xóa file tạm.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"importId\": \"{{importId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = pm.response.json().data;",
+                      "pm.test('Ghi đủ 2 sản phẩm', () => { pm.expect(d.created + d.updated).to.eql(2); pm.expect(d.failed).to.eql(0); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Import lại importId đã dùng (404)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import"
+                  ]
+                },
+                "description": "File tạm đã bị xóa sau khi import.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"importId\": \"{{importId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "[ADMIN] Sản phẩm vừa import",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/XLS-DEMO-CPU-001",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "XLS-DEMO-CPU-001"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const p = pm.response.json().data;",
+                      "pm.test('Lưu đúng compat/specs/tags', () => {",
+                      "  pm.expect(p.compat.socket).to.eql('LGA1700');",
+                      "  pm.expect(p.compat.memory_types).to.eql(['DDR4', 'DDR5']);",
+                      "  pm.expect(p.specs.boost_clock_ghz).to.eql(5.6);",
+                      "  pm.expect(p.tags).to.eql(['gaming', '4K']);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Validate file sản phẩm có lỗi",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/validate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "validate"
+                  ]
+                },
+                "description": "File lỗi cố ý: sai socket, thiếu giá, SKU trùng trong file, SKU đã tồn tại + giá gốc < giá bán + TDP lẻ.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "fixtures/products-cpu-invalid.xlsx"
+                    },
+                    {
+                      "key": "category",
+                      "value": "CPU",
+                      "type": "text"
+                    },
+                    {
+                      "key": "mode",
+                      "value": "CREATE_ONLY",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.collectionVariables.set('importIdInvalid', pm.response.json().data.import_id);",
+                      "const d = pm.response.json().data;",
+                      "pm.test('1 dòng hợp lệ, 4 dòng lỗi', () => { pm.expect(d.valid_rows).to.eql(1); pm.expect(d.invalid_rows).to.eql(4); });",
+                      "pm.test('Báo đúng lỗi', () => {",
+                      "  const all = JSON.stringify(d.errors);",
+                      "  pm.expect(all).to.include('LGA9999 không có trong danh sách');",
+                      "  pm.expect(all).to.include('Giá bán: bắt buộc');",
+                      "  pm.expect(all).to.include('trùng mã');",
+                      "  pm.expect(all).to.include('đã tồn tại');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Tải file kết quả (file lỗi)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/{{importIdInvalid}}/result-file",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "{{importIdInvalid}}",
+                    "result-file"
+                  ]
+                },
+                "description": "Trả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Validate file CPU cho danh mục GPU (400)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/import/validate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "import",
+                    "validate"
+                  ]
+                },
+                "description": "Header không khớp mẫu của GPU → từ chối cả file.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "fixtures/products-cpu-invalid.xlsx"
+                    },
+                    {
+                      "key": "category",
+                      "value": "GPU",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Báo sai mẫu', () => pm.expect(pm.response.json().error_message).to.include('không đúng mẫu'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Export sản phẩm CPU",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/export?category=CPU&status=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "CPU"
+                    },
+                    {
+                      "key": "status",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Cùng định dạng file mẫu IMP-1: sửa rồi import lại bằng `mode=UPSERT`. `category` bắt buộc; `status` 1-4 (trống = tất cả).\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[ADMIN] Export thiếu category (400)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/products/export",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "products",
+                    "export"
+                  ]
+                },
+                "description": "Trả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "10.2 Nhập kho (inventory)",
+          "description": "IMP-2, EXP-3. Quyền `inventory:write` (staff1). Cần catalog chạy để kiểm tra SKU.",
+          "item": [
+            {
+              "name": "[STAFF] Tải file mẫu phiếu nhập kho",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel/template",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel",
+                    "template"
+                  ]
+                },
+                "description": "Quyền `inventory:write`. Dropdown `Mã kho` = kho đang hoạt động.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Tải file mẫu phiếu nhập kho (403)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel/template",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel",
+                    "template"
+                  ]
+                },
+                "description": "customer1 không có `inventory:write`.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": []
+            },
+            {
+              "name": "[STAFF] Validate phiếu nhập kho",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel/validate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel",
+                    "validate"
+                  ]
+                },
+                "description": "`referenceCode` (số phiếu, bắt buộc, tối đa 50 ký tự) ghi vào `stock_movements.reference_code`. SKU kiểm tra qua `POST /products/batch` của catalog (chỉ sản phẩm đã công bố).",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "fixtures/stock-import-valid.xlsx"
+                    },
+                    {
+                      "key": "referenceCode",
+                      "value": "PN-XLS-{{runId}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.collectionVariables.set('stockImportId', pm.response.json().data.import_id);",
+                      "const d = pm.response.json().data;",
+                      "pm.test('2 dòng, không lỗi', () => { pm.expect(d.total_rows).to.eql(2); pm.expect(d.invalid_rows).to.eql(0); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Import phiếu nhập kho",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel"
+                  ]
+                },
+                "description": "Một transaction: có dòng lỗi thì không ghi gì. `created` = số dòng tồn kho (SKU + kho) mới tạo, `updated` = số dòng được cộng thêm.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"importId\": \"{{stockImportId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = pm.response.json().data;",
+                      "pm.test('Ghi đủ 2 dòng', () => { pm.expect(d.created + d.updated).to.eql(2); pm.expect(d.failed).to.eql(0); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Biến động kho theo số phiếu vừa nhập",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/movements?sku=GPU-MSI-4070S-12G&size=5",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "movements"
+                  ],
+                  "query": [
+                    {
+                      "key": "sku",
+                      "value": "GPU-MSI-4070S-12G"
+                    },
+                    {
+                      "key": "size",
+                      "value": "5"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const rows = pm.response.json().data.content;",
+                      "pm.test('Có dòng IMPORT với số phiếu của lần chạy này', () => {",
+                      "  const m = rows.find(r => r.referenceCode === 'PN-XLS-' + pm.variables.get('runId'));",
+                      "  pm.expect(m, 'không thấy phiếu').to.be.an('object');",
+                      "  pm.expect(m.referenceType).to.eql('IMPORT');",
+                      "  pm.expect(m.quantity).to.eql(4);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Validate phiếu nhập kho có lỗi",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel/validate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel",
+                    "validate"
+                  ]
+                },
+                "description": "File lỗi cố ý: SKU không có, SKU còn Nháp, số lượng 0 + trùng kho + SKU.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "fixtures/stock-import-invalid.xlsx"
+                    },
+                    {
+                      "key": "referenceCode",
+                      "value": "PN-XLS-{{runId}}-LOI",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.collectionVariables.set('stockImportIdInvalid', pm.response.json().data.import_id);",
+                      "const d = pm.response.json().data;",
+                      "pm.test('1 dòng hợp lệ, 3 dòng lỗi', () => { pm.expect(d.valid_rows).to.eql(1); pm.expect(d.invalid_rows).to.eql(3); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Import phiếu có lỗi (không ghi gì)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel"
+                  ]
+                },
+                "description": "\"Tất cả hoặc không\": trả 200 nhưng không ghi dòng nào; file tạm được giữ để tải file kết quả.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"importId\": \"{{stockImportIdInvalid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const d = pm.response.json().data;",
+                      "pm.test('Không ghi dòng nào', () => { pm.expect(d.created + d.updated).to.eql(0); pm.expect(d.failed).to.eql(4); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Tải file kết quả phiếu lỗi",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel/{{stockImportIdInvalid}}/result-file",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel",
+                    "{{stockImportIdInvalid}}",
+                    "result-file"
+                  ]
+                },
+                "description": "Trả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Validate thiếu số phiếu (400)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/import/excel/validate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "import",
+                    "excel",
+                    "validate"
+                  ]
+                },
+                "description": "`referenceCode` bắt buộc.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "fixtures/stock-import-valid.xlsx"
+                    }
+                  ]
+                }
+              },
+              "event": []
+            },
+            {
+              "name": "[STAFF] Export tồn kho",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/export?warehouseId=&lowStock=false",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "warehouseId",
+                      "value": ""
+                    },
+                    {
+                      "key": "lowStock",
+                      "value": "false"
+                    }
+                  ]
+                },
+                "description": "Role STAFF/ADMIN. Cùng bộ lọc với `GET /admin/inventory`.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Export tồn kho sắp hết",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/export?lowStock=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "lowStock",
+                      "value": "true"
+                    }
+                  ]
+                },
+                "description": "Trả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Export tồn kho (403)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/inventory/export",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "inventory",
+                    "export"
+                  ]
+                },
+                "description": "Customer không có role STAFF.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": []
+            }
+          ]
+        },
+        {
+          "name": "10.3 Export đơn hàng (ordering)",
+          "description": "EXP-1. Role STAFF/ADMIN.",
+          "item": [
+            {
+              "name": "[STAFF] Export đơn hàng",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/orders/export?status=&from=&to=&q=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "orders",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": ""
+                    },
+                    {
+                      "key": "from",
+                      "value": ""
+                    },
+                    {
+                      "key": "to",
+                      "value": ""
+                    },
+                    {
+                      "key": "q",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Role STAFF/ADMIN. 2 sheet `Đơn hàng` + `Chi tiết`, cùng bộ lọc với `GET /admin/orders`; vượt `pcshop.excel.max-export-rows` (10000) đơn thì 400.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Export đơn đã hủy trong tháng 10",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/orders/export?status=7&from=2026-10-01&to=2026-10-31",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "orders",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "7"
+                    },
+                    {
+                      "key": "from",
+                      "value": "2026-10-01"
+                    },
+                    {
+                      "key": "to",
+                      "value": "2026-10-31"
+                    }
+                  ]
+                },
+                "description": "Trả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) pm.test('Trả file Excel, tên tiếng Việt', () => {",
+                      "  pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml');",
+                      "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include(\"filename*=UTF-8''\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[STAFF] Export ngày sai định dạng (400)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/orders/export?from=27-10-2026",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "orders",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "27-10-2026"
+                    }
+                  ]
+                },
+                "description": "Trả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": []
+            },
+            {
+              "name": "Export đơn hàng (403)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/orders/export",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "orders",
+                    "export"
+                  ]
+                },
+                "description": "Customer không có role STAFF.\n\nTrả file .xlsx: trong Postman bấm mũi tên cạnh Send → **Send and Download** để lưu file."
+              },
+              "event": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Chọn tài khoản theo tên request: [ADMIN] → admin1, [STAFF] → staff1, \"(customer2)\" → customer2, còn lại customer1.",
+          "// Token lấy bằng password grant và cache đến gần hết hạn, nên chạy lẻ từng request vẫn được.",
+          "const name = pm.info.requestName;",
+          "const auth = pm.request.auth;",
+          "if (auth && auth.type === 'noauth') return;",
+          "if (name.startsWith('Login ') || name === 'Refresh token' || name === 'Logout') return;",
+          "const user = name.startsWith('[ADMIN]') ? 'admin1' : name.startsWith('[STAFF]') ? 'staff1'",
+          "    : name.includes('(customer2)') ? 'customer2' : 'customer1';",
+          "const key = 'token_' + user;",
+          "const cached = pm.collectionVariables.get(key);",
+          "const exp = Number(pm.collectionVariables.get(key + '_exp') || 0);",
+          "if (cached && Date.now() < exp - 30000) { pm.collectionVariables.set('accessToken', cached); return; }",
+          "pm.sendRequest({",
+          "  url: pm.variables.get('keycloakUrl') + '/realms/pcshop/protocol/openid-connect/token',",
+          "  method: 'POST',",
+          "  header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "  body: { mode: 'urlencoded', urlencoded: [",
+          "    { key: 'grant_type', value: 'password' }, { key: 'client_id', value: pm.variables.get('clientId') },",
+          "    { key: 'username', value: user }, { key: 'password', value: pm.variables.get('password') },\n    { key: 'scope', value: 'openid' }] }",
+          "}, (err, res) => {",
+          "  if (err || res.code !== 200) { console.error('Không lấy được token cho ' + user, err || res.text()); return; }",
+          "  const t = res.json();",
+          "  pm.collectionVariables.set(key, t.access_token);",
+          "  pm.collectionVariables.set(key + '_exp', String(Date.now() + t.expires_in * 1000));",
+          "  pm.collectionVariables.set('accessToken', t.access_token);",
+          "});"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Mã trả về mong đợi lấy từ tên request: \"(403)\" → 403; \"(200|400)\" → một trong hai; mặc định 2xx.",
+          "const name = pm.info.requestName;",
+          "const m = name.match(/\\((\\d{3}(?:\\|\\d{3})*)\\)/);",
+          "const expected = m ? m[1].split('|').map(Number) : null;",
+          "pm.test('HTTP ' + (expected ? expected.join('|') : '2xx'), () => {",
+          "  if (expected) pm.expect(expected).to.include(pm.response.code);",
+          "  else pm.expect(pm.response.code, pm.response.text().slice(0, 300)).to.be.within(200, 299);",
+          "});",
+          "const ct = pm.response.headers.get('Content-Type') || '';",
+          "if (ct.includes('json') && pm.request.url.toString().includes('/api/v1/')) {",
+          "  const body = pm.response.json();",
+          "  pm.test('Envelope ResponseData', () => pm.expect(body).to.have.property('error_status'));",
+          "  if (pm.response.code < 300) pm.test('error_status = 1', () => pm.expect(body.error_status).to.eql(1));",
+          "}"
+        ]
+      }
     }
   ]
 }

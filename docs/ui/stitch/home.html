@@ -1,0 +1,2520 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta content="web_standard" name="shell-type" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @layer base {
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          overscroll-behavior: none;
+        }
+        main > :first-child {
+          margin-top: 0 !important;
+        }
+        main > :last-child {
+          margin-bottom: 0 !important;
+        }
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#287100",
+              "surface-bright": "#f9f9f9",
+              "on-secondary-fixed": "#062100",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "inverse-surface": "#303030",
+              "on-primary-fixed": "#001a43",
+              "on-primary": "#ffffff",
+              "on-tertiary-container": "#fffbff",
+              "on-tertiary-fixed": "#281800",
+              "primary-container": "#006ef2",
+              "outline-variant": "#c1c6d7",
+              "on-error": "#ffffff",
+              "primary-fixed-dim": "#afc6ff",
+              "secondary-fixed-dim": "#6de039",
+              "surface-container-high": "#e8e8e8",
+              "on-error-container": "#93000a",
+              "surface-variant": "#e2e2e2",
+              primary: "#0057c2",
+              error: "#ba1a1a",
+              "secondary-fixed": "#88fd54",
+              "tertiary-container": "#9d6a00",
+              "surface-container-low": "#f3f3f3",
+              "on-secondary": "#ffffff",
+              surface: "#f9f9f9",
+              background: "#f9f9f9",
+              "inverse-on-surface": "#f1f1f1",
+              "surface-tint": "#0059c7",
+              "surface-container-highest": "#e2e2e2",
+              secondary: "#266d00",
+              outline: "#727786",
+              "on-tertiary-fixed-variant": "#614000",
+              "tertiary-fixed": "#ffddb0",
+              "on-primary-fixed-variant": "#004398",
+              "on-background": "#1b1b1b",
+              "on-surface-variant": "#414755",
+              "surface-container": "#eeeeee",
+              "tertiary-fixed-dim": "#ffba45",
+              "error-container": "#ffdad6",
+              tertiary: "#7d5400",
+              "secondary-container": "#85fa51",
+              "inverse-primary": "#afc6ff",
+              "on-surface": "#1b1b1b",
+              "primary-fixed": "#d9e2ff",
+              "surface-dim": "#dadada",
+              "on-primary-container": "#fefcff",
+              "on-secondary-fixed-variant": "#1a5200",
+            },
+            borderRadius: {
+              DEFAULT: "0.125rem",
+              lg: "0.25rem",
+              xl: "0.5rem",
+              full: "0.75rem",
+            },
+            spacing: {
+              "space-md": "1rem",
+              "margin-lg": "3rem",
+              "space-xs": "0.25rem",
+              margin: "1rem",
+              "gutter-lg": "1.5rem",
+              gutter: "1rem",
+              "space-sm": "0.5rem",
+              "space-xl": "2rem",
+              "space-lg": "1.5rem",
+              "margin-md": "1.5rem",
+            },
+            fontFamily: {
+              "body-lg": ["Inter"],
+              "title-sm": ["Inter"],
+              "currency-md": ["Inter"],
+              "body-sm": ["Inter"],
+              "headline-xl-mobile": ["Inter"],
+              "headline-lg": ["Inter"],
+              "body-md": ["Inter"],
+              "headline-xl": ["Inter"],
+              "headline-lg-mobile": ["Inter"],
+              "headline-sm": ["Inter"],
+              "headline-md": ["Inter"],
+              "label-md": ["Inter"],
+              "label-sm": ["Inter"],
+              "title-md": ["Inter"],
+              "currency-lg": ["Inter"],
+            },
+            fontSize: {
+              "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+              "title-sm": ["14px", { lineHeight: "22px", fontWeight: "600" }],
+              "currency-md": [
+                "16px",
+                { lineHeight: "24px", fontWeight: "700" },
+              ],
+              "body-sm": ["12px", { lineHeight: "20px", fontWeight: "400" }],
+              "headline-xl-mobile": [
+                "28px",
+                {
+                  lineHeight: "36px",
+                  letterSpacing: "-0.01em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg": [
+                "30px",
+                {
+                  lineHeight: "38px",
+                  letterSpacing: "-0.015em",
+                  fontWeight: "600",
+                },
+              ],
+              "body-md": ["14px", { lineHeight: "22px", fontWeight: "400" }],
+              "headline-xl": [
+                "38px",
+                {
+                  lineHeight: "46px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg-mobile": [
+                "24px",
+                {
+                  lineHeight: "32px",
+                  letterSpacing: "-0.01em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-sm": [
+                "20px",
+                { lineHeight: "28px", fontWeight: "600" },
+              ],
+              "headline-md": [
+                "24px",
+                {
+                  lineHeight: "32px",
+                  letterSpacing: "-0.01em",
+                  fontWeight: "600",
+                },
+              ],
+              "label-md": ["14px", { lineHeight: "22px", fontWeight: "500" }],
+              "label-sm": ["12px", { lineHeight: "20px", fontWeight: "500" }],
+              "title-md": ["16px", { lineHeight: "24px", fontWeight: "600" }],
+              "currency-lg": [
+                "24px",
+                {
+                  lineHeight: "32px",
+                  letterSpacing: "-0.01em",
+                  fontWeight: "700",
+                },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="bg-surface font-body-md text-body-md text-on-surface antialiased"
+  >
+    <header
+      class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.06)]"
+    >
+      <div
+        class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm"
+      >
+        <div
+          class="max-w-[1280px] mx-auto px-gutter-lg flex items-center justify-between h-8"
+        >
+          <span
+            >Hotline:
+            <strong class="text-primary font-title-sm text-title-sm"
+              >1800 6868</strong
+            >
+            (Miễn phí)</span
+          >
+          <div class="flex items-center gap-space-lg">
+            <span class="flex items-center gap-space-xs"
+              ><span
+                class="material-symbols-outlined text-[15px] text-secondary"
+                >verified</span
+              >Cam kết tương thích 100%</span
+            ><span class="flex items-center gap-space-xs"
+              ><span class="material-symbols-outlined text-[15px] text-primary"
+                >security</span
+              >Bảo hành chính hãng tận nơi</span
+            ><span class="flex items-center gap-space-xs"
+              ><span
+                class="material-symbols-outlined text-[15px] text-on-surface-variant"
+                >storefront</span
+              >Hệ thống 12 showroom</span
+            >
+          </div>
+        </div>
+      </div>
+      <div class="bg-surface-container-lowest">
+        <div
+          class="max-w-[1280px] mx-auto px-gutter-lg h-20 flex items-center justify-between gap-space-lg"
+        >
+          <div class="flex items-center gap-space-md">
+            <img
+              alt="PC Shop Logo"
+              class="h-8 w-auto object-contain"
+              src="https://lh3.googleusercontent.com/aida/AEtjO1UewCEBuRnmu28fyqf7oWYY5FaeEda_PUA3yNVb5z97FWo5VfCd55lzJa8g_ReE7LvwxSCPMDK5dJ3AvLB915e241vuctztL_FAYd34iEONDmZ4zSMBTZHibGIXTnpsSGuxjXkWcHdnEsf5KX_N6-k4fVJkaLL8p32mUU5dahD2bxFsYF9O0VYcxXD25ChlyqtAVd7djl-1bMQQd1ql4XPBnRhTOt-qsDVndMVaDD8bpQ"
+            />
+            <div class="flex flex-col">
+              <span
+                class="font-headline-sm text-headline-sm text-primary tracking-tight font-bold"
+                >PC SHOP</span
+              ><span
+                class="font-label-sm text-label-sm text-outline tracking-wider uppercase -mt-1"
+                >Hardware &amp; Builder</span
+              >
+            </div>
+          </div>
+          <div class="flex-1 max-w-2xl">
+            <div class="relative flex items-center">
+              <div class="relative flex-1">
+                <input
+                  class="w-full h-10 pl-9 pr-4 rounded-lg bg-surface-container-lowest font-body-md text-body-md text-on-surface placeholder:text-outline shadow-[0_0_0_1px_rgba(0,0,0,0.12)] focus:shadow-[0_0_0_2px_rgba(0,87,194,0.25)] focus:outline-none transition-all"
+                  placeholder="Tìm theo mã linh kiện, socket, chipset, tên sản phẩm (VD: LGA1700, RTX 4070, B760)..."
+                  type="text"
+                /><span
+                  class="material-symbols-outlined absolute left-2.5 top-2.5 text-outline text-[18px]"
+                  >search</span
+                >
+              </div>
+              <button
+                class="h-10 px-space-md bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md rounded-lg ml-space-xs transition-colors flex items-center justify-center"
+              >
+                Tìm kiếm
+              </button>
+            </div>
+            <div
+              class="flex items-center gap-space-xs mt-1.5 font-label-sm text-label-sm text-on-surface-variant"
+            >
+              <span class="text-outline">Gợi ý:</span
+              ><a
+                class="text-on-surface-variant hover:text-primary transition-colors"
+                data-path="vga-cards"
+                href="#"
+                >RTX 4060</a
+              ><span class="text-outline-variant">•</span
+              ><a
+                class="text-on-surface-variant hover:text-primary transition-colors"
+                data-path="cpu-processors"
+                href="#"
+                >i5-13400F</a
+              ><span class="text-outline-variant">•</span
+              ><a
+                class="text-on-surface-variant hover:text-primary transition-colors"
+                data-path="ram-memory"
+                href="#"
+                >DDR5 32GB</a
+              ><span class="text-outline-variant">•</span
+              ><a
+                class="text-on-surface-variant hover:text-primary transition-colors"
+                data-path="power-supplies"
+                href="#"
+                >Nguồn 750W Gold</a
+              >
+            </div>
+          </div>
+          <div class="flex items-center gap-space-md">
+            <a
+              class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-title-sm text-title-sm transition-all shadow-[0_2px_8px_rgba(0,87,194,0.2)]"
+              data-path="pc-builder"
+              href="#"
+              ><span class="material-symbols-outlined text-[18px]"
+                >build_circle</span
+              ><span>Xây dựng cấu hình PC</span></a
+            >
+            <div class="flex items-center gap-space-sm pl-space-xs">
+              <button
+                class="relative p-2 rounded-lg hover:bg-surface-container-low transition-colors text-on-surface-variant hover:text-on-surface"
+              >
+                <span class="material-symbols-outlined text-[22px]"
+                  >notifications</span
+                ><span
+                  class="absolute top-1 right-1 w-4 h-4 bg-error text-on-error font-label-sm text-[10px] rounded-full flex items-center justify-center font-bold"
+                  >3</span
+                ></button
+              ><a
+                class="relative flex items-center gap-space-xs p-2 rounded-lg hover:bg-surface-container-low transition-colors text-on-surface-variant hover:text-on-surface"
+                data-path="cart"
+                href="#"
+                ><span class="material-symbols-outlined text-[22px]"
+                  >shopping_cart</span
+                ><span
+                  class="absolute top-1 left-5 w-4 h-4 bg-primary text-on-primary font-label-sm text-[10px] rounded-full flex items-center justify-center font-bold"
+                  >2</span
+                >
+                <div
+                  class="hidden xl:flex flex-col text-left leading-tight ml-2"
+                >
+                  <span class="font-label-sm text-label-sm text-outline"
+                    >2 món</span
+                  ><span
+                    class="font-currency-md text-currency-md text-primary font-bold"
+                    >34.890.000₫</span
+                  >
+                </div></a
+              >
+              <div class="flex items-center gap-space-sm pl-space-sm">
+                <img
+                  alt="Profile"
+                  class="w-8 h-8 rounded-full object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_hZRahkOGJRyoIebxhTPmVVSvSx6Ul0wMhdT0FPfoe_T5piW_SlDftci7W-SOZi1isXBPqemx75LMUgvi-1wgAJLrTlAkcFuVXUP-lqfzFu2uiRCNNV-Y92BvoqWbB_c0WxVc3tqCHDbG47liMjlaeu28D8Pscub8U-oupReyiBSNQnFeJeqc2pOl7PzRQ-1Xh-FinZ2WbXxXRepCnL3OZiTqJJ-_bHR_BNQQiMpd"
+                />
+                <div class="hidden lg:flex flex-col text-left">
+                  <div class="flex items-center gap-space-xs">
+                    <span class="font-title-sm text-title-sm text-on-surface"
+                      >Nguyễn Hải Nam</span
+                    ><span
+                      class="px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-[10px] font-bold uppercase"
+                      >VIP</span
+                    >
+                  </div>
+                  <span class="font-label-sm text-label-sm text-outline"
+                    >nam.nh@pcshop.vn</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="bg-surface-container-lowest shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+      >
+        <div class="max-w-[1280px] mx-auto px-gutter-lg">
+          <nav
+            class="flex items-center gap-space-lg overflow-x-auto h-12"
+            data-active-classes="text-primary font-title-sm relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
+          >
+            <div
+              class="flex items-center gap-space-xs px-space-md py-2 rounded bg-surface-container-low text-primary font-title-sm text-title-sm cursor-pointer hover:bg-surface-container"
+            >
+              <span class="material-symbols-outlined text-[18px]">menu</span
+              ><span>Tất cả danh mục</span>
+            </div>
+            <a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="cpu-processors"
+              href="#"
+              >Bộ vi xử lý (CPU)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="motherboards"
+              href="#"
+              >Bo mạch chủ (Mainboard)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="ram-memory"
+              href="#"
+              >Bộ nhớ trong (RAM)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="vga-cards"
+              href="#"
+              >Card màn hình (VGA)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="storage-drives"
+              href="#"
+              >Ổ cứng (SSD / HDD)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="power-supplies"
+              href="#"
+              >Nguồn máy tính (PSU)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="cases"
+              href="#"
+              >Vỏ máy tính (Case)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="cooling-systems"
+              href="#"
+              >Tản nhiệt (Cooling)</a
+            ><a
+              class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md py-3 whitespace-nowrap transition-colors"
+              data-path="prebuilt-pc"
+              href="#"
+              >Cấu hình đề xuất</a
+            >
+          </nav>
+        </div>
+      </div>
+    </header>
+    <main class="w-full pt-[176px] bg-surface min-h-[calc(100vh-176px)]">
+      <div class="flex flex-col w-full">
+        <!-- HERO SECTION -->
+        <section class="w-full bg-surface-container-low py-space-xl">
+          <div class="max-w-[1280px] mx-auto px-gutter-lg">
+            <div
+              class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-lg items-start"
+            >
+              <!-- Left Column: Value Proposition & Assurance Metrics -->
+              <div
+                class="lg:col-span-7 flex flex-col justify-center pt-space-xs"
+              >
+                <div
+                  class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded bg-primary/10 text-primary w-fit font-label-sm text-label-sm mb-space-md"
+                >
+                  <span class="material-symbols-outlined text-[16px]"
+                    >verified</span
+                  >
+                  <span class="font-bold">PC Compatibility Engine v4.2</span>
+                  <span class="text-outline-variant">•</span>
+                  <span>Cơ sở dữ liệu hơn 12.500 linh kiện</span>
+                </div>
+                <h1
+                  class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-extrabold mb-space-md leading-tight"
+                >
+                  Xây Dựng Cấu Hình PC
+                  <span class="text-primary">Chuẩn Xác 100%</span> Không Lo Lỗi
+                  Chân Cắm &amp; Xung Đột
+                </h1>
+                <p
+                  class="font-body-lg text-body-lg text-on-surface-variant mb-space-lg leading-relaxed"
+                >
+                  Hệ thống tự động kiểm tra tương thích Socket, Khe RAM, Kích
+                  thước VGA &amp; Công suất nguồn kèm Trợ lý AI Kỹ Thuật tư vấn
+                  tức thì theo ngân sách thực tế.
+                </p>
+                <!-- Core Assurance Badges -->
+                <div
+                  class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm mb-space-lg"
+                >
+                  <div
+                    class="bg-surface-container-lowest p-space-sm rounded-lg shadow-sm flex items-center gap-space-xs"
+                  >
+                    <span
+                      class="material-symbols-outlined text-secondary text-[22px]"
+                      >check_circle</span
+                    >
+                    <div class="flex flex-col">
+                      <span class="font-title-sm text-title-sm text-on-surface"
+                        >Cam kết 0% lỗi</span
+                      >
+                      <span class="font-body-sm text-body-sm text-outline"
+                        >Lắp ráp &amp; cắm nguồn</span
+                      >
+                    </div>
+                  </div>
+                  <div
+                    class="bg-surface-container-lowest p-space-sm rounded-lg shadow-sm flex items-center gap-space-xs"
+                  >
+                    <span
+                      class="material-symbols-outlined text-primary text-[22px]"
+                      >database</span
+                    >
+                    <div class="flex flex-col">
+                      <span class="font-title-sm text-title-sm text-on-surface"
+                        >ERP Đồng bộ</span
+                      >
+                      <span class="font-body-sm text-body-sm text-outline"
+                        >Kho thực tế 12 Showroom</span
+                      >
+                    </div>
+                  </div>
+                  <div
+                    class="bg-surface-container-lowest p-space-sm rounded-lg shadow-sm flex items-center gap-space-xs"
+                  >
+                    <span
+                      class="material-symbols-outlined text-tertiary text-[22px]"
+                      >home_repair_service</span
+                    >
+                    <div class="flex flex-col">
+                      <span class="font-title-sm text-title-sm text-on-surface"
+                        >Bảo hành tại nhà</span
+                      >
+                      <span class="font-body-sm text-body-sm text-outline"
+                        >Đổi mới 30 ngày đầu</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <!-- Quick Action Triggers -->
+                <div
+                  class="flex flex-wrap items-center gap-space-sm pt-space-xs"
+                >
+                  <a
+                    class="h-11 px-space-lg bg-primary hover:bg-primary-container text-on-primary font-title-sm text-title-sm rounded-lg flex items-center gap-space-xs shadow-md transition-all"
+                    data-path="pc-builder"
+                    href="#"
+                  >
+                    <span class="material-symbols-outlined text-[20px]"
+                      >tune</span
+                    >
+                    <span>Mở Trình Xây Dựng Đầy Đủ</span>
+                  </a>
+                  <button
+                    class="h-11 px-space-md bg-surface-container-lowest hover:bg-surface-container text-on-surface font-title-sm text-title-sm rounded-lg shadow-sm flex items-center gap-space-xs transition-colors"
+                    id="guide-modal-btn"
+                  >
+                    <span class="material-symbols-outlined text-[20px]"
+                      >help_outline</span
+                    >
+                    <span>Tra cứu Socket CPU</span>
+                  </button>
+                  <span
+                    class="font-label-sm text-label-sm text-outline ml-auto hidden xl:inline-flex items-center gap-1"
+                  >
+                    <span
+                      class="w-2 h-2 rounded-full bg-secondary-fixed-dim"
+                    ></span>
+                    2.418 người đang dựng cấu hình
+                  </span>
+                </div>
+              </div>
+              <!-- Right Column: Interactive Mini PC Builder Card -->
+              <div class="lg:col-span-5">
+                <div
+                  class="bg-surface-container-lowest rounded-xl shadow-md p-space-lg relative overflow-hidden"
+                >
+                  <!-- Header of Mini Builder -->
+                  <div
+                    class="flex items-center justify-between pb-space-sm mb-space-sm bg-surface-container-low -mx-space-lg -mt-space-lg px-space-lg pt-space-md"
+                  >
+                    <div class="flex items-center gap-space-xs">
+                      <span
+                        class="material-symbols-outlined text-primary text-[20px]"
+                        >memory</span
+                      >
+                      <span
+                        class="font-title-md text-title-md text-on-surface font-bold"
+                        >Xác Thực Nhanh Cặp CPU &amp; Mainboard</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-surface-container-lowest font-label-sm text-label-sm text-primary font-bold"
+                      >Bước 1 &amp; 2</span
+                    >
+                  </div>
+                  <!-- Step 1: CPU Selection -->
+                  <div class="mb-space-md">
+                    <label
+                      class="block font-title-sm text-title-sm text-on-surface mb-1.5 flex items-center justify-between"
+                    >
+                      <span>1. Chọn Bộ Vi Xử Lý (CPU):</span>
+                      <span class="text-outline font-label-sm text-label-sm"
+                        >Kiểm tra chân Socket</span
+                      >
+                    </label>
+                    <div class="relative">
+                      <select
+                        class="w-full h-11 px-space-sm rounded-lg bg-surface-container-low font-body-md text-body-md text-on-surface appearance-none focus:outline-none focus:bg-surface-container-lowest shadow-sm pr-9 cursor-pointer transition-colors"
+                        id="hero-cpu-select"
+                      >
+                        <option
+                          data-price="4990000"
+                          data-socket="LGA1700"
+                          value="intel"
+                        >
+                          Intel Core i5-13400F (LGA1700, 10 nhân 16 luồng) —
+                          4.990.000 ₫
+                        </option>
+                        <option
+                          data-price="5290000"
+                          data-socket="AM5"
+                          value="amd"
+                        >
+                          AMD Ryzen 5 7600 (Socket AM5, 6 nhân 12 luồng) —
+                          5.290.000 ₫
+                        </option>
+                        <option
+                          data-price="9890000"
+                          data-socket="LGA1700"
+                          value="intel-i7"
+                        >
+                          Intel Core i7-14700K (LGA1700, 20 nhân 28 luồng) —
+                          9.890.000 ₫
+                        </option>
+                      </select>
+                      <span
+                        class="material-symbols-outlined absolute right-3 top-3 text-outline pointer-events-none text-[20px]"
+                        >expand_more</span
+                      >
+                    </div>
+                  </div>
+                  <!-- Dynamic Compatibility Status Banner -->
+                  <div
+                    class="mb-space-md p-space-sm rounded-lg bg-secondary-fixed/30 flex items-start gap-space-xs transition-all"
+                    id="hero-compat-banner"
+                  >
+                    <span
+                      class="material-symbols-outlined text-secondary text-[20px] mt-0.5"
+                      >verified_user</span
+                    >
+                    <div class="flex flex-col">
+                      <span
+                        class="font-title-sm text-title-sm text-on-surface font-semibold"
+                        id="hero-compat-title"
+                        >Đã nhận diện Socket LGA1700</span
+                      >
+                      <span
+                        class="font-body-sm text-body-sm text-on-surface-variant"
+                        id="hero-compat-desc"
+                        >Lọc tự động 3 bo mạch chủ Intel B760/Z790 tương thích
+                        100% không cần update BIOS</span
+                      >
+                    </div>
+                  </div>
+                  <!-- Step 2: Motherboard Selection list -->
+                  <div class="mb-space-md">
+                    <div class="flex items-center justify-between mb-1.5">
+                      <span class="font-title-sm text-title-sm text-on-surface"
+                        >2. Chọn Bo Mạch Chủ (Mainboard) Tương Thích:</span
+                      >
+                      <span
+                        class="font-label-sm text-label-sm text-secondary font-medium"
+                        >3 gợi ý khả dụng</span
+                      >
+                    </div>
+                    <!-- Motherboards Container -->
+                    <div class="flex flex-col gap-space-xs" id="hero-mb-list">
+                      <!-- Option 1 -->
+                      <label
+                        class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors has-[:checked]:bg-primary/10"
+                      >
+                        <div class="flex items-center gap-space-sm">
+                          <input
+                            checked=""
+                            class="w-4 h-4 text-primary focus:ring-0 cursor-pointer"
+                            data-name="ASUS TUF B760M-PLUS WIFI D5"
+                            data-price="4450000"
+                            name="hero-mb"
+                            type="radio"
+                            value="asus-b760"
+                          />
+                          <div class="flex flex-col">
+                            <span
+                              class="font-title-sm text-title-sm text-on-surface"
+                              >ASUS TUF B760M-PLUS WIFI D5</span
+                            >
+                            <div
+                              class="flex items-center gap-space-xs text-outline font-label-sm text-label-sm"
+                            >
+                              <span class="text-secondary font-bold"
+                                >LGA1700</span
+                              >
+                              <span>•</span>
+                              <span>DDR5 7200MHz</span>
+                              <span>•</span>
+                              <span class="text-primary">Sẵn 8 chiếc</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <span
+                            class="font-currency-md text-currency-md text-primary font-bold"
+                            >4.450.000 ₫</span
+                          >
+                        </div>
+                      </label>
+                      <!-- Option 2 -->
+                      <label
+                        class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors has-[:checked]:bg-primary/10"
+                      >
+                        <div class="flex items-center gap-space-sm">
+                          <input
+                            class="w-4 h-4 text-primary focus:ring-0 cursor-pointer"
+                            data-name="MSI PRO B760M-A WIFI"
+                            data-price="3890000"
+                            name="hero-mb"
+                            type="radio"
+                            value="msi-b760"
+                          />
+                          <div class="flex flex-col">
+                            <span
+                              class="font-title-sm text-title-sm text-on-surface"
+                              >MSI PRO B760M-A WIFI</span
+                            >
+                            <div
+                              class="flex items-center gap-space-xs text-outline font-label-sm text-label-sm"
+                            >
+                              <span class="text-secondary font-bold"
+                                >LGA1700</span
+                              >
+                              <span>•</span>
+                              <span>DDR5 6800MHz</span>
+                              <span>•</span>
+                              <span class="text-primary">Sẵn 15 chiếc</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <span
+                            class="font-currency-md text-currency-md text-primary font-bold"
+                            >3.890.000 ₫</span
+                          >
+                        </div>
+                      </label>
+                      <!-- Option 3 -->
+                      <label
+                        class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors has-[:checked]:bg-primary/10"
+                      >
+                        <div class="flex items-center gap-space-sm">
+                          <input
+                            class="w-4 h-4 text-primary focus:ring-0 cursor-pointer"
+                            data-name="Gigabyte B760 AORUS ELITE AX"
+                            data-price="4690000"
+                            name="hero-mb"
+                            type="radio"
+                            value="giga-b760"
+                          />
+                          <div class="flex flex-col">
+                            <span
+                              class="font-title-sm text-title-sm text-on-surface"
+                              >Gigabyte B760 AORUS ELITE AX</span
+                            >
+                            <div
+                              class="flex items-center gap-space-xs text-outline font-label-sm text-label-sm"
+                            >
+                              <span class="text-secondary font-bold"
+                                >LGA1700</span
+                              >
+                              <span>•</span>
+                              <span>DDR5 7600MHz</span>
+                              <span>•</span>
+                              <span class="text-primary">Sẵn 4 chiếc</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <span
+                            class="font-currency-md text-currency-md text-primary font-bold"
+                            >4.690.000 ₫</span
+                          >
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  <!-- Price Tally & Dual CTA -->
+                  <div
+                    class="pt-space-sm bg-surface-container-low -mx-space-lg -mb-space-lg px-space-lg pb-space-lg"
+                  >
+                    <div class="flex items-center justify-between mb-space-sm">
+                      <span
+                        class="font-body-md text-body-md text-on-surface-variant"
+                        >Tạm tính Combo (CPU + Main):</span
+                      >
+                      <span
+                        class="font-currency-lg text-currency-lg text-primary font-bold"
+                        id="hero-total-price"
+                        >9.440.000 ₫</span
+                      >
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-space-xs">
+                      <button
+                        class="h-10 px-space-sm rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-title-sm text-title-sm transition-colors flex items-center justify-center gap-1 shadow-sm"
+                        id="add-combo-cart-btn"
+                      >
+                        <span class="material-symbols-outlined text-[18px]"
+                          >add_shopping_cart</span
+                        >
+                        <span>Thêm cặp này vào giỏ</span>
+                      </button>
+                      <a
+                        class="h-10 px-space-sm rounded-lg bg-primary hover:bg-primary-container text-on-primary font-title-sm text-title-sm transition-all flex items-center justify-center gap-1 shadow-sm"
+                        data-path="pc-builder"
+                        href="#"
+                      >
+                        <span>Hoàn thiện PC Builder</span>
+                        <span class="material-symbols-outlined text-[18px]"
+                          >arrow_forward</span
+                        >
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- BRAND LOGOS STRIP -->
+        <section
+          class="w-full bg-surface-container-lowest py-space-md shadow-sm"
+        >
+          <div
+            class="max-w-[1280px] mx-auto px-gutter-lg flex flex-col md:flex-row items-center justify-between gap-space-md"
+          >
+            <div
+              class="flex items-center gap-space-xs whitespace-nowrap text-on-surface-variant font-label-sm text-label-sm"
+            >
+              <span class="material-symbols-outlined text-secondary text-[18px]"
+                >verified</span
+              >
+              <span class="font-semibold text-on-surface"
+                >Đại lý ủy quyền phân phối chính hãng 100%</span
+              >
+              <span class="text-outline">|</span>
+              <span>Bảo hành chính hãng tại Việt Nam</span>
+            </div>
+            <div
+              class="flex items-center flex-wrap justify-center gap-space-lg text-on-surface-variant font-title-md text-title-md font-bold tracking-widest uppercase opacity-75"
+            >
+              <span class="hover:text-primary transition-colors cursor-pointer"
+                >INTEL</span
+              >
+              <span class="hover:text-primary transition-colors cursor-pointer"
+                >AMD</span
+              >
+              <span class="hover:text-primary transition-colors cursor-pointer"
+                >ASUS ROG</span
+              >
+              <span class="hover:text-primary transition-colors cursor-pointer"
+                >MSI</span
+              >
+              <span class="hover:text-primary transition-colors cursor-pointer"
+                >GIGABYTE</span
+              >
+              <span class="hover:text-primary transition-colors cursor-pointer"
+                >CORSAIR</span
+              >
+              <span class="hover:text-primary transition-colors cursor-pointer"
+                >KINGSTON</span
+              >
+            </div>
+          </div>
+        </section>
+        <!-- 8 COMPONENT CATEGORIES TILES -->
+        <section class="w-full py-space-xl">
+          <div class="max-w-[1280px] mx-auto px-gutter-lg">
+            <div
+              class="flex flex-col sm:flex-row sm:items-end justify-between mb-space-lg gap-space-xs"
+            >
+              <div>
+                <div
+                  class="font-label-sm text-label-sm text-primary font-bold tracking-wider uppercase mb-1"
+                >
+                  Cơ sở dữ liệu phần cứng
+                </div>
+                <h2
+                  class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight"
+                >
+                  Danh Mục Linh Kiện Chuyên Sâu
+                </h2>
+              </div>
+              <p
+                class="font-body-md text-body-md text-outline max-w-md text-left sm:text-right"
+              >
+                Mỗi linh kiện đều được gán metadata chi tiết về socket, TDP tiêu
+                thụ, bus RAM và chuẩn giao tiếp PCIe.
+              </p>
+            </div>
+            <!-- 8-Tile Grid -->
+            <div
+              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md"
+            >
+              <!-- Tile 1: CPU -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="cpu-processors"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >memory</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-label-sm font-semibold"
+                      >120+ mẫu sẵn kho</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Bộ Vi Xử Lý (CPU)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    Socket Intel LGA1700, AMD AM5, AM4 đời mới, tối ưu hóa đa
+                    nhân.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>Intel 14th Gen / AMD 7000</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+              <!-- Tile 2: Mainboard -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="motherboards"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >developer_board</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold"
+                      >85+ mẫu</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Bo Mạch Chủ (Mainboard)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    Chipset B760, Z790, B650, X670E hỗ trợ PCIe Gen 5 và WiFi
+                    6E/7.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>ASUS, MSI, Gigabyte</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+              <!-- Tile 3: RAM -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="ram-memory"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >straighten</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold"
+                      >140+ kit</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Bộ Nhớ Trong (RAM)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    DDR4 &amp; DDR5 tản nhiệt thép, hỗ trợ profile ép xung XMP
+                    3.0 &amp; AMD EXPO.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>Bus 3200MHz - 7600MHz</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+              <!-- Tile 4: VGA -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="vga-cards"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >videogame_asset</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-label-sm font-semibold"
+                      >Khuyến mại sâu</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Card Đồ Họa (VGA)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    NVIDIA RTX 40-series và AMD RX 7000-series kèm cảnh báo kích
+                    thước dài.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>Ray Tracing &amp; DLSS 3.5</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+              <!-- Tile 5: Storage -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="storage-drives"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >storage</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold"
+                      >Tốc độ cao</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Ổ Cứng Lưu Trữ (SSD / HDD)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    M.2 NVMe PCIe Gen4/Gen5 lên đến 7400MB/s cùng HDD dung lượng
+                    lớn cho lưu trữ.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>Samsung, Kingston, Crucial</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+              <!-- Tile 6: PSU -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="power-supplies"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >bolt</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold"
+                      >ATX 3.0 Ready</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Nguồn Máy Tính (PSU)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    Chuẩn 80 Plus Bronze/Gold/Platinum, cáp PCIe 5.0 12VHPWR an
+                    toàn tuyệt đối.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>550W - 1200W Modular</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+              <!-- Tile 7: Case -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="cases"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >desktop_windows</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold"
+                      >Airflow tối ưu</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Vỏ Máy Tính (Case)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    Mặt lưới Mesh thông thoáng, kính cường lực, hỗ trợ Radiator
+                    tản nước 360mm.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>Mini-ITX / mATX / ATX</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+              <!-- Tile 8: Cooler -->
+              <a
+                class="group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-path="cooling-systems"
+                href="#"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-space-sm">
+                    <div
+                      class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-[24px]"
+                        >mode_fan</span
+                      >
+                    </div>
+                    <span
+                      class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold"
+                      >Tản Khí &amp; AIO</span
+                    >
+                  </div>
+                  <h3
+                    class="font-title-md text-title-md text-on-surface font-bold group-hover:text-primary transition-colors"
+                  >
+                    Tản Nhiệt (Cooling)
+                  </h3>
+                  <p
+                    class="font-body-sm text-body-sm text-outline mt-1 mb-space-sm"
+                  >
+                    Tản tháp khí Dual-Tower giải nhiệt TDP 250W và tản nhiệt
+                    nước AIO ARGB 240/360mm.
+                  </p>
+                </div>
+                <div
+                  class="pt-space-xs bg-surface-container-low px-space-xs py-1 rounded text-on-surface-variant font-label-sm text-label-sm flex items-center justify-between"
+                >
+                  <span>Thermalright, Deepcool, Corsair</span>
+                  <span
+                    class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary transition-colors"
+                    >chevron_right</span
+                  >
+                </div>
+              </a>
+            </div>
+          </div>
+        </section>
+        <!-- GPU HOT DEALS HORIZONTAL STRIP -->
+        <section class="w-full bg-surface-container-low py-space-xl">
+          <div class="max-w-[1280px] mx-auto px-gutter-lg">
+            <div
+              class="flex flex-col sm:flex-row sm:items-center justify-between mb-space-lg gap-space-sm"
+            >
+              <div>
+                <div class="flex items-center gap-space-xs">
+                  <span class="material-symbols-outlined text-error text-[20px]"
+                    >local_fire_department</span
+                  >
+                  <span
+                    class="font-label-sm text-label-sm text-error font-bold tracking-wider uppercase"
+                    >Giá Sốc Trong Tuần</span
+                  >
+                </div>
+                <h2
+                  class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight"
+                >
+                  Card Đồ Họa Giá Tốt - Tối Ưu Hiệu Năng &amp; Sẵn Sàng Giao Hỏa
+                  Tốc
+                </h2>
+              </div>
+              <a
+                class="text-primary hover:text-primary-container font-title-sm text-title-sm flex items-center gap-1 transition-colors"
+                data-path="vga-cards"
+                href="#"
+              >
+                <span>Xem tất cả card màn hình (58 mã)</span>
+                <span class="material-symbols-outlined text-[18px]"
+                  >arrow_forward</span
+                >
+              </a>
+            </div>
+            <!-- 4 Product Cards Grid -->
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md"
+            >
+              <!-- GPU 1: Gigabyte RTX 4060 EAGLE OC 8GB -->
+              <div
+                class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <!-- Image Area -->
+                  <div
+                    class="relative w-full h-48 bg-surface-container-low rounded-lg mb-space-sm flex items-center justify-center overflow-hidden"
+                  >
+                    <img
+                      class="w-full h-full object-cover"
+                      data-alt="High quality studio shot of a modern Gigabyte RTX 4060 Eagle OC graphics card showing triple fan cooling system, sleek black shroud with metallic blue accents against a neutral tech background."
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDn9zuDGevjljsRnCeQrk9loXDEduwCwpC8RSqEmUZNNtDY1RKo_Mhfw1r5A8kzcy0S5xkclk8h-dXh4RCfKDSjOCkyUsBz72ns8mA6qCjbIGowqufk8QrLVgjrJA0KLgeE9ylDoCPzWanpkRNRs6EabvuGE3LlivW8RnCTMn-Ckf7hDNoL_C8VahRtzP4lck_2FZv9E7DgaJ45GO0d31sSNeZQoym4qIPAinxZvltB"
+                    />
+                    <span
+                      class="absolute top-2 left-2 px-2 py-0.5 rounded bg-error text-on-error font-label-sm text-label-sm font-bold"
+                      >-800.000 ₫</span
+                    >
+                    <span
+                      class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm"
+                      >3 Fan WINDFORCE</span
+                    >
+                  </div>
+                  <!-- Tags -->
+                  <div class="flex flex-wrap gap-1 mb-2">
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-[11px] font-semibold"
+                      >Kho HN &amp; HCM: 14 chiếc</span
+                    >
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-[11px]"
+                      >Nguồn khuyên dùng: 550W</span
+                    >
+                  </div>
+                  <!-- Title -->
+                  <h3
+                    class="font-title-sm text-title-sm text-on-surface font-bold line-clamp-2 hover:text-primary cursor-pointer mb-2"
+                  >
+                    Gigabyte GeForce RTX 4060 EAGLE OC 8GB GDDR6
+                  </h3>
+                  <!-- Specifications Datasheet Mini -->
+                  <div
+                    class="bg-surface-container-low p-space-xs rounded text-[12px] flex flex-col gap-1 text-on-surface-variant mb-space-sm"
+                  >
+                    <div class="flex justify-between">
+                      <span class="text-outline">Chiều dài (Length):</span>
+                      <span class="font-semibold text-on-surface">272 mm</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Cổng xuất hình:</span>
+                      <span class="font-semibold text-on-surface"
+                        >2x DP 1.4a, 2x HDMI 2.1a</span
+                      >
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Bộ nhớ:</span>
+                      <span class="font-semibold text-on-surface"
+                        >8GB GDDR6 128-bit</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <!-- Pricing -->
+                  <div class="flex items-baseline gap-space-xs mb-space-sm">
+                    <span
+                      class="font-currency-lg text-currency-lg text-primary font-bold"
+                      >8.490.000 ₫</span
+                    >
+                    <span
+                      class="font-body-sm text-body-sm text-outline line-through"
+                      >9.290.000 ₫</span
+                    >
+                  </div>
+                  <!-- Actions -->
+                  <div class="grid grid-cols-2 gap-space-xs">
+                    <button
+                      class="h-9 px-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >build</span
+                      >
+                      <span class="text-[12px]">Vào PC Builder</span>
+                    </button>
+                    <button
+                      class="h-9 px-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >shopping_bag</span
+                      >
+                      <span class="text-[12px]">Mua Ngay</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <!-- GPU 2: ASUS Dual RTX 4070 SUPER EVO 12GB -->
+              <div
+                class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <!-- Image Area -->
+                  <div
+                    class="relative w-full h-48 bg-surface-container-low rounded-lg mb-space-sm flex items-center justify-center overflow-hidden"
+                  >
+                    <img
+                      class="w-full h-full object-cover"
+                      data-alt="Product photography of ASUS Dual GeForce RTX 4070 Super graphics card with robust dual axial-tech fans, compact aluminum backplate, clean studio lighting on tech workbench."
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8pLm5482Ktg-Ik2YnnBPnZDw4prdfgMElONSxpulL8thvBQ3tTLnymMGeDaegcSCVVBnPaRtIMHi6szQVWWGmll1w-tv0JhNQi2CkJibdNCoNhxjcDOG1MWNxMie1YKMOdA8YsTX5oMrmTHHoFnoGiLzzXcjemkPVRJQQG5evFaz_gI1ZH6QRtxFFo6gHstW4jBjUWxE6v7SwCL2Wq_c5RhLLZLVoBaDQrGBBWQvm"
+                    />
+                    <span
+                      class="absolute top-2 left-2 px-2 py-0.5 rounded bg-error text-on-error font-label-sm text-label-sm font-bold"
+                      >-1.200.000 ₫</span
+                    >
+                    <span
+                      class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm"
+                      >Dual Fan Axial-Tech</span
+                    >
+                  </div>
+                  <!-- Tags -->
+                  <div class="flex flex-wrap gap-1 mb-2">
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-[11px] font-semibold"
+                      >Sẵn 6 chiếc</span
+                    >
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-[11px]"
+                      >Nguồn khuyên dùng: 650W</span
+                    >
+                  </div>
+                  <!-- Title -->
+                  <h3
+                    class="font-title-sm text-title-sm text-on-surface font-bold line-clamp-2 hover:text-primary cursor-pointer mb-2"
+                  >
+                    ASUS Dual GeForce RTX 4070 SUPER EVO 12GB GDDR6X
+                  </h3>
+                  <!-- Specifications Datasheet Mini -->
+                  <div
+                    class="bg-surface-container-low p-space-xs rounded text-[12px] flex flex-col gap-1 text-on-surface-variant mb-space-sm"
+                  >
+                    <div class="flex justify-between">
+                      <span class="text-outline">Chiều dài (Length):</span>
+                      <span class="font-semibold text-on-surface"
+                        >227 mm (Gọn)</span
+                      >
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Cổng xuất hình:</span>
+                      <span class="font-semibold text-on-surface"
+                        >3x DP 1.4a, 1x HDMI 2.1a</span
+                      >
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Bộ nhớ:</span>
+                      <span class="font-semibold text-on-surface"
+                        >12GB GDDR6X 192-bit</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <!-- Pricing -->
+                  <div class="flex items-baseline gap-space-xs mb-space-sm">
+                    <span
+                      class="font-currency-lg text-currency-lg text-primary font-bold"
+                      >17.890.000 ₫</span
+                    >
+                    <span
+                      class="font-body-sm text-body-sm text-outline line-through"
+                      >19.090.000 ₫</span
+                    >
+                  </div>
+                  <!-- Actions -->
+                  <div class="grid grid-cols-2 gap-space-xs">
+                    <button
+                      class="h-9 px-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >build</span
+                      >
+                      <span class="text-[12px]">Vào PC Builder</span>
+                    </button>
+                    <button
+                      class="h-9 px-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >shopping_bag</span
+                      >
+                      <span class="text-[12px]">Mua Ngay</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <!-- GPU 3: MSI RTX 4060 Ti VENTUS 2X BLACK 8G -->
+              <div
+                class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <!-- Image Area -->
+                  <div
+                    class="relative w-full h-48 bg-surface-container-low rounded-lg mb-space-sm flex items-center justify-center overflow-hidden"
+                  >
+                    <img
+                      class="w-full h-full object-cover"
+                      data-alt="MSI GeForce RTX 4060 Ti Ventus 2X Black graphics card crisp studio product shot, dual torx fans, understated industrial black finish, sharp crisp lighting."
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeFIn94xEsnBErsSLYvqHWXxEgNkE_3NZzta8ivHFN19l36zyjtk9puL0lNjcOBwFOthGjrBAKWacp8oZ5daY43Nt3fwfEsU9o2gvAy4rPRd_7nEjjlZ8KvBNYC3e5G6SR1xyKw29vgfXCSW7B4FA-3GMM7RyRgkXoaJG7tJdasmGnDstH1lfwLllC5cPSH5XwUgHP0CfbZLEUIf9Jw5l-izGV48Tpw6JZhf80jCnD"
+                    />
+                    <span
+                      class="absolute top-2 left-2 px-2 py-0.5 rounded bg-primary text-on-primary font-label-sm text-label-sm font-bold"
+                      >Giá tốt</span
+                    >
+                    <span
+                      class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm"
+                      >2 Fan TORX 4.0</span
+                    >
+                  </div>
+                  <!-- Tags -->
+                  <div class="flex flex-wrap gap-1 mb-2">
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-[11px] font-semibold"
+                      >Sẵn 9 chiếc</span
+                    >
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-[11px]"
+                      >Nguồn khuyên dùng: 550W</span
+                    >
+                  </div>
+                  <!-- Title -->
+                  <h3
+                    class="font-title-sm text-title-sm text-on-surface font-bold line-clamp-2 hover:text-primary cursor-pointer mb-2"
+                  >
+                    MSI GeForce RTX 4060 Ti VENTUS 2X BLACK 8G OC
+                  </h3>
+                  <!-- Specifications Datasheet Mini -->
+                  <div
+                    class="bg-surface-container-low p-space-xs rounded text-[12px] flex flex-col gap-1 text-on-surface-variant mb-space-sm"
+                  >
+                    <div class="flex justify-between">
+                      <span class="text-outline">Chiều dài (Length):</span>
+                      <span class="font-semibold text-on-surface"
+                        >199 mm (Cực gọn)</span
+                      >
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Cổng xuất hình:</span>
+                      <span class="font-semibold text-on-surface"
+                        >3x DP 1.4a, 1x HDMI 2.1a</span
+                      >
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Bộ nhớ:</span>
+                      <span class="font-semibold text-on-surface"
+                        >8GB GDDR6 128-bit</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <!-- Pricing -->
+                  <div class="flex items-baseline gap-space-xs mb-space-sm">
+                    <span
+                      class="font-currency-lg text-currency-lg text-primary font-bold"
+                      >10.990.000 ₫</span
+                    >
+                    <span
+                      class="font-body-sm text-body-sm text-outline line-through"
+                      >11.490.000 ₫</span
+                    >
+                  </div>
+                  <!-- Actions -->
+                  <div class="grid grid-cols-2 gap-space-xs">
+                    <button
+                      class="h-9 px-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >build</span
+                      >
+                      <span class="text-[12px]">Vào PC Builder</span>
+                    </button>
+                    <button
+                      class="h-9 px-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >shopping_bag</span
+                      >
+                      <span class="text-[12px]">Mua Ngay</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <!-- GPU 4: Sapphire PULSE RX 7700 XT 12GB -->
+              <div
+                class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <!-- Image Area -->
+                  <div
+                    class="relative w-full h-48 bg-surface-container-low rounded-lg mb-space-sm flex items-center justify-center overflow-hidden"
+                  >
+                    <img
+                      class="w-full h-full object-cover"
+                      data-alt="Sapphire Pulse AMD Radeon RX 7700 XT graphics card with high-performance dual ball-bearing fans, red accent pulse design elements on sleek black heatsink casing."
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIuyKbd6nvlvGYRLVyCU5n1YNf0LovS5v12PR9Jahn5L-Y0CpIvDEo3G1ojOeBlDPUESdLRbnyDaEm2SZG4DLeVJufilhYgbL7q4g0jJg4toc5u-q1FT1MO0sXtd7Kad9Kps2CZkysEpXOKvZvQZ5opG9V4bVbcKWG-x3O-ZNLqRtBBD3OIG54nS4q5upFqYpay9opujFsMfIPoiZgGMfDn_eMqCpTy2eLBTLmmdNs"
+                    />
+                    <span
+                      class="absolute top-2 left-2 px-2 py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm font-bold"
+                      >AMD RDNA 3</span
+                    >
+                    <span
+                      class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm"
+                      >Dual-X Cooling</span
+                    >
+                  </div>
+                  <!-- Tags -->
+                  <div class="flex flex-wrap gap-1 mb-2">
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-secondary-fixed/40 text-on-secondary-fixed-variant font-label-sm text-[11px] font-semibold"
+                      >Sẵn 5 chiếc</span
+                    >
+                    <span
+                      class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-[11px]"
+                      >Nguồn khuyên dùng: 700W</span
+                    >
+                  </div>
+                  <!-- Title -->
+                  <h3
+                    class="font-title-sm text-title-sm text-on-surface font-bold line-clamp-2 hover:text-primary cursor-pointer mb-2"
+                  >
+                    Sapphire PULSE AMD Radeon RX 7700 XT 12GB GDDR6
+                  </h3>
+                  <!-- Specifications Datasheet Mini -->
+                  <div
+                    class="bg-surface-container-low p-space-xs rounded text-[12px] flex flex-col gap-1 text-on-surface-variant mb-space-sm"
+                  >
+                    <div class="flex justify-between">
+                      <span class="text-outline">Chiều dài (Length):</span>
+                      <span class="font-semibold text-on-surface">280 mm</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Cổng xuất hình:</span>
+                      <span class="font-semibold text-on-surface"
+                        >2x DP 2.1, 2x HDMI 2.1a</span
+                      >
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-outline">Bộ nhớ:</span>
+                      <span class="font-semibold text-on-surface"
+                        >12GB GDDR6 192-bit</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <!-- Pricing -->
+                  <div class="flex items-baseline gap-space-xs mb-space-sm">
+                    <span
+                      class="font-currency-lg text-currency-lg text-primary font-bold"
+                      >12.490.000 ₫</span
+                    >
+                    <span
+                      class="font-body-sm text-body-sm text-outline line-through"
+                      >13.290.000 ₫</span
+                    >
+                  </div>
+                  <!-- Actions -->
+                  <div class="grid grid-cols-2 gap-space-xs">
+                    <button
+                      class="h-9 px-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >build</span
+                      >
+                      <span class="text-[12px]">Vào PC Builder</span>
+                    </button>
+                    <button
+                      class="h-9 px-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-colors flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <span class="material-symbols-outlined text-[16px]"
+                        >shopping_bag</span
+                      >
+                      <span class="text-[12px]">Mua Ngay</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- TWO CORE TECHNICAL FEATURE BLOCKS -->
+        <section class="w-full py-space-xl">
+          <div
+            class="max-w-[1280px] mx-auto px-gutter-lg flex flex-col gap-space-xl"
+          >
+            <!-- Block 1: Hardware Compatibility Engine -->
+            <div
+              class="bg-surface-container-lowest rounded-2xl shadow-sm p-space-lg lg:p-space-xl"
+            >
+              <div
+                class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-lg items-center"
+              >
+                <div class="lg:col-span-7 flex flex-col">
+                  <div
+                    class="inline-flex items-center gap-space-xs text-primary font-label-sm text-label-sm font-bold uppercase tracking-wider mb-2"
+                  >
+                    <span class="material-symbols-outlined text-[18px]"
+                      >rule_folder</span
+                    >
+                    <span>Thuật Toán Kiểm Soát Xung Đột 4 Lớp</span>
+                  </div>
+                  <h2
+                    class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight mb-space-sm"
+                  >
+                    Kiểm Tra Tương Thích Tự Động (Hardware Compatibility Engine)
+                  </h2>
+                  <p
+                    class="font-body-md text-body-md text-on-surface-variant mb-space-md leading-relaxed"
+                  >
+                    Mỗi đơn dựng cấu hình tại PC Shop được bảo vệ bởi engine độc
+                    quyền: Quét chính xác chân cắm Socket CPU &amp; Mainboard,
+                    đối chiếu kích thước chiều dài card đồ họa (VGA Clearance)
+                    với không gian lòng case, kiểm tra độ cao tháp tản nhiệt khí
+                    và tự động tính toán mức công suất nguồn khuyến nghị an toàn
+                    (Power Headroom +20%).
+                  </p>
+                  <!-- 4 Algorithmic Checks List -->
+                  <div
+                    class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm mb-space-md"
+                  >
+                    <div
+                      class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container-low"
+                    >
+                      <span
+                        class="material-symbols-outlined text-secondary text-[20px] mt-0.5"
+                        >pin</span
+                      >
+                      <div class="flex flex-col">
+                        <span
+                          class="font-title-sm text-title-sm text-on-surface"
+                          >Kiểm tra Socket &amp; BIOS</span
+                        >
+                        <span class="font-body-sm text-body-sm text-outline"
+                          >Ngăn chặn 100% tình trạng cắm nhầm chân LGA1700 và
+                          AM5.</span
+                        >
+                      </div>
+                    </div>
+                    <div
+                      class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container-low"
+                    >
+                      <span
+                        class="material-symbols-outlined text-secondary text-[20px] mt-0.5"
+                        >straighten</span
+                      >
+                      <div class="flex flex-col">
+                        <span
+                          class="font-title-sm text-title-sm text-on-surface"
+                          >VGA &amp; Case Clearance</span
+                        >
+                        <span class="font-body-sm text-body-sm text-outline"
+                          >Đo chiều dài card (mm) so khớp với lòng case khi gắn
+                          thêm quạt.</span
+                        >
+                      </div>
+                    </div>
+                    <div
+                      class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container-low"
+                    >
+                      <span
+                        class="material-symbols-outlined text-secondary text-[20px] mt-0.5"
+                        >height</span
+                      >
+                      <div class="flex flex-col">
+                        <span
+                          class="font-title-sm text-title-sm text-on-surface"
+                          >Chiều cao tản khí &amp; Kính case</span
+                        >
+                        <span class="font-body-sm text-body-sm text-outline"
+                          >Xác định khoảng hở nắp kính case, không lo cấn tháp
+                          tản nhiệt.</span
+                        >
+                      </div>
+                    </div>
+                    <div
+                      class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container-low"
+                    >
+                      <span
+                        class="material-symbols-outlined text-secondary text-[20px] mt-0.5"
+                        >energy_program_saving</span
+                      >
+                      <div class="flex flex-col">
+                        <span
+                          class="font-title-sm text-title-sm text-on-surface"
+                          >PSU Calculator + Headroom</span
+                        >
+                        <span class="font-body-sm text-body-sm text-outline"
+                          >Tính công suất đỉnh (Peak Watts) bảo đảm nguồn hoạt
+                          động mát và bền.</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-space-sm">
+                    <a
+                      class="h-10 px-space-md rounded-lg bg-primary hover:bg-primary-container text-on-primary font-title-sm text-title-sm flex items-center gap-1 shadow-sm transition-all"
+                      data-path="pc-builder"
+                      href="#"
+                    >
+                      <span>Thử nghiệm bộ lọc trên PC Builder</span>
+                      <span class="material-symbols-outlined text-[18px]"
+                        >arrow_forward</span
+                      >
+                    </a>
+                  </div>
+                </div>
+                <!-- Technical Schematic Visual Box -->
+                <div
+                  class="lg:col-span-5 bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm"
+                >
+                  <div class="flex items-center justify-between pb-space-xs">
+                    <span
+                      class="font-title-sm text-title-sm text-on-surface font-semibold flex items-center gap-1"
+                    >
+                      <span
+                        class="material-symbols-outlined text-primary text-[18px]"
+                        >biotech</span
+                      >
+                      Báo Cáo Kiểm Tra Thực Thời (Live Check)
+                    </span>
+                    <span
+                      class="px-2 py-0.5 rounded bg-secondary-fixed/50 text-on-secondary-fixed-variant font-label-sm text-label-sm font-bold"
+                      >100% Khớp</span
+                    >
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <div
+                      class="bg-surface-container-lowest p-space-xs rounded flex items-center justify-between"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="material-symbols-outlined text-secondary text-[18px]"
+                          >check_circle</span
+                        >
+                        <span
+                          class="font-body-sm text-body-sm text-on-surface font-medium"
+                          >Socket Intel LGA1700</span
+                        >
+                      </div>
+                      <span class="font-label-sm text-label-sm text-secondary"
+                        >Tương thích hoàn toàn</span
+                      >
+                    </div>
+                    <div
+                      class="bg-surface-container-lowest p-space-xs rounded flex items-center justify-between"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="material-symbols-outlined text-secondary text-[18px]"
+                          >check_circle</span
+                        >
+                        <span
+                          class="font-body-sm text-body-sm text-on-surface font-medium"
+                          >RAM DDR5 2x16GB Bus 6000</span
+                        >
+                      </div>
+                      <span class="font-label-sm text-label-sm text-secondary"
+                        >Hỗ trợ Profile XMP</span
+                      >
+                    </div>
+                    <div
+                      class="bg-surface-container-lowest p-space-xs rounded flex items-center justify-between"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="material-symbols-outlined text-secondary text-[18px]"
+                          >check_circle</span
+                        >
+                        <span
+                          class="font-body-sm text-body-sm text-on-surface font-medium"
+                          >Card 272mm / Khoang Case 340mm</span
+                        >
+                      </div>
+                      <span class="font-label-sm text-label-sm text-secondary"
+                        >Dư 68mm thông thoáng</span
+                      >
+                    </div>
+                    <div
+                      class="bg-surface-container-lowest p-space-xs rounded flex items-center justify-between"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="material-symbols-outlined text-secondary text-[18px]"
+                          >check_circle</span
+                        >
+                        <span
+                          class="font-body-sm text-body-sm text-on-surface font-medium"
+                          >Tải tối đa 380W / Nguồn 650W</span
+                        >
+                      </div>
+                      <span class="font-label-sm text-label-sm text-secondary"
+                        >Headroom 41.5% an toàn</span
+                      >
+                    </div>
+                  </div>
+                  <div
+                    class="p-space-xs rounded bg-surface-container-lowest mt-1 text-[11px] text-outline flex items-center gap-1.5"
+                  >
+                    <span
+                      class="material-symbols-outlined text-[14px] text-primary"
+                      >info</span
+                    >
+                    <span
+                      >Hệ thống tự động kích hoạt tính năng kiểm tra lỗi chéo
+                      khi khách hàng đổi linh kiện.</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Block 2: AI Technical Assistant 24/7 -->
+            <div
+              class="bg-surface-container-lowest rounded-2xl shadow-sm p-space-lg lg:p-space-xl"
+            >
+              <div
+                class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-lg items-center"
+              >
+                <!-- Assistant Interaction Simulation Box -->
+                <div
+                  class="lg:col-span-5 order-2 lg:order-1 bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm"
+                >
+                  <div class="flex items-center gap-space-xs pb-space-xs">
+                    <div
+                      class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center"
+                    >
+                      <span class="material-symbols-outlined text-[18px]"
+                        >smart_toy</span
+                      >
+                    </div>
+                    <div class="flex flex-col">
+                      <span
+                        class="font-title-sm text-title-sm text-on-surface font-bold"
+                        >Trợ Lý AI Phần Cứng (Hardware Bot)</span
+                      >
+                      <span
+                        class="font-label-sm text-label-sm text-secondary flex items-center gap-1"
+                      >
+                        <span
+                          class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"
+                        ></span>
+                        Đang trực tuyến • Sẵn sàng phân tích
+                      </span>
+                    </div>
+                  </div>
+                  <!-- Chat dialogue sample -->
+                  <div class="flex flex-col gap-space-xs">
+                    <!-- User message -->
+                    <div
+                      class="bg-surface-container-lowest p-space-xs rounded-lg rounded-tr-none self-end max-w-[85%] text-right font-body-sm text-body-sm text-on-surface"
+                    >
+                      Tầm 25 triệu cần build máy làm đồ họa Premiere 4K và chơi
+                      CS2 mượt, nên chọn i5-13400F hay Ryzen 5 7600?
+                    </div>
+                    <!-- AI Response -->
+                    <div
+                      class="bg-primary/10 p-space-xs rounded-lg rounded-tl-none self-start max-w-[90%] font-body-sm text-body-sm text-on-surface flex flex-col gap-1"
+                    >
+                      <span
+                        class="font-bold text-primary text-[11px] flex items-center gap-1"
+                      >
+                        <span class="material-symbols-outlined text-[13px]"
+                          >bolt</span
+                        >
+                        Đề xuất tối ưu theo ngân sách:
+                      </span>
+                      <span
+                        >Nên ưu tiên <strong>Intel Core i5-13400F</strong> vì có
+                        công nghệ <em>Intel QuickSync</em> hỗ trợ render preview
+                        Premiere cực mượt mà.</span
+                      >
+                      <span
+                        class="text-[11px] text-outline-variant pt-1 border-t border-primary/10"
+                        >Kho 45 Thái Hà sẵn sàng 8 combo hoàn chỉnh giao trong 2
+                        giờ.</span
+                      >
+                    </div>
+                  </div>
+                  <!-- Quick input pill sample -->
+                  <div class="flex items-center gap-1 pt-1">
+                    <span
+                      class="px-2 py-1 rounded bg-surface-container-lowest text-[11px] font-medium text-primary cursor-pointer hover:bg-primary/10 transition-colors"
+                      >Tối ưu lại với RTX 4060</span
+                    >
+                    <span
+                      class="px-2 py-1 rounded bg-surface-container-lowest text-[11px] font-medium text-primary cursor-pointer hover:bg-primary/10 transition-colors"
+                      >Kiểm tra trả góp 0%</span
+                    >
+                  </div>
+                </div>
+                <div class="lg:col-span-7 order-1 lg:order-2 flex flex-col">
+                  <div
+                    class="inline-flex items-center gap-space-xs text-primary font-label-sm text-label-sm font-bold uppercase tracking-wider mb-2"
+                  >
+                    <span class="material-symbols-outlined text-[18px]"
+                      >psychology</span
+                    >
+                    <span>Cố Vấn Kỹ Thuật Độc Quyền</span>
+                  </div>
+                  <h2
+                    class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight mb-space-sm"
+                  >
+                    Trợ Lý Kỹ Thuật AI Đồng Hành 24/7 (AI Technical Assistant)
+                  </h2>
+                  <p
+                    class="font-body-md text-body-md text-on-surface-variant mb-space-md leading-relaxed"
+                  >
+                    Không còn nỗi lo bỡ ngỡ khi lần đầu tự build case máy tính.
+                    Trợ lý AI kết nối trực tiếp với hệ thống ERP kho và cơ sở dữ
+                    liệu Benchmark thực tế, hỗ trợ phân tích hiệu năng/giá tiền
+                    (P/P), tra cứu thông số kỹ thuật tức thì và cân đối cấu hình
+                    sát nhất theo túi tiền của bạn.
+                  </p>
+                  <div class="flex flex-col gap-space-xs mb-space-md">
+                    <div
+                      class="flex items-center gap-space-xs text-on-surface font-body-md text-body-md"
+                    >
+                      <span
+                        class="material-symbols-outlined text-secondary text-[20px]"
+                        >done_all</span
+                      >
+                      <span
+                        >Tư vấn theo mục đích sử dụng cụ thể: Gaming, Đồ họa 3D,
+                        Lập trình AI, Livestream.</span
+                      >
+                    </div>
+                    <div
+                      class="flex items-center gap-space-xs text-on-surface font-body-md text-body-md"
+                    >
+                      <span
+                        class="material-symbols-outlined text-secondary text-[20px]"
+                        >done_all</span
+                      >
+                      <span
+                        >Báo cáo tồn kho trực tiếp theo chi nhánh gần nhất để
+                        nhận máy ngay trong ngày.</span
+                      >
+                    </div>
+                    <div
+                      class="flex items-center gap-space-xs text-on-surface font-body-md text-body-md"
+                    >
+                      <span
+                        class="material-symbols-outlined text-secondary text-[20px]"
+                        >done_all</span
+                      >
+                      <span
+                        >Tự động tính giảm giá chiết khấu khi mua combo trọn bộ
+                        kèm màn hình.</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-space-sm">
+                    <button
+                      class="h-10 px-space-md rounded-lg bg-primary hover:bg-primary-container text-on-primary font-title-sm text-title-sm flex items-center gap-1 shadow-sm transition-all"
+                      id="open-ai-chat-btn"
+                    >
+                      <span class="material-symbols-outlined text-[18px]"
+                        >chat</span
+                      >
+                      <span>Chat ngay với Trợ lý AI Phần cứng</span>
+                    </button>
+                    <span class="font-label-sm text-label-sm text-outline"
+                      >Miễn phí tư vấn không giới hạn</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- QUICK SOCKET & CLEARANCE MODAL -->
+        <div
+          class="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm hidden items-center justify-center p-4"
+          id="socket-modal"
+        >
+          <div
+            class="bg-surface-container-lowest rounded-xl max-w-xl w-full p-space-lg shadow-xl relative animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div
+              class="flex items-center justify-between pb-space-sm mb-space-md bg-surface-container-low -mx-space-lg -mt-space-lg px-space-lg pt-space-md"
+            >
+              <div class="flex items-center gap-space-xs">
+                <span class="material-symbols-outlined text-primary text-[22px]"
+                  >developer_board</span
+                >
+                <h3
+                  class="font-title-md text-title-md text-on-surface font-bold"
+                >
+                  Bảng Tra Cứu Tương Thích Socket CPU &amp; Chipset
+                </h3>
+              </div>
+              <button
+                class="text-on-surface-variant hover:text-on-surface p-1 rounded transition-colors"
+                id="close-modal-btn"
+              >
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div
+              class="flex flex-col gap-space-sm text-body-sm text-body-sm text-on-surface-variant mb-space-md max-h-[614px] overflow-y-auto"
+            >
+              <div class="p-space-sm bg-surface-container-low rounded-lg">
+                <div
+                  class="font-title-sm text-title-sm text-on-surface font-bold text-primary mb-1"
+                >
+                  Intel LGA1700
+                </div>
+                <p class="mb-1">
+                  <strong>CPU hỗ trợ:</strong> Intel Core Gen 12th (Alder Lake),
+                  Gen 13th (Raptor Lake), Gen 14th (Raptor Lake Refresh).
+                </p>
+                <p>
+                  <strong>Mainboard tương thích:</strong> H610, B660, B760,
+                  Z690, Z790 (Hỗ trợ chuẩn RAM DDR4 hoặc DDR5 tùy bo mạch).
+                </p>
+              </div>
+              <div class="p-space-sm bg-surface-container-low rounded-lg">
+                <div
+                  class="font-title-sm text-title-sm text-on-surface font-bold text-secondary mb-1"
+                >
+                  AMD Socket AM5
+                </div>
+                <p class="mb-1">
+                  <strong>CPU hỗ trợ:</strong> AMD Ryzen 7000-series,
+                  8000G-series, 9000-series.
+                </p>
+                <p>
+                  <strong>Mainboard tương thích:</strong> A620, B650, B650E,
+                  X670, X670E, X870 (Chỉ sử dụng duy nhất chuẩn RAM DDR5).
+                </p>
+              </div>
+              <div class="p-space-sm bg-surface-container-low rounded-lg">
+                <div
+                  class="font-title-sm text-title-sm text-on-surface font-bold text-tertiary mb-1"
+                >
+                  AMD Socket AM4 (Nền tảng tiết kiệm)
+                </div>
+                <p class="mb-1">
+                  <strong>CPU hỗ trợ:</strong> AMD Ryzen 3000, 4000, 5000-series
+                  (VD: R5 5600, R7 5700X3D).
+                </p>
+                <p>
+                  <strong>Mainboard tương thích:</strong> A520, B450, B550, X570
+                  (Sử dụng chuẩn RAM DDR4).
+                </p>
+              </div>
+            </div>
+            <div class="flex justify-end gap-space-xs">
+              <button
+                class="h-9 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors"
+                id="close-modal-footer-btn"
+              >
+                Đóng
+              </button>
+              <a
+                class="h-9 px-space-md rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md transition-all flex items-center justify-center"
+                data-path="pc-builder"
+                href="#"
+              >
+                Vào Trình Lắp Ráp Tự Động
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- TOAST NOTIFICATION CONTAINER -->
+        <div
+          class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-inverse-surface text-inverse-on-surface px-4 py-2.5 rounded-lg shadow-xl font-body-sm text-body-sm hidden items-center gap-2 transition-all"
+          id="toast"
+        >
+          <span
+            class="material-symbols-outlined text-secondary-fixed text-[18px]"
+            >check_circle</span
+          >
+          <span id="toast-text">Đã thêm thành công combo vào giỏ hàng!</span>
+        </div>
+      </div>
+      <script>
+        // Mini PC Builder Dynamic Interactivity
+        (function () {
+          const cpuSelect = document.getElementById("hero-cpu-select");
+          const compatBanner = document.getElementById("hero-compat-banner");
+          const compatTitle = document.getElementById("hero-compat-title");
+          const compatDesc = document.getElementById("hero-compat-desc");
+          const mbList = document.getElementById("hero-mb-list");
+          const totalPriceEl = document.getElementById("hero-total-price");
+          const addComboBtn = document.getElementById("add-combo-cart-btn");
+          const toast = document.getElementById("toast");
+          const toastText = document.getElementById("toast-text");
+
+          // Data maps for Motherboard options according to Socket
+          const mbCatalog = {
+            LGA1700: [
+              {
+                id: "asus-b760",
+                name: "ASUS TUF B760M-PLUS WIFI D5",
+                socket: "LGA1700",
+                ram: "DDR5 7200MHz",
+                stock: 8,
+                price: 4450000,
+              },
+              {
+                id: "msi-b760",
+                name: "MSI PRO B760M-A WIFI",
+                socket: "LGA1700",
+                ram: "DDR5 6800MHz",
+                stock: 15,
+                price: 3890000,
+              },
+              {
+                id: "giga-b760",
+                name: "Gigabyte B760 AORUS ELITE AX",
+                socket: "LGA1700",
+                ram: "DDR5 7600MHz",
+                stock: 4,
+                price: 4690000,
+              },
+            ],
+            AM5: [
+              {
+                id: "asus-b650",
+                name: "ASUS TUF GAMING B650M-PLUS WIFI",
+                socket: "AM5",
+                ram: "DDR5 7600MHz",
+                stock: 11,
+                price: 4890000,
+              },
+              {
+                id: "msi-b650",
+                name: "MSI MAG B650 TOMAHAWK WIFI",
+                socket: "AM5",
+                ram: "DDR5 6600MHz",
+                stock: 6,
+                price: 5490000,
+              },
+              {
+                id: "giga-b650",
+                name: "Gigabyte B650M GAMING PLUS WIFI",
+                socket: "AM5",
+                ram: "DDR5 6400MHz",
+                stock: 9,
+                price: 3990000,
+              },
+            ],
+          };
+
+          function formatVND(number) {
+            return new Intl.NumberFormat("vi-VN").format(number) + " ₫";
+          }
+
+          function calculateTotal() {
+            const selectedCpuOpt = cpuSelect.options[cpuSelect.selectedIndex];
+            const cpuPrice = parseInt(
+              selectedCpuOpt.getAttribute("data-price") || 0,
+              10
+            );
+            const selectedMbRadio = document.querySelector(
+              'input[name="hero-mb"]:checked'
+            );
+            const mbPrice = selectedMbRadio
+              ? parseInt(selectedMbRadio.getAttribute("data-price") || 0, 10)
+              : 0;
+            const total = cpuPrice + mbPrice;
+            totalPriceEl.textContent = formatVND(total);
+          }
+
+          function renderMotherboards(socket) {
+            const boards = mbCatalog[socket] || mbCatalog.LGA1700;
+            mbList.innerHTML = "";
+
+            boards.forEach((item, index) => {
+              const isChecked = index === 0 ? "checked" : "";
+              const itemHtml = `
+          <label class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors has-[:checked]:bg-primary/10">
+            <div class="flex items-center gap-space-sm">
+              <input type="radio" name="hero-mb" value="${
+                item.id
+              }" ${isChecked} class="w-4 h-4 text-primary focus:ring-0 cursor-pointer" data-price="${
+                item.price
+              }" data-name="${item.name}">
+              <div class="flex flex-col">
+                <span class="font-title-sm text-title-sm text-on-surface">${
+                  item.name
+                }</span>
+                <div class="flex items-center gap-space-xs text-outline font-label-sm text-label-sm">
+                  <span class="text-secondary font-bold">${item.socket}</span>
+                  <span>•</span>
+                  <span>${item.ram}</span>
+                  <span>•</span>
+                  <span class="text-primary">Sẵn ${item.stock} chiếc</span>
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="font-currency-md text-currency-md text-primary font-bold">${formatVND(
+                item.price
+              )}</span>
+            </div>
+          </label>
+        `;
+              mbList.insertAdjacentHTML("beforeend", itemHtml);
+            });
+
+            // Attach listener to new radio inputs
+            const radios = document.querySelectorAll('input[name="hero-mb"]');
+            radios.forEach((radio) => {
+              radio.addEventListener("change", calculateTotal);
+            });
+
+            calculateTotal();
+          }
+
+          cpuSelect.addEventListener("change", function () {
+            const selectedOpt = cpuSelect.options[cpuSelect.selectedIndex];
+            const socket = selectedOpt.getAttribute("data-socket");
+
+            if (socket === "LGA1700") {
+              compatTitle.textContent = "Đã nhận diện Socket LGA1700";
+              compatDesc.textContent =
+                "Lọc tự động 3 bo mạch chủ Intel B760/Z790 tương thích 100% không cần update BIOS";
+            } else if (socket === "AM5") {
+              compatTitle.textContent = "Đã nhận diện Socket AMD AM5";
+              compatDesc.textContent =
+                "Lọc tự động 3 bo mạch chủ AMD B650 thế hệ mới, hỗ trợ tối đa bộ nhớ DDR5";
+            }
+
+            renderMotherboards(socket);
+          });
+
+          // Initial listener for initial radios
+          const initialRadios = document.querySelectorAll(
+            'input[name="hero-mb"]'
+          );
+          initialRadios.forEach((radio) => {
+            radio.addEventListener("change", calculateTotal);
+          });
+
+          function showToast(message) {
+            toastText.textContent = message;
+            toast.classList.remove("hidden");
+            toast.classList.add("flex");
+            setTimeout(() => {
+              toast.classList.add("hidden");
+              toast.classList.remove("flex");
+            }, 3200);
+          }
+
+          addComboBtn.addEventListener("click", function () {
+            const selectedCpuOpt = cpuSelect.options[cpuSelect.selectedIndex];
+            const cpuName = selectedCpuOpt.text.split("(")[0].trim();
+            const selectedMbRadio = document.querySelector(
+              'input[name="hero-mb"]:checked'
+            );
+            const mbName = selectedMbRadio
+              ? selectedMbRadio.getAttribute("data-name")
+              : "";
+            showToast(`Đã thêm combo [${cpuName} + ${mbName}] vào giỏ hàng!`);
+          });
+
+          // Modal Handling
+          const guideBtn = document.getElementById("guide-modal-btn");
+          const modal = document.getElementById("socket-modal");
+          const closeModalBtn = document.getElementById("close-modal-btn");
+          const closeModalFooterBtn = document.getElementById(
+            "close-modal-footer-btn"
+          );
+
+          function toggleModal(open) {
+            if (open) {
+              modal.classList.remove("hidden");
+              modal.classList.add("flex");
+            } else {
+              modal.classList.add("hidden");
+              modal.classList.remove("flex");
+            }
+          }
+
+          if (guideBtn)
+            guideBtn.addEventListener("click", () => toggleModal(true));
+          if (closeModalBtn)
+            closeModalBtn.addEventListener("click", () => toggleModal(false));
+          if (closeModalFooterBtn)
+            closeModalFooterBtn.addEventListener("click", () =>
+              toggleModal(false)
+            );
+          if (modal) {
+            modal.addEventListener("click", (e) => {
+              if (e.target === modal) toggleModal(false);
+            });
+          }
+
+          // AI Trigger scroll / simulated alert
+          const openAiChatBtn = document.getElementById("open-ai-chat-btn");
+          if (openAiChatBtn) {
+            openAiChatBtn.addEventListener("click", () => {
+              showToast("Trợ lý AI Phần Cứng đang kết nối trực tuyến...");
+            });
+          }
+
+          // Initial tally calculation
+          calculateTotal();
+        })();
+      </script>
+    </main>
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div class="relative group">
+        <div
+          class="absolute -top-10 right-0 bg-inverse-surface text-inverse-on-surface font-label-sm text-label-sm px-3 py-1.5 rounded shadow-lg whitespace-nowrap opacity-95 pointer-events-none flex items-center gap-1.5"
+        >
+          <span
+            class="w-2 h-2 rounded-full bg-secondary-fixed animate-ping"
+          ></span
+          ><span>Hỏi đáp kỹ thuật &amp; Check tồn kho trực tuyến</span>
+        </div>
+        <button
+          class="flex items-center gap-space-sm h-12 px-space-md rounded-full bg-primary hover:bg-primary-container text-on-primary shadow-[0_6px_16px_rgba(0,87,194,0.35)] transition-all"
+        >
+          <span class="material-symbols-outlined text-[24px]">smart_toy</span
+          ><span class="font-title-sm text-title-sm hidden sm:inline"
+            >Trợ lý AI Phần cứng</span
+          >
+        </button>
+      </div>
+    </div>
+    <footer
+      class="w-full bg-surface-container-lowest mt-space-xl shadow-[0_-1px_6px_rgba(0,0,0,0.03)]"
+    >
+      <div class="max-w-[1280px] mx-auto px-gutter-lg pt-space-xl pb-space-lg">
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-lg"
+        >
+          <div class="flex flex-col gap-space-sm">
+            <h4 class="font-title-md text-title-md text-on-surface">
+              Tra cứu &amp; Hướng dẫn kỹ thuật
+            </h4>
+            <ul
+              class="flex flex-col gap-space-xs font-body-md text-body-md text-on-surface-variant"
+            >
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Bảng tương thích Socket CPU &amp; Mainboard
+              </li>
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Công cụ ước tính công suất nguồn (PSU Calculator)
+              </li>
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Kích thước Clearance VGA &amp; Case
+              </li>
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Hướng dẫn cấu hình RAID và NVMe PCIe 4.0/5.0
+              </li>
+            </ul>
+          </div>
+          <div class="flex flex-col gap-space-sm">
+            <h4 class="font-title-md text-title-md text-on-surface">
+              Chính sách &amp; Bảo hành
+            </h4>
+            <ul
+              class="flex flex-col gap-space-xs font-body-md text-body-md text-on-surface-variant"
+            >
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Cam kết tương thích linh kiện 100%
+              </li>
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Bảo hành đổi mới 30 ngày lỗi phần cứng
+              </li>
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Bảo hành tận nơi cho doanh nghiệp &amp; streamer
+              </li>
+              <li class="hover:text-primary transition-colors cursor-pointer">
+                Chính sách thu cũ đổi mới linh kiện
+              </li>
+            </ul>
+          </div>
+          <div class="flex flex-col gap-space-sm">
+            <h4 class="font-title-md text-title-md text-on-surface">
+              Hệ thống kho &amp; Showroom
+            </h4>
+            <div
+              class="font-body-md text-body-md text-on-surface-variant flex flex-col gap-space-xs"
+            >
+              <p>
+                <strong class="text-on-surface font-title-sm text-title-sm"
+                  >Hà Nội:</strong
+                >
+                45 Thái Hà, Q. Đống Đa &amp; 180 Cầu Giấy (Kho hàng sẵn sàng)
+              </p>
+              <p>
+                <strong class="text-on-surface font-title-sm text-title-sm"
+                  >TP. Hồ Chí Minh:</strong
+                >
+                242 Bùi Thị Xuân, Q.1 &amp; 386 Võ Văn Tần, Q.3
+              </p>
+              <p
+                class="font-label-sm text-label-sm text-secondary flex items-center gap-1 mt-1"
+              >
+                <span class="material-symbols-outlined text-[16px]"
+                  >check_circle</span
+                >Kho trung tâm: Giao hỏa tốc 2 giờ nội thành
+              </p>
+            </div>
+          </div>
+          <div class="flex flex-col gap-space-sm">
+            <h4 class="font-title-md text-title-md text-on-surface">
+              Nhà phân phối ủy quyền
+            </h4>
+            <p class="font-body-sm text-body-sm text-on-surface-variant">
+              Sản phẩm phân phối chính thức từ Asus ROG, MSI, Gigabyte Aorus,
+              Intel, AMD, Corsair, Kingston.
+            </p>
+            <div class="flex flex-wrap gap-space-xs mt-1">
+              <span
+                class="px-2 py-1 rounded bg-surface-container font-label-sm text-[11px] text-on-surface"
+                >Chính Hãng 100%</span
+              ><span
+                class="px-2 py-1 rounded bg-surface-container font-label-sm text-[11px] text-on-surface"
+                >VAT Đầy Đủ</span
+              ><span
+                class="px-2 py-1 rounded bg-surface-container font-label-sm text-[11px] text-on-surface"
+                >VNPAY / Momo</span
+              ><span
+                class="px-2 py-1 rounded bg-surface-container font-label-sm text-[11px] text-on-surface"
+                >Trả Góp 0%</span
+              >
+            </div>
+          </div>
+        </div>
+        <div
+          class="mt-space-lg pt-space-md flex flex-col sm:flex-row items-center justify-between text-outline font-label-sm text-label-sm gap-space-sm"
+        >
+          <span
+            >© 2025 PC Shop Vietnam JSC. Nền tảng thương mại điện tử linh kiện
+            máy tính chuyên nghiệp.</span
+          ><span>Giấy phép ĐKKD số: 0108927482 do Sở KH&amp;ĐT cấp.</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
