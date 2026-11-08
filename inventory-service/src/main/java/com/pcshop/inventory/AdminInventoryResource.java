@@ -24,8 +24,11 @@ import jakarta.ws.rs.core.Response;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Màn hình quản lý kho của trang admin: xem tồn, nhập kho, lịch sử biến động, thống kê sắp hết hàng. */
-@Path("/api/v1/admin")
+/**
+ * Màn hình quản lý kho của trang admin: xem tồn, nhập kho, lịch sử biến động.
+ * Nhập kho từ Excel: {@link AdminStockImportResource}; thống kê sắp hết hàng: {@link AdminInventoryStatsResource}.
+ */
+@Path("/api/v1/admin/inventory")
 public class AdminInventoryResource {
 
     public record ImportLineRequest(@NotBlank String sku, String productId, @Min(1) int quantity) {
@@ -48,7 +51,6 @@ public class AdminInventoryResource {
     StockExcelService excel;
 
     @GET
-    @Path("/inventory")
     @RolesAllowed({"STAFF", "ADMIN"})
     public ResponseData<PageResponse<Inventory>> list(@QueryParam("warehouseId") Long warehouseId,
                                                       @QueryParam("lowStock") @DefaultValue("false") boolean lowStock,
@@ -59,7 +61,7 @@ public class AdminInventoryResource {
 
     /** EXP-3: file Excel tồn kho, cùng bộ lọc với danh sách. */
     @GET
-    @Path("/inventory/export")
+    @Path("/export")
     @RolesAllowed({"STAFF", "ADMIN"})
     @Blocking
     public Response export(@QueryParam("warehouseId") Long warehouseId,
@@ -69,7 +71,7 @@ public class AdminInventoryResource {
 
     /** Nhập kho nhiều dòng (permission inventory:write, kiểm tra trong service). */
     @POST
-    @Path("/inventory/import")
+    @Path("/import")
     @Authenticated
     public ResponseData<List<Inventory>> importStock(@Valid ImportRequest request) {
         List<InventoryService.ImportLine> lines = request.lines().stream()
@@ -80,7 +82,7 @@ public class AdminInventoryResource {
     }
 
     @GET
-    @Path("/inventory/movements")
+    @Path("/movements")
     @RolesAllowed({"STAFF", "ADMIN"})
     public ResponseData<PageResponse<StockMovement>> movements(@QueryParam("sku") String sku,
                                                                @QueryParam("from") LocalDate from,
@@ -88,14 +90,6 @@ public class AdminInventoryResource {
                                                                @QueryParam("page") @DefaultValue("0") int page,
                                                                @QueryParam("size") @DefaultValue("50") int size) {
         return ResponseData.success(page(movements.search(sku, from, to), page, size));
-    }
-
-    /** Thống kê: các dòng tồn kho có số có thể bán không vượt mức tối thiểu. */
-    @GET
-    @Path("/stats/low-stock")
-    @RolesAllowed({"STAFF", "ADMIN"})
-    public ResponseData<List<Inventory>> lowStock() {
-        return ResponseData.success(inventories.lowStock());
     }
 
     private static <T> PageResponse<T> page(PanacheQuery<T> query, int page, int size) {

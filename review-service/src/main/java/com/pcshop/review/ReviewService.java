@@ -5,6 +5,8 @@ import com.pcshop.contracts.BulkErrors;
 import com.pcshop.contracts.BusinessException;
 import com.pcshop.contracts.ErrorCode;
 import com.pcshop.contracts.PageResponse;
+import com.pcshop.events.Events;
+import com.pcshop.events.Topics;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -22,23 +24,27 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Nghiệp vụ review: khách sửa/gỡ review của mình, nhân viên kiểm duyệt và trả lời, thống kê điểm.
- * TODO (đợt 2): duyệt/gỡ review → bắn event để catalog cập nhật rating_avg/rating_count.
+ * Tập review ĐÃ DUYỆT của sản phẩm đổi (duyệt, từ chối, gỡ) → event review.stats-changed (catalog cập nhật
+ * rating_avg/rating_count); trả lời → review.replied (notification báo người viết).
  */
 @Service
 public class ReviewService {
 
-    public record Stats(String productId, double average, long count, Map<Integer, Long> distribution) {
+    public record Stats(String productId, String sku, double average, long count, Map<Integer, Long> distribution) {
     }
 
     private final ReviewRepository reviews;
     private final ReactiveMongoTemplate mongo;
+    private final ReviewOutbox outbox;
 
-    public ReviewService(ReviewRepository reviews, ReactiveMongoTemplate mongo) {
+    public ReviewService(ReviewRepository reviews, ReactiveMongoTemplate mongo, ReviewOutbox outbox) {
         this.reviews = reviews;
         this.mongo = mongo;
+        this.outbox = outbox;
     }
 
     /**
@@ -78,9 +84,11 @@ public class ReviewService {
             if (r.getStatus() == Review.DELETED_BY_USER) {
                 return Mono.just(r);
             }
+            boolean wasApproved = r.getStatus() == Review.APPROVED;
             r.setStatus(Review.DELETED_BY_USER);
             r.setUpdatedAt(Instant.now());
-            return reviews.save(r);
+            return reviews.save(r).flatMap(saved -> wasApproved ? publishStats(saved.getProductId(), saved.getSku())
+                    .thenReturn(saved) : Mono.just(saved));
         });
     }
 
@@ -107,7 +115,7 @@ public class ReviewService {
             checkModeration(r, toStatus, allowedFrom);
             r.setStatus(toStatus);
             r.setUpdatedAt(Instant.now());
-            return reviews.save(r);
+            return reviews.save(r).flatMap(saved -> publishStats(saved.getProductId(), saved.getSku()).thenReturn(saved));
         });
     }
 
@@ -128,7 +136,12 @@ public class ReviewService {
                 r.setUpdatedAt(now);
             });
             found.sort(Comparator.comparing(r -> ids.indexOf(r.getId())));
-            return Flux.fromIterable(found).concatMap(reviews::save).collectList();
+            Map<String, String> skuByProduct = new LinkedHashMap<>();
+            found.forEach(r -> skuByProduct.putIfAbsent(r.getProductId(), r.getSku()));
+            return Flux.fromIterable(found).concatMap(reviews::save).collectList()
+                    .flatMap(saved -> Flux.fromIterable(skuByProduct.entrySet())
+                            .concatMap(e -> publishStats(e.getKey(), e.getValue()))
+                            .then(Mono.just(saved)));
         });
     }
 
@@ -150,15 +163,27 @@ public class ReviewService {
             reply.setRepliedAt(Instant.now());
             r.setAdminReply(reply);
             r.setUpdatedAt(Instant.now());
-            // TODO (đợt 2): bắn event review.replied → notification-service báo cho người viết
-            return reviews.save(r);
+            return reviews.save(r).flatMap(saved -> outbox.add(Topics.REVIEW_REPLIED, saved.getId(),
+                    new Events.ReviewReplied(UUID.randomUUID(), saved.getId(), saved.getUserId(), saved.getProductId(),
+                            saved.getSku(), content, Instant.now())).thenReturn(saved));
         });
     }
 
-    /** Điểm trung bình, số lượt và phân bố 1–5 sao, chỉ tính review APPROVED. */
-    public Mono<Stats> stats(String productId) {
+    /** Review đã duyệt của một sản phẩm (theo productId hoặc sku), mới nhất trước, phân trang. */
+    public Mono<PageResponse<Review>> listApproved(String productId, String sku, int page, int size) {
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safePage = Math.max(page, 0);
+        Criteria criteria = productCriteria(productId, sku).and("status").is(Review.APPROVED);
+        Query query = new Query(criteria).with(Sort.by(Sort.Direction.DESC, "created_at"))
+                .skip((long) safePage * safeSize).limit(safeSize);
+        return Mono.zip(mongo.find(query, Review.class).collectList(), mongo.count(new Query(criteria), Review.class))
+                .map(t -> PageResponse.of(t.getT1(), safePage, safeSize, t.getT2()));
+    }
+
+    /** Điểm trung bình, số lượt và phân bố 1–5 sao, chỉ tính review APPROVED (theo productId hoặc sku). */
+    public Mono<Stats> stats(String productId, String sku) {
         Aggregation agg = Aggregation.newAggregation(
-                Aggregation.match(Criteria.where("product_id").is(productId).and("status").is(Review.APPROVED)),
+                Aggregation.match(productCriteria(productId, sku).and("status").is(Review.APPROVED)),
                 Aggregation.group("rating").count().as("count"));
         return mongo.aggregate(agg, "reviews", org.bson.Document.class)
                 .collectList()
@@ -178,8 +203,24 @@ public class ReviewService {
                     }
                     double avg = count == 0 ? 0 : BigDecimal.valueOf((double) sum / count)
                             .setScale(2, RoundingMode.HALF_UP).doubleValue();
-                    return new Stats(productId, avg, count, distribution);
+                    return new Stats(productId, sku, avg, count, distribution);
                 });
+    }
+
+    /** Thống kê sao hiện tại của sản phẩm → outbox (catalog ghi đè rating_avg/rating_count). */
+    private Mono<Void> publishStats(String productId, String sku) {
+        return stats(productId, null).flatMap(st -> outbox.add(Topics.REVIEW_STATS_CHANGED, productId,
+                new Events.ReviewStatsChanged(UUID.randomUUID(), productId, sku, st.average(), st.count(), Instant.now())));
+    }
+
+    /** Lọc theo productId (ObjectId của catalog) hoặc sku; phải có ít nhất một. */
+    private static Criteria productCriteria(String productId, String sku) {
+        boolean byId = productId != null && !productId.isBlank();
+        boolean bySku = sku != null && !sku.isBlank();
+        if (!byId && !bySku) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Cần productId hoặc sku");
+        }
+        return byId ? Criteria.where("product_id").is(productId) : Criteria.where("sku").is(sku);
     }
 
     // ------------------------------------------------------------------

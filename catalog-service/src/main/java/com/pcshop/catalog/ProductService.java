@@ -205,7 +205,7 @@ public class ProductService {
         Product p = findBySku(sku);
         applyInput(p, in, sku);
         touch(p, user);
-        products.update(p);
+        products.updateEditable(p);
         // TODO (đợt 2): bắn event product.updated cho ai-service (re-embed nếu content_hash đổi)
         return p;
     }
@@ -215,7 +215,7 @@ public class ProductService {
         Product p = findBySku(sku);
         checkStatus(p, status);
         boolean hiding = applyStatus(p, status, user);
-        products.update(p);
+        products.updateEditable(p);
         if (hiding) {
             notifyHidden(p);
         }
@@ -269,7 +269,7 @@ public class ProductService {
                 products.persist(toCreate);
             }
             if (!toUpdate.isEmpty()) {
-                products.update(toUpdate);
+                products.updateEditable(toUpdate);
             }
         } catch (RuntimeException e) {
             log.errorf(e, "Lưu hàng loạt %d sản phẩm lỗi giữa chừng, kiểm tra lại các SKU %s", inputs.size(), skus);
@@ -305,7 +305,7 @@ public class ProductService {
             existing.price = in.price();
         }
         touch(existing, user);
-        products.update(existing);
+        products.updateEditable(existing);
         if (priceChanged) {
             recordPrice(existing, oldPrice, existing.price, "IMPORT", user);
         }
@@ -324,7 +324,7 @@ public class ProductService {
         }
         errors.throwIfAny();
         List<Product> hidden = found.stream().filter(p -> applyStatus(p, status, user)).toList();
-        products.update(found);
+        products.updateEditable(found);
         hidden.forEach(this::notifyHidden);
         return found;
     }
@@ -351,7 +351,7 @@ public class ProductService {
             applyPrice(p, item.price(), item.originalPrice(), user);
         }
         List<Product> changed = List.copyOf(found.values());
-        products.update(changed);
+        products.updateEditable(changed);
         for (Product p : changed) {
             BigDecimal old = oldPrices.get(p.sku);
             if (old == null || old.compareTo(p.price) != 0) {
@@ -371,7 +371,7 @@ public class ProductService {
         checkPriceChanged(p, newPrice, originalPrice);
         BigDecimal oldPrice = p.price;
         applyPrice(p, newPrice, originalPrice, user);
-        products.update(p);
+        products.updateEditable(p);
         if (oldPrice == null || oldPrice.compareTo(newPrice) != 0) {
             recordPrice(p, oldPrice, newPrice, reason, user);
         }

@@ -9,11 +9,13 @@ import java.util.UUID;
  * Đổi nhà cung cấp token (Keycloak ↔ tự viết) chỉ phải sửa chỗ đọc token, không sửa nghiệp vụ.
  *
  * @param id          claim "sub" (UUID của Keycloak)
- * @param username    claim "preferred_username"
+ * @param username    claim "preferred_username" (tên đăng nhập: KHÔNG hiển thị công khai)
+ * @param displayName claim "name" (họ tên); null nếu tài khoản chưa khai tên
  * @param roles       realm role: CUSTOMER, STAFF, ADMIN
  * @param permissions client role của pcshop-backend: product:write, order:update-status...
  */
-public record AuthUser(UUID id, String username, String email, List<String> roles, List<String> permissions) {
+public record AuthUser(UUID id, String username, String email, String displayName, List<String> roles,
+                       List<String> permissions) {
 
     public AuthUser {
         roles = roles == null ? List.of() : List.copyOf(roles);

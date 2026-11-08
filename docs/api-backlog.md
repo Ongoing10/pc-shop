@@ -3,6 +3,9 @@
 Danh sách API cần có theo plan. Claude Code đối chiếu với code hiện tại, đánh dấu `[x]` khi đã có và chạy được.
 Mọi đường dẫn bắt đầu bằng `/api/v1`, đi qua gateway `:8000`. Quy ước code: xem `CLAUDE.md`.
 
+> **Kiểm thử 2026-11-07** (sau đợt sửa lỗi đánh giá backend, `docs/api-changelog.md`): 9 service profile `local`, newman
+> folder 0–8 và 10: 177 request, 493 assertion, 0 lỗi. Unit test mới: catalog 7, ordering 8.
+>
 > **Kiểm thử 2026-10-27:** chạy cả 10 service profile `local`, `newman` với `docs/postman` (folder 0–8, bỏ AI):
 > 143 request, 402 assertion, 0 lỗi, chạy lặp lại vẫn qua. Đã đánh `[x]` toàn bộ Đợt 0–1 trừ Import/Export (chưa làm).
 > INF-1/INF-2 kiểm tra riêng (Swagger 8 service, `X-Request-Id` tới log). Lệnh chạy: README mục 6.
@@ -74,7 +77,7 @@ bảng có `status` → chuyển trạng thái; đơn hàng/thanh toán → khô
 - [x] **ORD-3** `POST /checkout/preview` (user): từ giỏ hàng (gọi cart) + mã voucher + địa chỉ → giá hiện tại, giảm giá, phí ship (quy tắc đơn giản, cấu hình được), tổng, cảnh báo hết hàng. KHÔNG tạo đơn.
 - [x] **ORD-4** Đơn hàng admin (STAFF): `GET /admin/orders?status=&from=&to=&q=&page=&size=` · `PATCH /admin/orders/{code}/status` (perm:order:update-status; kiểm tra chuyển trạng thái hợp lệ; ghi `order_status_histories` cùng transaction).
 - [x] **ORD-5** `GET /orders/{code}/timeline` (owner).
-- [x] **ORD-6** `POST /orders/{code}/cancel` (owner, chỉ khi PENDING/AWAITING_PAYMENT) → CANCELLED + lý do + lịch sử. Nhả hàng: TODO event `order.cancelled` (đợt 2).
+- [x] **ORD-6** `POST /orders/{code}/cancel` (owner, khi PENDING/AWAITING_PAYMENT/CONFIRMED và chưa thanh toán) → CANCELLED + lý do + lịch sử; event `order.cancelled` → inventory nhả hàng.
 
 ### inventory-service
 
@@ -119,8 +122,13 @@ bảng có `status` → chuyển trạng thái; đơn hàng/thanh toán → khô
 
 ## Đợt 2: cần Kafka/Saga hoặc dịch vụ ngoài (làm riêng, KHÔNG trong đợt này)
 
-- [ ] `POST /orders` (tạo đơn + outbox + Saga giữ hàng) · `POST /payments/{orderCode}` · `GET /payments/vnpay/ipn` · `GET /payments/vnpay/return`
-- [ ] Event `product.updated` / `product.hidden` / `order.cancelled`; thông báo realtime (WebSocket/SSE)
+- [x] `POST /orders` (tạo đơn + outbox + Saga giữ hàng, 2026-11-08)
+- [x] `POST /payments/{orderCode}` · `GET /payments/vnpay/ipn` · `GET /payments/vnpay/return` · hoàn tiền `/admin/refunds` (2026-11-08; MoMo qua cổng giả lập)
+- [x] Event `order.completed` / `order.returned` → catalog sold_count (2026-11-08)
+- [x] Review → `rating_avg`/`rating_count` (event `review.stats-changed`); "đã mua hàng" cho review (`GET /orders/purchased`);
+      notification sinh thông báo từ `order.status-changed`, `review.replied` (2026-11-08)
+- [x] Thông báo realtime (SSE `/notifications/stream`) và email theo trạng thái đơn (Mailpit khi chạy local) (2026-11-08)
+- [ ] Event `product.updated` / `product.hidden` (AI)
 - [ ] Rate limit `/ai/**` ở gateway
 
 ## Ngoài phạm vi đợt này

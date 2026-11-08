@@ -7,8 +7,7 @@
  * Quy ước khi đọc file này:
  * - Mọi response JSON bọc trong ResponseData<T>. Kiểu ghi ở comment "→" của từng endpoint là kiểu của trường `data`.
  * - Tên trường JSON là camelCase, TRỪ envelope (`error_status`...) và kết quả import Excel (`import_id`, `total_rows`...).
- * - Tiền là `number` (VND, giá trị nguyên). Service Spring (cart/ordering/review) có thể trả `7990000.0`,
- *   service Quarkus trả `7990000`: cả hai đều là number trong JS, không cần xử lý riêng.
+ * - Tiền là `number` (VND, giá trị nguyên, vd `7990000`) ở mọi service.
  * - Trường đánh dấu `| null` thật sự có thể là null trong response. Trường có `?` là tùy chọn khi GỬI lên.
  * - Mã trạng thái là số nguyên; bảng nghĩa nằm ở các enum bên dưới (giữ dạng `const` object + union số).
  */
@@ -34,8 +33,8 @@ export type ErrorCode =
   | 'FORBIDDEN' // 403
   | 'NOT_FOUND' // 404
   | 'CONFLICT' // 409 (trùng mã, optimistic lock)
-  | 'OUT_OF_STOCK' // 409 (dành cho đặt hàng, đợt 2)
-  | 'VOUCHER_INVALID' // 422 (dự phòng, hiện validate voucher trả 200 + valid=false)
+  | 'OUT_OF_STOCK' // 409 (POST /orders: giỏ có món không mua được, data = warnings)
+  | 'VOUCHER_INVALID' // 422 (POST /orders với mã không dùng được; /vouchers/validate vẫn trả 200 + valid=false)
   | 'EXTERNAL_SERVICE_ERROR' // 502
   | 'INTERNAL_ERROR'; // 500
 
@@ -60,15 +59,14 @@ export interface BulkErrorItem {
 export type BulkErrorResponse = ResponseData<BulkErrorItem[]>;
 
 /**
- * Lỗi kiểm tra dữ liệu (Bean Validation) của service QUARKUS (customer, catalog, inventory, media, notification, ai):
- * KHÔNG bọc ResponseData. HTTP 400, Content-Type application/json.
- * `field` có dạng "<method>.<param>.<field>", vd "update.request.phoneNumber" → lấy phần sau dấu chấm cuối.
+ * Lỗi kiểm tra dữ liệu (Bean Validation) ở MỌI service (Spring lẫn Quarkus): HTTP 400, error_code "VALIDATION_ERROR".
+ * `field` là đường dẫn trong body: "receiverPhone", "lines[0].quantity"; lỗi ở tham số query thì là tên tham số.
  */
-export interface ConstraintViolationReport {
-  title: 'Constraint Violation';
-  status: 400;
-  violations: { field: string; message: string }[];
+export interface FieldError {
+  field: string;
+  message: string;
 }
+export type ValidationErrorResponse = ResponseData<FieldError[]>;
 
 /**
  * Định dạng ngày giờ trong JSON (đều là string):
@@ -83,7 +81,7 @@ export type IsoDate = string;
 export type UUID = string;
 /** ObjectId MongoDB dạng hex 24 ký tự */
 export type ObjectIdHex = string;
-/** Tiền VND, số nguyên (có thể có ".0" ở service Spring) */
+/** Tiền VND, số nguyên */
 export type Money = number;
 
 /** 4 cột audit của entity Postgres (customer, inventory, ordering, media). Thứ tự này đứng ĐẦU object trong JSON. */
@@ -149,6 +147,10 @@ export type Permission = 'product:write' | 'order:update-status' | 'inventory:wr
 export type PcSlot = 'CPU' | 'MAINBOARD' | 'RAM' | 'GPU' | 'STORAGE' | 'PSU' | 'CASE' | 'COOLER';
 /** Mục đích cấu hình (chuỗi tự do ở backend, đây là các giá trị đã dùng) */
 export type PcBuildPurpose = 'GAMING' | 'DESIGN' | 'OFFICE' | 'AI_ML' | 'STREAMING' | string;
+/**
+ * products: perm product:write, ảnh ≤ 5 MB · avatars: user, ảnh ≤ 2 MB · reviews: user, ảnh ≤ 5 MB ·
+ * knowledge-docs: ADMIN/knowledge:write, pdf/docx/txt/md ≤ 20 MB. Ảnh = jpg, jpeg, png, webp, gif.
+ */
 export type MediaBucket = 'products' | 'avatars' | 'reviews' | 'knowledge-docs';
 export type ProductSort =
   | 'price,asc' | 'price,desc' | 'name,asc' | 'name,desc'
@@ -378,9 +380,10 @@ export interface Product {
   tags: string[] | null;
   warrantyMonths: number | null;
   status: ProductStatus;
-  /** chưa được cập nhật tự động (đợt 2), seed để null */
+  /** tự cập nhật khi review được duyệt/từ chối/gỡ (chỉ tính review đã duyệt); null = chưa từng có review */
   ratingAvg: number | null;
   ratingCount: number | null;
+  /** tự cập nhật khi đơn hoàn tất / trả hàng (vài giây sau); sản phẩm cũ có thể null */
   soldCount: number | null;
   createdBy: UUID | null;
   createdAt: IsoInstant | null;
@@ -470,6 +473,8 @@ export interface CompatibilityCheckResult {
   issues: CompatibilityIssue[];
   /** tổng compat.tdp_w của mọi linh kiện (W), CHƯA nhân hệ số an toàn 1.2 */
   estimatedWattage: number;
+  /** công suất nguồn tối thiểu (W) = estimatedWattage × hệ số của luật PSU_WATTAGE; dùng cho đồng hồ công suất */
+  requiredWattage: number;
 }
 
 export interface PcBuildItem {
@@ -499,6 +504,8 @@ export interface PcBuild {
   items: PcBuildItem[];
   totalPrice: Money;
   estimatedWattage: number;
+  /** null với cấu hình lưu trước 2026-11-07 */
+  requiredWattage: number | null;
   compatibilityResult: PcBuildCompatibilityResult;
   isAiGenerated: boolean;
   isPublic: boolean;
@@ -648,12 +655,19 @@ export interface CompatibilityRule {
   name: string;
   /** "*" = mọi linh kiện (dùng cho tổng công suất) */
   sourceCategory: string;
-  targetCategory: string;
-  ruleType: 'EQUALS' | 'IN' | 'LTE' | 'SUM_TDP_LTE_WATTAGE';
-  sourceField: string;
-  targetField: string;
+  /** null với MAX_COUNT */
+  targetCategory: string | null;
+  /**
+   * SUM_LTE: tổng source_field của nhóm nguồn ≤ target_field của từng linh kiện đích (vd số thanh RAM ≤ ram_slots).
+   * MAX_COUNT: số linh kiện thuộc sourceCategory ≤ maxCount.
+   */
+  ruleType: 'EQUALS' | 'IN' | 'LTE' | 'SUM_TDP_LTE_WATTAGE' | 'SUM_LTE' | 'MAX_COUNT';
+  sourceField: string | null;
+  targetField: string | null;
   /** hệ số an toàn, vd 1.2 (chỉ SUM_TDP_LTE_WATTAGE) */
   margin: number | null;
+  /** chỉ MAX_COUNT */
+  maxCount: number | null;
   severity: CompatSeverity;
   /** placeholder {source} {target} {sv} {tv} */
   messageTemplate: string;
@@ -667,12 +681,17 @@ export interface RuleRequest {
   code: string;
   name: string;
   sourceCategory: string;
-  targetCategory: string;
+  /** bắt buộc trừ MAX_COUNT */
+  targetCategory?: string | null;
   ruleType: CompatibilityRule['ruleType'];
-  sourceField: string;
-  targetField: string;
+  /** bắt buộc trừ MAX_COUNT */
+  sourceField?: string | null;
+  /** bắt buộc trừ MAX_COUNT */
+  targetField?: string | null;
   /** > 0 */
   margin?: number | null;
+  /** > 0, bắt buộc với MAX_COUNT */
+  maxCount?: number | null;
   severity: CompatSeverity;
   messageTemplate: string;
 }
@@ -801,7 +820,7 @@ export interface SetCartQuantityRequest {
 // 7. ordering-service (đơn hàng, voucher, checkout, thống kê)
 // =====================================================================================================
 
-/** Đơn hàng (không bao giờ xóa). GET /orders/my → Order[] (không phân trang, mới nhất trước). */
+/** Đơn hàng (không bao giờ xóa). GET /orders/my?status=&page=&size= → PageResponse<Order> (mới nhất trước, size mặc định 10). */
 export interface Order extends Audit {
   id: number;
   /** vd "DH20261024000001" */
@@ -824,6 +843,8 @@ export interface Order extends Audit {
   cancelReason: string | null;
   placedAt: IsoLocalDateTime | null;
   completedAt: IsoLocalDateTime | null;
+  /** optimistic lock: tăng mỗi lần đổi trạng thái */
+  version: number;
 }
 
 /** Dòng sản phẩm của đơn: snapshot lúc đặt, không đổi theo catalog. */
@@ -857,12 +878,97 @@ export interface OrderStatusHistory {
   fromStatus: OrderStatus | null;
   toStatus: OrderStatus;
   reason: string | null;
-  /** null = hệ thống (vd callback thanh toán) */
+  /** null = hệ thống (Saga giữ hàng, hủy đơn quá hạn thanh toán) */
   createdBy: UUID | null;
   createdAt: IsoLocalDateTime;
 }
 
-/** POST /orders/{code}/cancel (body) → Order. Chỉ chủ đơn, chỉ khi status 1 hoặc 2. */
+/**
+ * POST /orders (body) → OrderDetail với order.status = 1 (đang giữ hàng). Tiền tính lại từ giỏ trên server như preview;
+ * giỏ bị xóa sau khi đặt. Lỗi: 409 CONFLICT (expectedTotal lệch, data = CheckoutPreview mới), 409 OUT_OF_STOCK
+ * (data = string[] cảnh báo), 422 VOUCHER_INVALID, 400 (giỏ trống, địa chỉ không phải của mình).
+ * Header tùy chọn `Idempotency-Key` (1–64 ký tự): gửi lại cùng key → trả đúng đơn đã tạo (chống bấm đúp).
+ */
+export interface PlaceOrderRequest {
+  /** bắt buộc, id trong sổ địa chỉ của chính user */
+  addressId: number;
+  voucherCode?: string | null;
+  /** 1-COD, 2-VNPAY, 3-MOMO */
+  paymentMethod: PaymentMethod;
+  /** ≤ 500 ký tự */
+  note?: string | null;
+  /** totalAmount của preview đang hiển thị; khác số server tính → 409 */
+  expectedTotal?: Money | null;
+}
+
+/** POST /payments/{orderCode} → PaymentInit. Chủ đơn, đơn status 2 (chờ thanh toán), không phải COD. */
+export interface PaymentInit {
+  /** <mã đơn>-<lần>, vd "DH20261108001008-01" */
+  paymentCode: string;
+  /** chuyển trình duyệt tới đây */
+  paymentUrl: string;
+  amount: Money;
+  /** hết hạn thanh toán (placedAt + 15 phút); quá hạn đơn tự hủy */
+  expiresAt: IsoLocalDateTime;
+  /** MOCK = trang thanh toán giả lập của backend (MoMo, hoặc chưa cấu hình VNPay) */
+  gateway: 'VNPAY' | 'MOCK';
+}
+export const PaymentRecordStatus = { PENDING: 1, SUCCESS: 2, FAILED: 3, EXPIRED: 4, REFUNDED: 5 } as const;
+/** 1 Đang chờ · 2 Thành công · 3 Thất bại · 4 Hết hạn · 5 Đã hoàn tiền */
+export type PaymentRecordStatus = (typeof PaymentRecordStatus)[keyof typeof PaymentRecordStatus];
+/** GET /payments/{orderCode} → Payment[] (mới nhất trước). Đơn COD hoàn tất có một dòng paymentCode "COD-<mã đơn>". */
+export interface Payment {
+  id: number;
+  orderId: number;
+  paymentCode: string;
+  method: PaymentMethod;
+  amount: Money;
+  status: PaymentRecordStatus;
+  /** mã giao dịch phía cổng (vnp_TransactionNo) */
+  providerTransactionId: string | null;
+  bankCode: string | null;
+  paidAt: IsoLocalDateTime | null;
+  expiredAt: IsoLocalDateTime | null;
+  createdAt: IsoLocalDateTime;
+  updatedAt: IsoLocalDateTime;
+}
+/** Query result của trang kết quả thanh toán (/orders/payment-result?orderCode=&result=) */
+export type PaymentResult = 'success' | 'failed' | 'refund' | 'invalid';
+
+export const RefundStatus = { PENDING: 1, COMPLETED: 2 } as const;
+/** 1 Chờ hoàn · 2 Đã hoàn */
+export type RefundStatus = (typeof RefundStatus)[keyof typeof RefundStatus];
+/** GET /admin/refunds?status= → RefundView[] (mới nhất trước, tối đa 500) */
+export interface RefundView {
+  id: number;
+  orderCode: string;
+  paymentCode: string;
+  method: PaymentMethod;
+  amount: Money;
+  reason: string | null;
+  status: RefundStatus;
+  providerRefundId: string | null;
+  createdAt: IsoLocalDateTime;
+  updatedAt: IsoLocalDateTime;
+}
+/** PATCH /admin/refunds/{id}/complete (body, có thể bỏ trống) → Refund (đơn chuyển paymentStatus = 3) */
+export interface CompleteRefundRequest {
+  /** mã hoàn tiền phía cổng, ≤ 100 ký tự */
+  providerRefundId?: string | null;
+}
+export interface Refund {
+  id: number;
+  paymentId: number;
+  amount: Money;
+  reason: string | null;
+  status: RefundStatus;
+  providerRefundId: string | null;
+  createdBy: UUID | null;
+  createdAt: IsoLocalDateTime;
+  updatedAt: IsoLocalDateTime;
+}
+
+/** POST /orders/{code}/cancel (body) → Order. Chỉ chủ đơn, khi status 1, 2 hoặc 4 và paymentStatus ≠ 2. */
 export interface CancelOrderRequest {
   /** bắt buộc, ≤ 255 ký tự */
   reason: string;
@@ -893,11 +999,10 @@ export interface BulkOrderStatusRequest extends OrderStatusRequest {
 }
 
 /**
- * Voucher công khai: GET /vouchers → PublicVoucher[] (chỉ is_active=1, KHÔNG lọc theo hạn dùng/lượt).
- * Không có applicableCategories (dùng POST /vouchers/validate để biết có áp được không).
+ * Voucher công khai: GET /vouchers → PublicVoucher[] (chỉ mã dùng được ngay: đang bật, trong hạn, còn lượt).
+ * Số lượt của riêng user: dùng POST /vouchers/validate.
  */
-export interface PublicVoucher extends Audit {
-  id: number;
+export interface PublicVoucher {
   code: string;
   name: string;
   type: VoucherType;
@@ -905,13 +1010,11 @@ export interface PublicVoucher extends Audit {
   value: number;
   maxDiscountAmount: Money | null;
   minOrderAmount: Money | null;
-  usageLimit: number | null;
-  usedCount: number | null;
+  /** rỗng = mọi danh mục */
+  applicableCategories: string[];
   perUserLimit: number | null;
   startAt: IsoLocalDateTime | null;
   endAt: IsoLocalDateTime | null;
-  isActive: ActiveFlag;
-  version: number;
 }
 
 /** Voucher cho màn admin: GET /admin/vouchers → AdminVoucher[] (kể cả đã tắt), các API admin voucher → AdminVoucher */
@@ -1025,8 +1128,8 @@ export interface StatsOverview {
   revenue: Money;
   /** tổng tiền mọi đơn trừ 7, 8 */
   grossRevenue: Money;
-  /** khóa là mã trạng thái DẠNG CHUỖI ("3", "6"...); trạng thái không có đơn thì không có khóa */
-  ordersByStatus: Partial<Record<`${OrderStatus}`, number>>;
+  /** khóa là mã trạng thái DẠNG CHUỖI ("1".."8"), luôn đủ 8 khóa (0 nếu không có đơn) */
+  ordersByStatus: Record<`${OrderStatus}`, number>;
 }
 /** GET /admin/stats/top-products?from=&to=&limit= → TopProduct[] (limit 1–100, mặc định 10) */
 export interface TopProduct {
@@ -1135,7 +1238,7 @@ export interface AdminReply {
   repliedAt: IsoInstant;
 }
 
-/** Đánh giá: GET /reviews?productId= → Review[] (chỉ APPROVED, mới nhất trước, không phân trang) */
+/** Đánh giá: GET /reviews?sku=|productId=&page=&size= → PageResponse<Review> (chỉ APPROVED, mới nhất trước, size mặc định 10) */
 export interface Review {
   /** ObjectId hex */
   id: string;
@@ -1143,14 +1246,14 @@ export interface Review {
   productId: ObjectIdHex;
   sku: string;
   userId: UUID;
-  /** hiện là username (preferred_username) */
+  /** họ tên người viết (claim `name`), "Khách hàng" nếu chưa khai tên; review cũ (trước 2026-11-07) là username */
   userDisplayName: string;
   orderCode: string | null;
   /** 1–5 */
   rating: number;
   title: string | null;
   content: string | null;
-  /** chưa kiểm tra tự động, hiện luôn false */
+  /** người viết có đơn HOÀN TẤT chứa SKU lúc viết (orderCode = đơn đó) → nhãn "Đã mua hàng" */
   verifiedPurchase: boolean;
   status: ReviewStatus;
   helpfulCount: number;
@@ -1161,7 +1264,9 @@ export interface Review {
 
 /** POST /reviews (body) → Review (status 1). Mỗi user một review cho một sản phẩm → 409 nếu đã có. */
 export interface CreateReviewRequest {
-  productId: ObjectIdHex;
+  /** không bắt buộc: server tra theo sku; gửi thì phải khớp */
+  productId?: ObjectIdHex;
+  /** sản phẩm phải tồn tại và đã công bố, không thì 400 */
   sku: string;
   /** 1–5 */
   rating: number;
@@ -1173,9 +1278,11 @@ export interface CreateReviewRequest {
 /** PUT /reviews/{id} (body) → Review. Chỉ khi status 1. */
 export type UpdateReviewRequest = Omit<CreateReviewRequest, 'productId' | 'sku'>;
 
-/** GET /reviews/stats?productId= → ReviewStats (chỉ APPROVED) */
+/** GET /reviews/stats?sku=|productId= → ReviewStats (chỉ APPROVED) */
 export interface ReviewStats {
-  productId: ObjectIdHex;
+  /** giá trị tham số đã gửi; tham số không gửi thì null */
+  productId: ObjectIdHex | null;
+  sku: string | null;
   /** làm tròn 2 chữ số; 0 khi chưa có review */
   average: number;
   count: number;
@@ -1220,7 +1327,33 @@ export interface BulkDeleteIdsRequest {
 // 11. notification-service
 // =====================================================================================================
 
-/** GET /notifications?page=&size= → PageResponse<Notification> (mới nhất trước) */
+/** POST /notifications/stream-ticket → StreamTicket (dùng cho EventSource, 1 lần) */
+export interface StreamTicket {
+  ticket: string;
+  /** giây */
+  expiresIn: number;
+}
+/**
+ * Event của GET /notifications/stream (SSE). `data` là JSON:
+ * - "unread-count": {count} — gửi ngay khi mở kết nối
+ * - "notification": Notification — thông báo mới
+ */
+export type NotificationStreamEvent =
+  | { event: 'unread-count'; data: { count: number } }
+  | { event: 'notification'; data: Notification };
+
+/** GET /orders/purchased?sku= → PurchaseCheck (người đang đăng nhập đã mua SKU chưa: có đơn hoàn tất chứa SKU) */
+export interface PurchaseCheck {
+  sku: string;
+  purchased: boolean;
+  /** đơn hoàn tất gần nhất chứa SKU */
+  orderCode: string | null;
+}
+
+/**
+ * GET /notifications?page=&size= → PageResponse<Notification> (mới nhất trước).
+ * Tự sinh từ event: ORDER_STATUS / PAYMENT (data: {order_code, status}), REVIEW_REPLY (data: {review_id, sku, product_id}).
+ */
 export interface Notification {
   id: ObjectIdHex;
   userId: UUID;

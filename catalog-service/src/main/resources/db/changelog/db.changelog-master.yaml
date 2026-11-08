@@ -363,3 +363,45 @@ databaseChangeLog:
                 { "q": { "sku": "STORAGE-KINGSTON-NV2-1T" },
                   "u": { "$set": { "compat.interface": "NVMe", "compat.form_factor": "M.2 2280" } } }
               ] }
+
+  - changeSet:
+      id: 20261107-1000-rules-count-slots-cooler
+      author: pcshop
+      changes:
+        # Luật về số lượng (MAX_COUNT, SUM_LTE) và tản nhiệt; dùng thông số đã có trong spec_schema
+        # (MAINBOARD.ram_slots, RAM.modules, COOLER.supported_sockets/height_mm, CASE.max_cooler_height_mm).
+        - insertMany:
+            collectionName: compatibility_rules
+            documents: >
+              [
+                { "code": "ONE_CPU", "name": "Chỉ một CPU", "source_category": "CPU", "rule_type": "MAX_COUNT", "max_count": 1,
+                  "severity": 1, "message_template": "Cấu hình chỉ lắp được {tv} CPU, đang chọn {sv}", "is_active": 1 },
+                { "code": "ONE_MAINBOARD", "name": "Chỉ một mainboard", "source_category": "MAINBOARD", "rule_type": "MAX_COUNT", "max_count": 1,
+                  "severity": 1, "message_template": "Cấu hình chỉ lắp được {tv} mainboard, đang chọn {sv}", "is_active": 1 },
+                { "code": "ONE_PSU", "name": "Chỉ một nguồn", "source_category": "PSU", "rule_type": "MAX_COUNT", "max_count": 1,
+                  "severity": 1, "message_template": "Cấu hình chỉ cần {tv} nguồn, đang chọn {sv}", "is_active": 1 },
+                { "code": "ONE_CASE", "name": "Chỉ một case", "source_category": "CASE", "rule_type": "MAX_COUNT", "max_count": 1,
+                  "severity": 1, "message_template": "Cấu hình chỉ cần {tv} case, đang chọn {sv}", "is_active": 1 },
+                { "code": "ONE_COOLER", "name": "Chỉ một tản nhiệt CPU", "source_category": "COOLER", "rule_type": "MAX_COUNT", "max_count": 1,
+                  "severity": 2, "message_template": "Đang chọn {sv} tản nhiệt CPU, thường chỉ cần {tv}", "is_active": 1 },
+                { "code": "RAM_MB_SLOTS", "name": "Số thanh RAM không vượt số khe mainboard", "source_category": "RAM", "target_category": "MAINBOARD",
+                  "rule_type": "SUM_LTE", "source_field": "modules", "target_field": "ram_slots", "severity": 1,
+                  "message_template": "Tổng {sv} thanh RAM vượt số khe của mainboard {target} ({tv} khe)", "is_active": 1 },
+                { "code": "CPU_COOLER_SOCKET", "name": "Tản nhiệt hỗ trợ socket CPU", "source_category": "CPU", "target_category": "COOLER",
+                  "rule_type": "IN", "source_field": "socket", "target_field": "supported_sockets", "severity": 1,
+                  "message_template": "CPU {source} dùng socket {sv}, tản nhiệt {target} chỉ hỗ trợ {tv}", "is_active": 1 },
+                { "code": "COOLER_CASE_HEIGHT", "name": "Chiều cao tản nhiệt vừa case", "source_category": "COOLER", "target_category": "CASE",
+                  "rule_type": "LTE", "source_field": "height_mm", "target_field": "max_cooler_height_mm", "severity": 1,
+                  "message_template": "Tản nhiệt {source} cao {sv}mm, case {target} chỉ chứa tối đa {tv}mm", "is_active": 1 }
+              ]
+
+  # Chống xử lý trùng event Kafka (SoldCountConsumer): tự xóa sau 30 ngày (plan mục 4, vòng đời dữ liệu)
+  - changeSet:
+      id: 20261108-1000-processed-events-ttl
+      author: pcshop
+      changes:
+        # Không createCollection: consumer có thể đã tạo collection khi ghi lần đầu; createIndex tự tạo nếu chưa có
+        - createIndex:
+            collectionName: processed_events
+            keys: '{ "processed_at": 1 }'
+            options: '{ "name": "ttl_processed_events", "expireAfterSeconds": 2592000 }'

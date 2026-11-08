@@ -3,6 +3,7 @@ package com.pcshop.ordering.stats;
 import com.pcshop.contracts.BusinessException;
 import com.pcshop.contracts.ErrorCode;
 import com.pcshop.contracts.ResponseData;
+import com.pcshop.ordering.order.Order;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -63,7 +64,11 @@ public class StatsController {
                 .all()
                 .collectList()
                 .map(rows -> {
+                    // đủ 8 trạng thái (0 nếu không có đơn) để biểu đồ không phải tự điền khóa thiếu
                     Map<Integer, Long> byStatus = new LinkedHashMap<>();
+                    for (int s = Order.PENDING; s <= Order.RETURNED; s++) {
+                        byStatus.put(s, 0L);
+                    }
                     long total = 0;
                     BigDecimal revenue = BigDecimal.ZERO;
                     BigDecimal gross = BigDecimal.ZERO;
@@ -73,10 +78,10 @@ public class StatsController {
                         BigDecimal amount = (BigDecimal) r[2];
                         byStatus.put(status, count);
                         total += count;
-                        if (status == 6) {
+                        if (status == Order.COMPLETED) {
                             revenue = revenue.add(amount);
                         }
-                        if (status != 7 && status != 8) {
+                        if (status != Order.CANCELLED && status != Order.RETURNED) {
                             gross = gross.add(amount);
                         }
                     }
@@ -100,7 +105,7 @@ public class StatsController {
                                SUM(i.quantity) AS qty, SUM(i.line_total) AS revenue
                         FROM order_items i
                         JOIN orders o ON o.id = i.order_id
-                        WHERE o.created_at >= :from AND o.created_at < :to AND o.status NOT IN (7, 8)
+                        WHERE o.created_at >= :from AND o.created_at < :to AND o.status NOT IN (7, 8) -- CANCELLED, RETURNED
                         GROUP BY i.sku
                         ORDER BY qty DESC, revenue DESC
                         LIMIT :limit

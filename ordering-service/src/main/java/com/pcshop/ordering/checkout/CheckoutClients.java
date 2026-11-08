@@ -67,6 +67,23 @@ public class CheckoutClients {
                 });
     }
 
+    /**
+     * Xóa giỏ sau khi đặt đơn (đơn chỉ đặt được khi mọi món trong giỏ đều mua được, nên đơn chứa cả giỏ).
+     * Không ném lỗi: đơn đã ghi rồi, giỏ còn sót thì khách tự xóa.
+     */
+    public Mono<Void> clearCart(String token) {
+        return cart.delete().uri("/api/v1/cart")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .retrieve()
+                .toBodilessEntity()
+                .timeout(TIMEOUT)
+                .then()
+                .onErrorResume(e -> {
+                    log.warn("Không xóa được giỏ hàng sau khi đặt đơn: {}", e.toString());
+                    return Mono.empty();
+                });
+    }
+
     /** Địa chỉ của chính user theo id; không có (hoặc của người khác) thì lỗi 400. */
     public Mono<Address> address(String token, long addressId) {
         return customer.get().uri("/api/v1/addresses")

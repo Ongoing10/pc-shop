@@ -121,6 +121,20 @@ public class UserAccountService {
                 List.copyOf(new LinkedHashSet<>(permissions)));
     }
 
+    /** Khóa/mở khóa tài khoản (enabled của Keycloak); user đang đăng nhập bị khóa khi token hết hạn. */
+    public void setEnabled(String userId, boolean enabled) {
+        call(() -> { keycloak.update(userId, Map.of("enabled", enabled)); return null; });
+    }
+
+    /** Danh sách tài khoản theo từ khóa (username, email, tên) và tổng số, phân trang. */
+    public List<KeycloakAdminApi.KeycloakUser> search(String keyword, int first, int max) {
+        return call(() -> keycloak.search(keyword, first, max, true));
+    }
+
+    public int count(String keyword) {
+        return call(() -> keycloak.count(keyword));
+    }
+
     /** Tài khoản Keycloak + role hiện tại của ứng dụng (form "Đặt quyền" cần giá trị đang có). */
     public UserDetail detail(String userId) {
         KeycloakAdminApi.KeycloakUser user = call(() -> keycloak.get(userId));

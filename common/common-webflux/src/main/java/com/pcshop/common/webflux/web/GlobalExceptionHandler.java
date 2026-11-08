@@ -2,6 +2,7 @@ package com.pcshop.common.webflux.web;
 
 import com.pcshop.contracts.BusinessException;
 import com.pcshop.contracts.ErrorCode;
+import com.pcshop.contracts.FieldError;
 import com.pcshop.contracts.ResponseData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,10 +13,13 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /** Mọi lỗi đều trả về envelope {@link ResponseData}, giống phía Quarkus. */
@@ -30,12 +34,28 @@ public class GlobalExceptionHandler {
                 .body(ResponseData.error(ex.code(), ex.getMessage(), ex.details()));
     }
 
+    /** data = [{field, message}] giống phía Quarkus (ValidationExceptionMapper) để frontend gắn lỗi vào ô form. */
     @ExceptionHandler(WebExchangeBindException.class)
-    public ResponseEntity<ResponseData<Void>> validation(WebExchangeBindException ex) {
-        String message = ex.getFieldErrors().stream()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                .collect(Collectors.joining(", "));
-        return build(ErrorCode.VALIDATION_ERROR, message);
+    public ResponseEntity<ResponseData<Object>> validation(WebExchangeBindException ex) {
+        List<FieldError> errors = ex.getFieldErrors().stream()
+                .map(e -> new FieldError(e.getField(), e.getDefaultMessage()))
+                .sorted(Comparator.comparing(FieldError::field))
+                .toList();
+        String message = errors.stream().map(e -> e.field() + ": " + e.message()).collect(Collectors.joining(", "));
+        return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.httpStatus())
+                .body(ResponseData.error(ErrorCode.VALIDATION_ERROR, message, errors));
+    }
+
+    /** Ràng buộc trên @RequestParam/@PathVariable (Spring 6.1+), không có thì rơi xuống 500. */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ResponseData<Object>> methodValidation(HandlerMethodValidationException ex) {
+        List<FieldError> errors = ex.getParameterValidationResults().stream()
+                .flatMap(r -> r.getResolvableErrors().stream().map(e -> new FieldError(
+                        r.getMethodParameter().getParameterName(), e.getDefaultMessage())))
+                .toList();
+        String message = errors.stream().map(e -> e.field() + ": " + e.message()).collect(Collectors.joining(", "));
+        return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.httpStatus())
+                .body(ResponseData.error(ErrorCode.VALIDATION_ERROR, message, errors));
     }
 
     @ExceptionHandler(ServerWebInputException.class)

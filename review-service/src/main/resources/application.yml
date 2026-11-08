@@ -16,6 +16,11 @@ spring:
         jwt:
           issuer-uri: http://localhost:8180/realms/pcshop
           jwk-set-uri: http://localhost:8180/realms/pcshop/protocol/openid-connect/certs
+  # Kafka luôn chạy local (docker compose), cả 2 profile
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      acks: all
   data:
     mongodb:
       # Lưu UUID theo chuẩn mới (binary subtype 4)
@@ -27,6 +32,11 @@ pcshop:
     public-get-paths:
       - /api/v1/reviews
       - /api/v1/reviews/*
+  # Kiểm tra sản phẩm khi viết review (luôn chạy trên máy mình ở cả 2 profile, giống gateway)
+  services:
+    catalog: http://localhost:8082
+    # Đánh dấu "đã mua hàng": GET /api/v1/orders/purchased?sku= (chuyển tiếp token của người viết)
+    ordering: http://localhost:8084
 
 management:
   endpoints:

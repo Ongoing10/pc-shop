@@ -1,5 +1,8 @@
 package com.pcshop.common.webflux;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.pcshop.common.webflux.security.KeycloakJwtConverter;
 import com.pcshop.common.webflux.web.GlobalExceptionHandler;
 import com.pcshop.common.webflux.web.RequestIdWebFilter;
@@ -11,6 +14,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +23,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+
+import java.io.IOException;
+import java.math.BigDecimal;
 
 /**
  * Cấu hình bảo mật chung cho service WebFlux.
@@ -66,6 +73,21 @@ public class CommonWebfluxAutoConfiguration {
                 })
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)))
                 .build();
+    }
+
+    /**
+     * Số tiền từ cột NUMERIC(15,2) ra JSON là {@code 7990000.00}/{@code 7990000.0}: bỏ số 0 thừa, viết dạng thường
+     * ({@code 7990000}, không phải {@code 7.99E+6}) cho giống phía Quarkus. Vẫn là số JSON, không đổi thành chuỗi.
+     */
+    @Bean
+    public Jackson2ObjectMapperBuilderCustomizer pcshopBigDecimalCustomizer() {
+        return builder -> builder.serializerByType(BigDecimal.class, new JsonSerializer<BigDecimal>() {
+            @Override
+            public void serialize(BigDecimal value, JsonGenerator gen, SerializerProvider serializers)
+                    throws IOException {
+                gen.writeNumber(value.stripTrailingZeros().toPlainString());
+            }
+        });
     }
 
     /** Nút "Authorize" trên Swagger UI: dán access token lấy từ Keycloak (README mục 5). */

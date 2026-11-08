@@ -45,6 +45,13 @@ public final class BulkErrors {
         return this;
     }
 
+    /** Ghi lỗi {@code reason} cho mọi id có trong {@code requested} mà không có trong {@code found}. */
+    public BulkErrors missing(Collection<?> requested, Collection<?> found, String reason) {
+        Set<Object> foundIds = new HashSet<>(found);
+        requested.stream().filter(id -> !foundIds.contains(id)).forEach(id -> add(id, reason));
+        return this;
+    }
+
     /** Chạy kiểm tra cho một dòng; BusinessException ném ra được ghi thành lỗi của dòng đó. */
     public void tryRun(Object id, Runnable check) {
         try {

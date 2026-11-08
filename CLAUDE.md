@@ -24,7 +24,7 @@ Hai chỗ chưa chắc về tọa độ thư viện:
 ## Lệnh
 
 ```bash
-docker compose up -d                       # hạ tầng: Postgres+pgvector, Mongo, Redis, Kafka, Keycloak(:8180)
+docker compose up -d                       # hạ tầng: Postgres+pgvector, Mongo, Redis, Kafka, Keycloak(:8180), Mailpit(:8025)
 mvn clean install -DskipTests              # build toàn bộ, cài common/* vào Maven local (bắt buộc trước khi chạy Quarkus)
 mvn -pl ordering-service spring-boot:run -Dspring-boot.run.profiles=local        # service Spring
 cd catalog-service && mvn quarkus:dev -Dquarkus.profile=local -Ddebug=5012       # service Quarkus
@@ -59,6 +59,8 @@ Kiểm tra nhanh: `GET http://localhost:8082/api/v1/categories` trả 8 danh m�
   Đơn hàng/thanh toán không bao giờ xóa. 4 cột audit `created_by/at`, `updated_by/at`.
 - **Hợp đồng API chung** (`common/shared-contracts`): mọi response bọc trong `ResponseData`
   `{"error_status","error_message","error_code","data"}`; phân trang `PageResponse`; lỗi nghiệp vụ ném `BusinessException(ErrorCode, msg)`.
+  Mọi lỗi khác cũng ra envelope: Spring qua `GlobalExceptionHandler`, Quarkus qua các mapper trong `common-quarkus`
+  (validate → `VALIDATION_ERROR` + `data: [FieldError]`, optimistic lock/trùng khóa → 409). Chỉ 401 do token sai là body rỗng.
 - **Không làm base CRUD generic** (BaseController/BaseCrudService/criteria động). Viết service tường minh; đoạn nào lặp ở
   service thứ hai mới đưa vào `common-*`. Quarkus dùng Panache **repository pattern**.
 - **Lưu file:** không dùng MinIO. `local` = ổ đĩa (`data/uploads`), `dev` = Supabase Storage (TODO `SupabaseFileStorage`).
@@ -87,7 +89,7 @@ Kiểm tra nhanh: `GET http://localhost:8082/api/v1/categories` trả 8 danh m�
 ## Việc tiếp theo (theo thứ tự)
 
 1. Build toàn bộ, sửa lỗi compile/khởi động; chạy profile `local` cho từng service; xác nhận các API mẫu trong README mục 6.
-2. Saga đặt hàng qua Kafka + outbox (ordering ↔ inventory).
+2. ~~Saga đặt hàng qua Kafka + outbox (ordering ↔ inventory)~~ (xong 2026-11-08, kèm thanh toán VNPay + cổng giả lập, hoàn tiền, sold_count). Còn: MoMo thật, API hoàn tiền của cổng.
 3. Rule engine tương thích + PC Builder; tool `checkCompatibility`.
 4. Consumer `product.updated`/`product.hidden` ở ai-service; chat stream (SSE); lịch sử chat vào Mongo.
 5. Frontend Next.js + `keycloak-js`; CI GitHub Actions.

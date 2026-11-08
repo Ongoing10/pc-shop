@@ -131,7 +131,7 @@ public class PcBuildResource {
         String userId = currentUser.require().id().toString();
         BulkErrors errors = BulkErrors.check(request.codes());
         List<PcBuild> found = builds.findByCodes(request.codes());
-        AdminCatalogResource.missing(request.codes(), found.stream().map(b -> b.code).toList(), errors);
+        errors.missing(request.codes(), found.stream().map(b -> b.code).toList(), "Không tìm thấy");
         found.stream().filter(b -> !userId.equals(b.userId))
                 .forEach(b -> errors.add(b.code, "Đây không phải cấu hình của bạn"));
         errors.throwIfAny();
@@ -192,6 +192,7 @@ public class PcBuildResource {
         build.items = items;
         build.totalPrice = total;
         build.estimatedWattage = check.estimatedWattage();
+        build.requiredWattage = check.requiredWattage();
         build.compatibilityResult = result;
         build.updatedAt = Instant.now();
     }

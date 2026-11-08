@@ -1,9 +1,7 @@
 package com.pcshop.review;
 
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
-import reactor.core.publisher.Flux;
 
+/** Truy vấn có lọc/phân trang nằm ở ReviewService (ReactiveMongoTemplate). */
 public interface ReviewRepository extends ReactiveMongoRepository<Review, String> {
-
-    Flux<Review> findAllByProductIdAndStatusOrderByCreatedAtDesc(String productId, int status);
 }

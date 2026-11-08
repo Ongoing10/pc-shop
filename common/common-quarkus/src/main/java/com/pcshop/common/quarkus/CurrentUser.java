@@ -43,6 +43,7 @@ public class CurrentUser {
                 UUID.fromString(jwt.getSubject()),
                 jwt.getClaim("preferred_username"),
                 jwt.getClaim("email"),
+                jwt.getClaim("name"),
                 realmRoles(),
                 clientRoles()));
     }

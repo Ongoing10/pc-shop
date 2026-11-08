@@ -49,6 +49,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
+        <!-- ValidationExceptionMapper: lỗi @Valid trả envelope ResponseData như phía Spring -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-hibernate-validator</artifactId>
+        </dependency>
         <!--
           Chỉ để compile AuditableEntity. optional = không kéo Hibernate sang service không dùng
           (catalog dùng MongoDB); service dùng JPA tự thêm quarkus-hibernate-orm-panache.

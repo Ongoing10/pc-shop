@@ -54,6 +54,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-liquibase-mongodb</artifactId>
         </dependency>
+        <!-- Nhận order.completed / order.returned từ ordering để cập nhật sold_count -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-messaging-kafka</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-validator</artifactId>

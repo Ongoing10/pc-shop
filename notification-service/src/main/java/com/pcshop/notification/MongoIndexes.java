@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Tạo index lúc khởi động (createIndex idempotent: index đã có thì bỏ qua), giống review-service.
- * Profile local: seed vài thông báo mẫu cho customer1 nếu collection rỗng (chưa có Kafka để sinh thông báo thật).
+ * Profile local: seed vài thông báo mẫu cho customer1 nếu collection rỗng.
  */
 @ApplicationScoped
 public class MongoIndexes {

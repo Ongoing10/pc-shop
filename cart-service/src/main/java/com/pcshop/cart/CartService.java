@@ -30,6 +30,8 @@ import java.util.regex.Pattern;
 public class CartService {
 
     public static final int MAX_QUANTITY_PER_ITEM = 99;
+    /** Số SKU khác nhau tối đa trong một giỏ (≤ 100 để xem giỏ chỉ cần một lần gọi batch của catalog/inventory). */
+    public static final int MAX_ITEMS = 50;
     private static final Duration GUEST_TTL = Duration.ofDays(30);
     private static final Pattern GUEST_KEY = Pattern.compile("^[A-Za-z0-9-]{16,64}$");
     private static final int ACTIVE = 2;
@@ -66,23 +68,23 @@ public class CartService {
                 .collectMap(Map.Entry::getKey, e -> Integer.parseInt(e.getValue()), LinkedHashMap::new);
     }
 
+    /**
+     * Cộng dồn số lượng bằng HINCRBY (nguyên tử: hai request cùng lúc không đè nhau); vượt 99 thì trừ lại
+     * và báo lỗi. SKU chưa có trong giỏ phải là sản phẩm đang bán và giỏ chưa đủ {@link #MAX_ITEMS} món.
+     */
     public Mono<Integer> add(CartKey cart, String sku, int quantity) {
-        return hash().get(cart.key(), sku)
-                .map(Integer::parseInt)
-                .defaultIfEmpty(0)
-                .flatMap(current -> {
-                    if (current + quantity > MAX_QUANTITY_PER_ITEM) {
-                        return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST,
-                                "Mỗi sản phẩm tối đa " + MAX_QUANTITY_PER_ITEM + " chiếc"));
-                    }
-                    return hash().increment(cart.key(), sku, quantity);
-                })
+        return checkNewSku(cart, sku)
+                .then(hash().increment(cart.key(), sku, quantity))
+                .flatMap(total -> total > MAX_QUANTITY_PER_ITEM
+                        ? hash().increment(cart.key(), sku, -quantity).then(Mono.<Long>error(new BusinessException(
+                                ErrorCode.BAD_REQUEST, "Mỗi sản phẩm tối đa " + MAX_QUANTITY_PER_ITEM + " chiếc")))
+                        : Mono.just(total))
                 .flatMap(total -> touch(cart).thenReturn(total.intValue()));
     }
 
     /**
      * Thêm nhiều món một lần (vd đưa cả cấu hình PC vào giỏ), cộng dồn như {@link #add}.
-     * Một món vượt giới hạn thì không thêm gì; ghi bằng một lệnh HSET nhiều field.
+     * Một món vượt giới hạn hoặc không còn bán thì không thêm gì; ghi bằng một lệnh HSET nhiều field.
      */
     public Mono<Void> addAll(CartKey cart, Map<String, Integer> lines) {
         BulkErrors errors = BulkErrors.check(lines.keySet());
@@ -97,15 +99,18 @@ public class CartService {
                 next.put(sku, String.valueOf(total));
             });
             errors.throwIfAny();
-            return hash().putAll(cart.key(), next).then(touch(cart));
+            List<String> newSkus = lines.keySet().stream().filter(sku -> !current.containsKey(sku)).toList();
+            return checkNewSkus(current.size(), newSkus)
+                    .then(hash().putAll(cart.key(), next))
+                    .then(touch(cart));
         }).then();
     }
 
-    /** Đặt số lượng tuyệt đối; 0 = xóa dòng. */
+    /** Đặt số lượng tuyệt đối; 0 = xóa dòng. SKU mới được kiểm tra như {@link #add}. */
     public Mono<Void> set(CartKey cart, String sku, int quantity) {
         Mono<?> op = quantity == 0
                 ? hash().remove(cart.key(), sku)
-                : hash().put(cart.key(), sku, String.valueOf(quantity));
+                : checkNewSku(cart, sku).then(hash().put(cart.key(), sku, String.valueOf(quantity)));
         return op.then(touch(cart)).then();
     }
 
@@ -117,18 +122,25 @@ public class CartService {
         return redis.delete(cart.key()).then();
     }
 
-    /** Gộp giỏ guest vào giỏ tài khoản (cộng dồn số lượng, tối đa 99/sản phẩm) rồi xóa giỏ guest. */
+    /**
+     * Gộp giỏ guest vào giỏ tài khoản (cộng dồn số lượng, tối đa 99/sản phẩm) rồi xóa giỏ guest.
+     * Giỏ tài khoản đã đủ {@link #MAX_ITEMS} món thì bỏ qua các SKU mới của giỏ guest.
+     */
     public Mono<Void> merge(String userId, String guestKey) {
         String from = guestKey(guestKey);
         String to = userKey(userId);
-        return hash().entries(from)
-                .concatMap(e -> hash().get(to, e.getKey())
-                        .map(Integer::parseInt)
-                        .defaultIfEmpty(0)
-                        .flatMap(current -> hash().put(to, e.getKey(), String.valueOf(
-                                Math.min(current + Integer.parseInt(e.getValue()), MAX_QUANTITY_PER_ITEM)))))
-                .then(redis.delete(from))
-                .then();
+        CartKey target = new CartKey(to, false);
+        return Mono.zip(items(new CartKey(from, true)), items(target)).flatMap(t -> {
+            Map<String, Integer> merged = new LinkedHashMap<>(t.getT2());
+            t.getT1().forEach((sku, quantity) -> {
+                if (merged.containsKey(sku) || merged.size() < MAX_ITEMS) {
+                    merged.merge(sku, quantity, (a, b) -> Math.min(a + b, MAX_QUANTITY_PER_ITEM));
+                }
+            });
+            Map<String, String> values = new LinkedHashMap<>();
+            merged.forEach((sku, quantity) -> values.put(sku, String.valueOf(quantity)));
+            return values.isEmpty() ? Mono.just(true) : hash().putAll(to, values);
+        }).then(redis.delete(from)).then();
     }
 
     /**
@@ -202,6 +214,46 @@ public class CartService {
             warnings.add("Một số sản phẩm trong giỏ không thể đặt mua, tạm tính chưa bao gồm các sản phẩm này");
         }
         return new CartView(lines, totalQuantity, subtotal, List.copyOf(warnings));
+    }
+
+    /** SKU chưa có trong giỏ thì kiểm tra như {@link #checkNewSkus}; đã có thì bỏ qua. */
+    private Mono<Void> checkNewSku(CartKey cart, String sku) {
+        return hash().hasKey(cart.key(), sku).flatMap(exists -> exists
+                ? Mono.<Void>empty()
+                : hash().size(cart.key()).flatMap(size -> checkNewSkus(size.intValue(), List.of(sku))));
+    }
+
+    /**
+     * Kiểm tra trước khi đưa SKU mới vào giỏ: số món không vượt {@link #MAX_ITEMS}, sản phẩm tồn tại và đang bán.
+     * Một SKU lỗi → 400 với lý do; nhiều SKU → 400 kèm danh sách [{id, reason}] như API hàng loạt.
+     */
+    private Mono<Void> checkNewSkus(int currentItems, List<String> newSkus) {
+        if (newSkus.isEmpty()) {
+            return Mono.empty();
+        }
+        if (currentItems + newSkus.size() > MAX_ITEMS) {
+            return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Giỏ hàng tối đa " + MAX_ITEMS + " sản phẩm khác nhau"));
+        }
+        return lookup.products(newSkus)
+                .onErrorMap(e -> !(e instanceof BusinessException), e -> new BusinessException(
+                        ErrorCode.EXTERNAL_SERVICE_ERROR, "Không kiểm tra được sản phẩm, thử lại sau"))
+                .flatMap(products -> {
+                    BulkErrors errors = new BulkErrors();
+                    for (String sku : newSkus) {
+                        ProductLookupClient.ProductInfo p = products.get(sku);
+                        String reason = p == null ? "Sản phẩm không tồn tại"
+                                : p.status() == null || p.status() != ACTIVE ? "Sản phẩm đã ngừng bán" : null;
+                        if (reason != null && newSkus.size() == 1) {
+                            return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST, reason + ": " + sku));
+                        }
+                        if (reason != null) {
+                            errors.add(sku, reason);
+                        }
+                    }
+                    errors.throwIfAny();
+                    return Mono.<Void>empty();
+                });
     }
 
     private Mono<Boolean> touch(CartKey cart) {

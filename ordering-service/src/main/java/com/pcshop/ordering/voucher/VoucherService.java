@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Kiểm tra voucher và tính số tiền giảm. Dùng chung cho POST /vouchers/validate và POST /checkout/preview.
- * Chỉ ĐỌC: lượt dùng (used_count, voucher_usages) được ghi khi đặt hàng (đợt 2).
+ * Kiểm tra voucher và tính số tiền giảm (POST /vouchers/validate, /checkout/preview, /orders).
+ * Lượt dùng (used_count + voucher_usages) ghi khi đặt đơn, hoàn lại khi đơn bị hủy.
  */
 @Service
 public class VoucherService {
@@ -105,7 +105,50 @@ public class VoucherService {
         });
     }
 
-    private static BigDecimal discount(Voucher v, BigDecimal base) {
+    /**
+     * Ghi một lượt dùng cho đơn {@code orderId} (gọi trong transaction đặt đơn). Kiểm tra lại giới hạn lượt vì
+     * từ lúc tính tiền đến giờ người khác có thể đã dùng; hai đơn ghi cùng lúc thì version của voucher làm đơn sau
+     * lỗi 409 (OptimisticLockingFailureException), không vượt usage_limit / per_user_limit.
+     */
+    public Mono<Void> recordUsage(String code, Long orderId, UUID userId, BigDecimal discountAmount) {
+        return vouchers.findByCode(code)
+                .switchIfEmpty(Mono.error(() -> new BusinessException(ErrorCode.VOUCHER_INVALID, "Mã giảm giá không tồn tại")))
+                .flatMap(v -> {
+                    if (v.getUsageLimit() != null && v.getUsedCount() >= v.getUsageLimit()) {
+                        return Mono.error(new BusinessException(ErrorCode.VOUCHER_INVALID, "Mã giảm giá đã hết lượt sử dụng"));
+                    }
+                    Mono<Long> used = v.getPerUserLimit() == null
+                            ? Mono.just(0L)
+                            : usages.countByVoucherIdAndUserId(v.getId(), userId);
+                    return used.flatMap(count -> {
+                        if (v.getPerUserLimit() != null && count >= v.getPerUserLimit()) {
+                            return Mono.error(new BusinessException(ErrorCode.VOUCHER_INVALID, "Bạn đã dùng hết lượt của mã này"));
+                        }
+                        v.setUsedCount(v.getUsedCount() + 1);
+                        VoucherUsage usage = new VoucherUsage();
+                        usage.setVoucherId(v.getId());
+                        usage.setOrderId(orderId);
+                        usage.setUserId(userId);
+                        usage.setDiscountAmount(discountAmount);
+                        usage.setCreatedAt(LocalDateTime.now());
+                        return vouchers.save(v).then(usages.save(usage)).then();
+                    });
+                });
+    }
+
+    /** Đơn bị hủy: trả lại lượt dùng voucher (xóa voucher_usages của đơn, giảm used_count). Đơn không dùng mã: bỏ qua. */
+    public Mono<Void> releaseUsage(Long orderId) {
+        return usages.findByOrderId(orderId)
+                .flatMap(usage -> vouchers.findById(usage.getVoucherId())
+                        .flatMap(v -> {
+                            v.setUsedCount(Math.max(0, v.getUsedCount() - 1));
+                            return vouchers.save(v);
+                        })
+                        .then(usages.delete(usage)));
+    }
+
+    /** Số tiền giảm trên {@code base}; package-private để unit test (VoucherDiscountTest). */
+    static BigDecimal discount(Voucher v, BigDecimal base) {
         BigDecimal amount = switch (v.getType()) {
             case Voucher.PERCENT -> base.multiply(v.getValue()).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
             case Voucher.AMOUNT -> v.getValue().min(base);

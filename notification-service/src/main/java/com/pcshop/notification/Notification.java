@@ -10,7 +10,7 @@ import java.time.Instant;
 
 /**
  * Collection notification.notifications. Tự xóa sau 90 ngày (TTL index trên created_at, xem MongoIndexes).
- * Sinh từ event Kafka (đợt 2); source_event_id chống tạo trùng khi event được giao lại.
+ * Sinh từ event Kafka (NotificationConsumer); source_event_id chống tạo trùng khi event được giao lại.
  */
 @MongoEntity(collection = "notifications")
 public class Notification {

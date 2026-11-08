@@ -9,9 +9,9 @@ import java.util.UUID;
 
 public interface OrderRepository extends R2dbcRepository<Order, Long> {
 
-    Flux<Order> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
-
     Mono<Order> findByCode(String code);
 
     Flux<Order> findAllByCodeIn(Collection<String> codes);
+
+    Mono<Order> findByUserIdAndRequestId(UUID userId, String requestId);
 }

@@ -29,21 +29,19 @@ import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
  * Upload đi qua service: client → media-service → storage (không dùng presigned URL từ trình duyệt,
- * tránh lỗi CORS; plan mục 7.6).
+ * tránh lỗi CORS; plan mục 7.6). Quyền upload, loại file và dung lượng theo từng bucket: {@link BucketPolicy}.
  */
 @Path("/api/v1/media")
 public class MediaResource {
-
-    private static final Set<String> BUCKETS = Set.of("products", "avatars", "reviews", "knowledge-docs");
-    /** Bucket nội bộ: chỉ ADMIN hoặc permission knowledge:write được xem. */
-    private static final Set<String> PRIVATE_BUCKETS = Set.of("knowledge-docs");
 
     private static final Logger log = Logger.getLogger(MediaResource.class);
 
@@ -70,10 +68,22 @@ public class MediaResource {
     @Transactional
     public ResponseData<MediaFile> upload(@RestForm("file") FileUpload file, @RestForm("bucket") String bucket)
             throws Exception {
-        if (file == null || !BUCKETS.contains(bucket)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Thiếu file hoặc bucket không hợp lệ " + BUCKETS);
+        BucketPolicy policy = bucket == null ? null : BucketPolicy.ALL.get(bucket);
+        if (file == null || file.uploadedFile() == null || policy == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Thiếu file hoặc bucket không hợp lệ " + BucketPolicy.ALL.keySet());
         }
-        String key = UUID.randomUUID() + extension(file.fileName());
+        if (!policy.canUpload().test(currentUser.require())) {
+            throw BusinessException.forbidden("Bạn không được upload vào bucket " + bucket);
+        }
+        String extension = extension(file.fileName());
+        String mimeType = policy.mimeOf(extension).orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST,
+                "Bucket " + bucket + " chỉ nhận file " + policy.mimeByExtension().keySet()));
+        if (file.size() > policy.maxBytes()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "File vượt quá " + policy.maxBytes() / (1024 * 1024) + " MB");
+        }
+        String key = UUID.randomUUID() + extension;
         storage.save(bucket, key, file.uploadedFile());
 
         MediaFile meta = new MediaFile();
@@ -81,7 +91,7 @@ public class MediaResource {
         meta.storageType = storage.storageType();
         meta.objectKey = key;
         meta.bucket = bucket;
-        meta.mimeType = file.contentType();
+        meta.mimeType = mimeType;
         meta.fileSize = file.size();
         files.persist(meta);
         files.flush();                                   // cần id để tạo URL
@@ -95,9 +105,7 @@ public class MediaResource {
     @PermitAll
     public Response download(@PathParam("id") long id) throws Exception {
         MediaFile meta = readable(id);
-        return Response.ok(storage.open(meta.bucket, meta.objectKey), meta.mimeType)
-                .header("Content-Disposition", "inline; filename=\"" + meta.fileName + "\"")
-                .build();
+        return fileResponse(meta).build();
     }
 
     /**
@@ -109,14 +117,7 @@ public class MediaResource {
     @PermitAll
     public Response view(@PathParam("id") long id) throws Exception {
         MediaFile meta = readable(id);
-        boolean internal = PRIVATE_BUCKETS.contains(meta.bucket);
-        return Response.ok(storage.open(meta.bucket, meta.objectKey),
-                        meta.mimeType == null ? MediaType.APPLICATION_OCTET_STREAM : meta.mimeType)
-                .header("Content-Length", meta.fileSize)
-                .header("Content-Disposition", "inline; filename=\"" + meta.fileName + "\"")
-                .header("X-Content-Type-Options", "nosniff")
-                .header("Cache-Control", internal ? "private, max-age=300" : "public, max-age=86400")
-                .build();
+        return fileResponse(meta).header("Content-Length", meta.fileSize).build();
     }
 
     /** Metadata của file (tên, loại, dung lượng, bucket, url). */
@@ -182,15 +183,39 @@ public class MediaResource {
     /** File tồn tại và người gọi được xem (bucket nội bộ: ADMIN hoặc knowledge:write). */
     private MediaFile readable(long id) {
         MediaFile meta = files.findByIdOptional(id).orElseThrow(() -> BusinessException.notFound("file", id));
-        if (PRIVATE_BUCKETS.contains(meta.bucket) && currentUser.get()
-                .filter(u -> u.hasRole("ADMIN") || u.hasPermission("knowledge:write")).isEmpty()) {
+        BucketPolicy policy = BucketPolicy.ALL.get(meta.bucket);
+        if ((policy == null || policy.internal())
+                && currentUser.get().filter(BucketPolicy::canManageKnowledge).isEmpty()) {
             throw BusinessException.forbidden("File nội bộ");
         }
         return meta;
     }
 
+    /**
+     * Header chung khi trả nội dung file. MIME tính lại theo đuôi của object key (file cũ upload trước khi có
+     * BucketPolicy có thể mang Content-Type tùy ý): đuôi không được phép thì trả dạng tải về, không hiển thị inline.
+     */
+    private Response.ResponseBuilder fileResponse(MediaFile meta) throws Exception {
+        BucketPolicy policy = BucketPolicy.ALL.get(meta.bucket);
+        String mime = policy == null ? null : policy.mimeOf(extension(meta.objectKey)).orElse(null);
+        boolean internal = policy == null || policy.internal();
+        return Response.ok(storage.open(meta.bucket, meta.objectKey),
+                        mime == null ? MediaType.APPLICATION_OCTET_STREAM : mime)
+                .header("Content-Disposition", contentDisposition(mime == null ? "attachment" : "inline", meta.fileName))
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Cache-Control", internal ? "private, max-age=300" : "public, max-age=86400");
+    }
+
+    /** Tên file người dùng đặt: bỏ ký tự phá header (", \, xuống dòng), kèm filename* UTF-8 cho tên tiếng Việt. */
+    static String contentDisposition(String type, String fileName) {
+        String name = fileName == null || fileName.isBlank() ? "file" : fileName;
+        String ascii = name.replaceAll("[^\\x20-\\x7E]", "_").replaceAll("[\"\\\\]", "_");
+        String encoded = URLEncoder.encode(name, StandardCharsets.UTF_8).replace("+", "%20");
+        return type + "; filename=\"" + ascii + "\"; filename*=UTF-8''" + encoded;
+    }
+
     private static String extension(String name) {
         int dot = name == null ? -1 : name.lastIndexOf('.');
-        return dot < 0 ? "" : name.substring(dot).toLowerCase();
+        return dot < 0 ? "" : name.substring(dot).toLowerCase(Locale.ROOT);
     }
 }

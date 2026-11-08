@@ -98,6 +98,10 @@
     {
       "key": "stockImportIdInvalid",
       "value": ""
+    },
+    {
+      "key": "orderCode",
+      "value": ""
     }
   ],
   "item": [
@@ -597,6 +601,53 @@
                 "exec": [
                   "const body = pm.response.json();",
                   "if (body.data) pm.collectionVariables.set('addressId', body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thêm địa chỉ thiếu dữ liệu (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverName\": \"\",\n  \"receiverPhone\": \"123\",\n  \"provinceCode\": \"79\",\n  \"wardCode\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('VALIDATION_ERROR kèm danh sách trường', () => {",
+                  "  pm.expect(body.error_code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(body.data.map(e => e.field)).to.include.members(['receiverName', 'receiverPhone', 'wardCode', 'addressDetail']);",
+                  "});"
                 ]
               }
             }
@@ -2850,6 +2901,41 @@
           }
         },
         {
+          "name": "Thêm SKU không tồn tại (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items"
+              ]
+            },
+            "description": "Cần đăng nhập.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"KHONG-CO-SKU-NAY\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": []
+        },
+        {
           "name": "Đặt số lượng",
           "request": {
             "method": "PUT",
@@ -3085,7 +3171,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/orders/my",
+              "raw": "{{baseUrl}}/api/v1/orders/my?page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -3094,10 +3180,31 @@
                 "v1",
                 "orders",
                 "my"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
               ]
             },
             "description": "Cần đăng nhập. customer1 có đơn DH20261024000001."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Phân trang', () => pm.expect(pm.response.json().data).to.have.property('content'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Chi tiết đơn",
@@ -3191,7 +3298,7 @@
                 }
               }
             },
-            "description": "Chỉ khi đơn đang PENDING/AWAITING_PAYMENT. Lần chạy đầu trả 200; từ lần thứ hai đơn mẫu đã bị hủy nên trả 400."
+            "description": "Khách tự hủy khi PENDING/AWAITING_PAYMENT/CONFIRMED và chưa thanh toán. Lần chạy đầu trả 200; từ lần thứ hai đơn mẫu đã bị hủy nên trả 400."
           }
         },
         {
@@ -3295,6 +3402,228 @@
                 "v1",
                 "cart"
               ]
+            }
+          }
+        },
+        {
+          "name": "Thêm hàng để đặt đơn",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "items"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"RAM-KINGSTON-32G-D5\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Đặt hàng COD",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "description": "Tùy chọn. Cùng user gửi lại cùng key → trả đơn đã tạo, không tạo đơn thứ hai (frontend sinh 1 key cho mỗi lần bấm Đặt hàng)."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressId\": 1,\n  \"voucherCode\": null,\n  \"paymentMethod\": 1,\n  \"note\": \"Gọi trước khi giao\",\n  \"expectedTotal\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Tạo đơn từ giỏ hiện tại (tính tiền lại như /checkout/preview). Trả đơn PENDING; inventory giữ hàng qua Kafka, vài giây sau đơn thành CONFIRMED (COD) / AWAITING_PAYMENT (online) / CANCELLED (hết hàng). Giỏ bị xóa.\npaymentMethod: 1-COD, 2-VNPAY, 3-MOMO. expectedTotal: tổng client đang hiển thị, lệch → 409."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json().data;",
+                  "pm.test('Đơn PENDING, có mã', () => { pm.expect(d.order.status).to.eql(1); pm.expect(d.order.code).to.match(/^DH\\d{14}$/); });",
+                  "pm.collectionVariables.set('orderCode', d.order.code);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đơn vừa đặt sau khi giữ hàng",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/{{orderCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}"
+              ]
+            },
+            "description": "Chờ 3 giây cho Saga (outbox → Kafka → inventory → Kafka → ordering)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Saga đã xác nhận đơn COD (4-CONFIRMED)', () => pm.expect(pm.response.json().data.order.status).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hủy đơn vừa đặt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/{{orderCode}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Dọn dữ liệu test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Khách tự hủy được khi PENDING/AWAITING_PAYMENT/CONFIRMED và chưa thanh toán. Inventory nhả hàng đang giữ."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Đã hủy', () => pm.expect(pm.response.json().data.status).to.eql(7));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thanh toán đơn đã hủy (400)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/payments/{{orderCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "payments",
+                "{{orderCode}}"
+              ]
+            },
+            "description": "Đơn online đang chờ thanh toán (status 2) → {paymentCode, paymentUrl, amount, expiresAt, gateway: VNPAY|MOCK}; frontend chuyển trình duyệt tới paymentUrl. Cổng gọi về /payments/vnpay/return rồi backend chuyển tới pcshop.payment.frontend-return-url?orderCode=&result=success|failed|refund|invalid. Ở đây đơn đã hủy nên 400."
+          }
+        },
+        {
+          "name": "Đặt hàng khi giỏ trống (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressId\": 1,\n  \"paymentMethod\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
@@ -3628,6 +3957,32 @@
           }
         },
         {
+          "name": "[STAFF] Yêu cầu hoàn tiền",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/refunds?status=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "refunds"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Tạo tự động khi hủy/trả đơn đã thu tiền hoặc tiền về sau khi đơn đã hủy. status 1 chờ hoàn, 2 đã hoàn. Đánh dấu đã hoàn: PATCH /admin/refunds/{id}/complete {providerRefundId?} (perm order:update-status)."
+          }
+        },
+        {
           "name": "[ADMIN] Thống kê tổng quan",
           "request": {
             "method": "GET",
@@ -3698,12 +4053,49 @@
       "description": "Đánh giá sản phẩm (Mongo).",
       "item": [
         {
+          "name": "Đã mua sản phẩm này chưa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orders/purchased?sku=GPU-MSI-4070S-12G",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "purchased"
+              ],
+              "query": [
+                {
+                  "key": "sku",
+                  "value": "GPU-MSI-4070S-12G"
+                }
+              ]
+            },
+            "description": "API của ordering. purchased = true khi người gọi có đơn HOÀN TẤT chứa SKU; review viết khi đó có verifiedPurchase = true. Dùng để gợi ý \"Bạn đã mua sản phẩm này, hãy đánh giá\"."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Có trường purchased\", () => pm.expect(pm.response.json().data).to.have.property(\"purchased\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Đánh giá theo sản phẩm",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/reviews?productId=6adcb0cc2444ef877c39129b",
+              "raw": "{{baseUrl}}/api/v1/reviews?sku=GPU-MSI-4070S-12G&page=0&size=10",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -3714,9 +4106,16 @@
               ],
               "query": [
                 {
-                  "key": "productId",
-                  "value": "6adcb0cc2444ef877c39129b",
-                  "description": "_id của GPU-MSI-4070S-12G"
+                  "key": "sku",
+                  "value": "GPU-MSI-4070S-12G"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
                 }
               ]
             },
@@ -3747,7 +4146,7 @@
             "description": "Cần đăng nhập. rating 1–5.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"6adcb0cc2444ef877c39129b\",\n  \"sku\": \"GPU-MSI-4070S-12G\",\n  \"rating\": 5,\n  \"title\": \"Card mát, chơi 2K mượt\",\n  \"content\": \"Chạy ổn định, nhiệt độ thấp.\"\n}",
+              "raw": "{\n  \"sku\": \"GPU-MSI-4070S-12G\",\n  \"rating\": 5,\n  \"title\": \"Card mát, chơi 2K mượt\",\n  \"content\": \"Chạy ổn định, nhiệt độ thấp.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3769,12 +4168,46 @@
           ]
         },
         {
+          "name": "Viết đánh giá cho SKU không tồn tại (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews"
+              ]
+            },
+            "description": "Cần đăng nhập. rating 1–5.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"KHONG-CO-SKU-NAY\",\n  \"rating\": 5,\n  \"title\": \"x\",\n  \"content\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": []
+        },
+        {
           "name": "Thống kê sao",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/reviews/stats?productId=6adcb0cc2444ef877c39129b",
+              "raw": "{{baseUrl}}/api/v1/reviews/stats?sku=GPU-MSI-4070S-12G",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -3786,8 +4219,8 @@
               ],
               "query": [
                 {
-                  "key": "productId",
-                  "value": "6adcb0cc2444ef877c39129b"
+                  "key": "sku",
+                  "value": "GPU-MSI-4070S-12G"
                 }
               ]
             },
@@ -4149,7 +4582,7 @@
                 },
                 {
                   "key": "bucket",
-                  "value": "products",
+                  "value": "avatars",
                   "type": "text"
                 }
               ]
@@ -4167,6 +4600,42 @@
               }
             }
           ]
+        },
+        {
+          "name": "Upload ảnh sản phẩm khi không có quyền product:write (403)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "upload"
+              ]
+            },
+            "description": "Bucket products chỉ cho người có permission product:write.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/sample.png"
+                },
+                {
+                  "key": "bucket",
+                  "value": "products",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "event": []
         },
         {
           "name": "Tải file",
@@ -4284,7 +4753,7 @@
                 },
                 {
                   "key": "bucket",
-                  "value": "products",
+                  "value": "avatars",
                   "type": "text"
                 }
               ]
@@ -4432,6 +4901,37 @@
               ]
             }
           }
+        },
+        {
+          "name": "Vé mở stream thông báo (SSE)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/stream-ticket",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "stream-ticket"
+              ]
+            },
+            "description": "Vé dùng 1 lần, 60 giây. Mở stream bằng trình duyệt: new EventSource(\"http://localhost:8000/api/v1/notifications/stream?ticket=...\"). Event: unread-count (khi mở), notification (thông báo mới), comment ping 25 giây. Postman không giữ được stream nên chỉ thử lấy vé."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Có vé\", () => pm.expect(pm.response.json().data.ticket).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

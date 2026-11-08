@@ -9,7 +9,8 @@ import java.time.Instant;
 
 /**
  * Collection catalog.compatibility_rules: luật tương thích TẤT ĐỊNH cho rule engine (CompatibilityService).
- * rule_type: EQUALS, IN, LTE, SUM_TDP_LTE_WATTAGE. Không xóa: tắt luật = is_active 0.
+ * rule_type: EQUALS, IN, LTE, SUM_TDP_LTE_WATTAGE, SUM_LTE, MAX_COUNT (xem CompatibilityService).
+ * Không xóa: tắt luật = is_active 0.
  */
 @MongoEntity(collection = "compatibility_rules")
 public class CompatibilityRule {
@@ -34,6 +35,9 @@ public class CompatibilityRule {
     public String targetField;
     /** Hệ số an toàn, vd 1.2 */
     public Double margin;
+    /** Chỉ dùng cho MAX_COUNT: số linh kiện tối đa của source_category */
+    @BsonProperty("max_count")
+    public Integer maxCount;
     /** 1-ERROR (không lắp được), 2-WARNING */
     public Integer severity;
     @BsonProperty("message_template")

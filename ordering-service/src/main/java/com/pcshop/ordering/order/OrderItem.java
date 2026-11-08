@@ -1,5 +1,6 @@
 package com.pcshop.ordering.order;
 
+import com.pcshop.ordering.checkout.CheckoutClients;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -24,6 +25,24 @@ public class OrderItem {
     private BigDecimal lineTotal;
     private Integer warrantyMonths;
     private LocalDateTime createdAt;
+
+    /** Dòng đơn từ một dòng giỏ hàng (giá, tên, ảnh lấy tại thời điểm đặt). */
+    public static OrderItem of(Order order, CheckoutClients.CartLine line) {
+        OrderItem item = new OrderItem();
+        item.orderId = order.getId();
+        item.productId = line.productId();
+        item.sku = line.sku();
+        item.productName = line.name();
+        item.productImageUrl = line.imageUrl();
+        item.categoryCode = line.categoryCode();
+        item.unitPrice = line.unitPrice();
+        item.quantity = line.quantity();
+        item.discountAmount = BigDecimal.ZERO;
+        item.lineTotal = line.lineTotal();
+        item.warrantyMonths = line.warrantyMonths();
+        item.createdAt = LocalDateTime.now();
+        return item;
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

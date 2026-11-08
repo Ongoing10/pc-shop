@@ -1,7 +1,9 @@
 package com.pcshop.ordering.order;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pcshop.ordering.common.AuditableEntity;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
@@ -22,7 +24,10 @@ public class Order extends AuditableEntity {
     public static final int RETURNED = 8;
 
     public static final int PAYMENT_COD = 1;
+    public static final int PAYMENT_VNPAY = 2;
+    public static final int PAYMENT_STATUS_UNPAID = 1;
     public static final int PAYMENT_STATUS_PAID = 2;
+    public static final int PAYMENT_STATUS_REFUNDED = 3;
 
     @Id
     private Long id;
@@ -40,6 +45,8 @@ public class Order extends AuditableEntity {
     private BigDecimal shippingFee;
     private BigDecimal totalAmount;
     private String voucherCode;
+    /** Email người đặt (từ token lúc đặt), dùng gửi email thông báo. */
+    private String customerEmail;
     private String receiverName;
     private String receiverPhone;
     private String shippingAddress;
@@ -49,6 +56,13 @@ public class Order extends AuditableEntity {
     private String cancelReason;
     private LocalDateTime placedAt;
     private LocalDateTime completedAt;
+    /** Idempotency-Key của request đặt hàng (chống đặt trùng), không trả cho client. */
+    @JsonIgnore
+    private String requestId;
+
+    /** Optimistic lock: hai thao tác đổi trạng thái cùng lúc thì thao tác sau nhận 409, không ghi đè. */
+    @Version
+    private Long version;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -72,6 +86,8 @@ public class Order extends AuditableEntity {
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
     public String getVoucherCode() { return voucherCode; }
     public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
     public String getReceiverName() { return receiverName; }
     public void setReceiverName(String receiverName) { this.receiverName = receiverName; }
     public String getReceiverPhone() { return receiverPhone; }
@@ -88,4 +104,8 @@ public class Order extends AuditableEntity {
     public void setPlacedAt(LocalDateTime placedAt) { this.placedAt = placedAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+    public String getRequestId() { return requestId; }
+    public void setRequestId(String requestId) { this.requestId = requestId; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 }

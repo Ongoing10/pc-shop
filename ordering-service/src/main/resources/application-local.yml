@@ -12,3 +12,8 @@ spring:
     schemas: ordering
     locations: classpath:db/migration,classpath:db/seed
     enabled: true
+
+# Trang thanh toán giả lập (chưa có khóa VNPay / MoMo chưa tích hợp). KHÔNG bật ở môi trường thật.
+pcshop:
+  payment:
+    mock-enabled: true

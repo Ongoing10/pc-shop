@@ -6,7 +6,6 @@ import com.pcshop.contracts.BusinessException;
 import com.pcshop.contracts.ErrorCode;
 import com.pcshop.contracts.PageResponse;
 import com.pcshop.contracts.ResponseData;
-import com.pcshop.customer.keycloak.KeycloakAdminApi;
 import com.pcshop.customer.keycloak.KeycloakAdminApi.KeycloakUser;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -23,7 +22,6 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.util.List;
 import java.util.Map;
@@ -40,10 +38,6 @@ public class AdminUserResource {
     public record UserRow(String id, String username, String email, String fullName, boolean active,
                           String phoneNumber) {
     }
-
-    @Inject
-    @RestClient
-    KeycloakAdminApi keycloak;
 
     public record CreateStaffRequest(
             @NotBlank @Pattern(regexp = "^[a-z0-9._-]{3,50}$", message = "Username 3-50 ký tự a-z, 0-9, . _ -") String username,
@@ -72,9 +66,13 @@ public class AdminUserResource {
     public ResponseData<PageResponse<UserRow>> list(@QueryParam("keyword") String keyword,
                                                     @QueryParam("page") @DefaultValue("0") int page,
                                                     @QueryParam("size") @DefaultValue("20") int size) {
-        List<UserRow> rows = keycloak.search(keyword, page * size, size, true).stream().map(this::toRow).toList();
-        int total = keycloak.count(keyword);
-        return ResponseData.success(PageResponse.of(rows, page, size, total));
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        int safePage = Math.max(page, 0);
+        List<KeycloakUser> users = accounts.search(keyword, safePage * safeSize, safeSize);
+        // một truy vấn cho cả trang thay vì mỗi user một lần
+        Map<UUID, String> phones = profiles.phonesOf(users.stream().map(u -> UUID.fromString(u.id())).toList());
+        List<UserRow> rows = users.stream().map(u -> toRow(u, phones.get(UUID.fromString(u.id())))).toList();
+        return ResponseData.success(PageResponse.of(rows, safePage, safeSize, accounts.count(keyword)));
     }
 
     public record UserDetailResponse(String id, String username, String email, String firstName, String lastName,
@@ -118,22 +116,23 @@ public class AdminUserResource {
     @PUT
     @Path("/{id}/lock")
     public ResponseData<String> lock(@PathParam("id") String id) {
-        keycloak.update(id, Map.of("enabled", false));
+        if (currentUser.require().id().toString().equals(id)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Không thể tự khóa tài khoản của chính mình");
+        }
+        accounts.setEnabled(id, false);
         return ResponseData.success("Đã khóa tài khoản " + id);
     }
 
     @PUT
     @Path("/{id}/unlock")
     public ResponseData<String> unlock(@PathParam("id") String id) {
-        keycloak.update(id, Map.of("enabled", true));
+        accounts.setEnabled(id, true);
         return ResponseData.success("Đã mở khóa tài khoản " + id);
     }
 
-    private UserRow toRow(KeycloakUser u) {
+    private static UserRow toRow(KeycloakUser u, String phone) {
         String fullName = ((u.firstName() == null ? "" : u.firstName()) + " "
                 + (u.lastName() == null ? "" : u.lastName())).trim();
-        String phone = profiles.findByIdOptional(UUID.fromString(u.id()))
-                .map(p -> p.phoneNumber).orElse(null);
         return new UserRow(u.id(), u.username(), u.email(), fullName, Boolean.TRUE.equals(u.enabled()), phone);
     }
 }

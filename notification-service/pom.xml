@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>notification-service</artifactId>
-    <!-- Quarkus: thông báo (TODO: Kafka consumer, Mailer, WebSocket, MongoDB) -->
+    <!-- Quarkus: thông báo trong ứng dụng (đẩy realtime qua SSE) và email, sinh từ event Kafka -->
 
     <dependencyManagement>
         <dependencies>
@@ -40,6 +40,25 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-mongodb-panache</artifactId>
+        </dependency>
+        <!-- Nhận order.status-changed, review.replied để sinh thông báo -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-messaging-kafka</artifactId>
+        </dependency>
+        <!-- Email theo trạng thái đơn (mẫu Qute); local gửi vào Mailpit -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mailer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-qute</artifactId>
+        </dependency>
+        <!-- Ping giữ kết nối SSE, dọn vé stream hết hạn -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-scheduler</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>

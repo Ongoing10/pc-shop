@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -36,9 +37,26 @@ public class VoucherController {
         this.service = service;
     }
 
+    /** Voucher hiển thị cho khách: không kèm số lượt đã dùng, version, người tạo/sửa. */
+    public record PublicVoucher(String code, String name, Integer type, BigDecimal value, BigDecimal maxDiscountAmount,
+                                BigDecimal minOrderAmount, List<String> applicableCategories, Integer perUserLimit,
+                                LocalDateTime startAt, LocalDateTime endAt) {
+    }
+
+    /** Voucher dùng được ngay lúc này: đang bật, trong thời gian áp dụng, chưa hết lượt. */
     @GetMapping
-    public Mono<ResponseData<List<Voucher>>> activeVouchers() {
-        return vouchers.findAllByIsActiveOrderByIdDesc(1).collectList().map(ResponseData::success);
+    public Mono<ResponseData<List<PublicVoucher>>> activeVouchers() {
+        LocalDateTime now = LocalDateTime.now();
+        return vouchers.findAllByIsActiveOrderByIdDesc(1)
+                .filter(v -> (v.getStartAt() == null || !now.isBefore(v.getStartAt()))
+                        && (v.getEndAt() == null || !now.isAfter(v.getEndAt()))
+                        && (v.getUsageLimit() == null || v.getUsedCount() == null
+                        || v.getUsedCount() < v.getUsageLimit()))
+                .map(v -> new PublicVoucher(v.getCode(), v.getName(), v.getType(), v.getValue(),
+                        v.getMaxDiscountAmount(), v.getMinOrderAmount(), service.categories(v), v.getPerUserLimit(),
+                        v.getStartAt(), v.getEndAt()))
+                .collectList()
+                .map(ResponseData::success);
     }
 
     /** Kiểm tra mã: hợp lệ không, giảm bao nhiêu, lý do nếu không hợp lệ (luôn trả 200, xem field valid). */

@@ -21,9 +21,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Tồn kho (phía khách và API nội bộ).
- * TODO (đợt 2): consumer order.created → giữ hàng (stock_reservations) → outbox stock.reserved/stock.reserve-failed;
- *       job nhả hàng quá hạn.
+ * Tồn kho (phía khách và API nội bộ). Giữ/nhả/trừ hàng theo đơn: StockSagaService (qua Kafka).
  */
 @Path("/api/v1/inventory")
 public class InventoryResource {

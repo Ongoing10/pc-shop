@@ -41,6 +41,12 @@
             <artifactId>log4j-to-slf4j</artifactId>
         </dependency>
 
+        <!-- Saga đặt hàng: gửi event từ outbox, nhận stock.reserved / stock.reserve-failed -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- Truy cập DB không chặn -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

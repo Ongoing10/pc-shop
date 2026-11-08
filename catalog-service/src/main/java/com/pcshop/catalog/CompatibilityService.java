@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -26,16 +27,27 @@ import java.util.stream.Collectors;
  *   <li>IN: giá trị nguồn nằm trong mảng ở đích (vd form_factor mainboard ∈ supported_form_factors của case)</li>
  *   <li>LTE: số ở nguồn ≤ số ở đích (vd length_mm VGA ≤ max_gpu_length_mm case)</li>
  *   <li>SUM_TDP_LTE_WATTAGE: tổng source_field của mọi linh kiện × margin ≤ target_field của nguồn</li>
+ *   <li>SUM_LTE: tổng source_field của các linh kiện thuộc source_category ≤ target_field của từng linh kiện
+ *       đích (vd tổng số thanh RAM ≤ ram_slots của mainboard)</li>
+ *   <li>MAX_COUNT: số linh kiện thuộc source_category ≤ max_count (vd chỉ một CPU, một mainboard)</li>
  * </ul>
  * Linh kiện thiếu thông số mà luật cần thì bỏ qua luật đó (không đủ dữ liệu để kết luận).
  */
 @ApplicationScoped
 public class CompatibilityService {
 
+    public static final Set<String> RULE_TYPES =
+            Set.of("EQUALS", "IN", "LTE", "SUM_TDP_LTE_WATTAGE", "SUM_LTE", "MAX_COUNT");
+
     public record Issue(String ruleCode, int severity, String message) {
     }
 
-    public record CheckResult(boolean compatible, List<Issue> issues, int estimatedWattage) {
+    /**
+     * @param estimatedWattage tổng TDP các linh kiện (chưa nhân hệ số)
+     * @param requiredWattage  công suất nguồn tối thiểu = estimatedWattage × margin của luật SUM_TDP_LTE_WATTAGE đang bật
+     *                         (không có luật đó thì bằng estimatedWattage); đây là số mà luật PSU_WATTAGE so với nguồn
+     */
+    public record CheckResult(boolean compatible, List<Issue> issues, int estimatedWattage, int requiredWattage) {
     }
 
     @Inject
@@ -55,23 +67,32 @@ public class CompatibilityService {
         if (!missing.isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm đang bán: " + missing);
         }
-        List<Product> parts = skus.stream().map(bySku::get).toList();
+        return evaluate(skus.stream().map(bySku::get).toList(), rules.listActive());
+    }
 
+    /** Phần tính toán thuần (không đọc DB), tách ra để unit test. */
+    static CheckResult evaluate(List<Product> parts, List<CompatibilityRule> activeRules) {
         List<Issue> issues = new ArrayList<>();
         int estimatedWattage = sumNumber(parts, "tdp_w");
-        for (CompatibilityRule rule : rules.listActive()) {
+        int requiredWattage = estimatedWattage;
+        for (CompatibilityRule rule : activeRules) {
+            if ("SUM_TDP_LTE_WATTAGE".equals(rule.ruleType)) {
+                requiredWattage = (int) required(rule, parts);
+            }
             switch (rule.ruleType) {
                 case "EQUALS", "IN", "LTE" -> checkPairs(rule, parts, issues);
                 case "SUM_TDP_LTE_WATTAGE" -> checkWattage(rule, parts, issues);
+                case "SUM_LTE" -> checkSum(rule, parts, issues);
+                case "MAX_COUNT" -> checkCount(rule, parts, issues);
                 default -> throw new BusinessException(ErrorCode.INTERNAL_ERROR,
                         "Luật " + rule.code + " có rule_type không hỗ trợ: " + rule.ruleType);
             }
         }
         boolean compatible = issues.stream().noneMatch(i -> i.severity() == CompatibilityRule.ERROR);
-        return new CheckResult(compatible, issues, estimatedWattage);
+        return new CheckResult(compatible, issues, estimatedWattage, requiredWattage);
     }
 
-    private void checkPairs(CompatibilityRule rule, List<Product> parts, List<Issue> issues) {
+    private static void checkPairs(CompatibilityRule rule, List<Product> parts, List<Issue> issues) {
         List<Product> sources = distinct(inCategory(parts, rule.sourceCategory));
         List<Product> targets = distinct(inCategory(parts, rule.targetCategory));
         for (Product source : sources) {
@@ -99,16 +120,51 @@ public class CompatibilityService {
         }
     }
 
-    private void checkWattage(CompatibilityRule rule, List<Product> parts, List<Issue> issues) {
-        int total = sumNumber(parts.stream().filter(p -> matches(p, rule.sourceCategory)).toList(), rule.sourceField);
+    /** Tổng source_field của nhóm nguồn × margin (công suất nguồn cần có). */
+    private static long required(CompatibilityRule rule, List<Product> parts) {
+        int total = sumNumber(inCategory(parts, rule.sourceCategory), rule.sourceField);
         double margin = rule.margin == null ? 1.0 : rule.margin;
-        long required = Math.round(total * margin);
+        return Math.round(total * margin);
+    }
+
+    private static void checkWattage(CompatibilityRule rule, List<Product> parts, List<Issue> issues) {
+        long required = required(rule, parts);
         for (Product psu : distinct(inCategory(parts, rule.targetCategory))) {
             Object wattage = compatValue(psu, rule.targetField);
             if (wattage instanceof Number w && required > w.doubleValue()) {
                 issues.add(new Issue(rule.code, severity(rule),
                         render(rule.messageTemplate, "cấu hình", psu.name, String.valueOf(required), display(wattage))));
             }
+        }
+    }
+
+    /** Tổng của nhóm nguồn so với sức chứa của từng linh kiện đích; nhóm nguồn không khai thông số thì bỏ qua. */
+    private static void checkSum(CompatibilityRule rule, List<Product> parts, List<Issue> issues) {
+        List<Product> sources = inCategory(parts, rule.sourceCategory).stream()
+                .filter(p -> compatValue(p, rule.sourceField) instanceof Number).toList();
+        if (sources.isEmpty()) {
+            return;
+        }
+        int total = sumNumber(sources, rule.sourceField);
+        for (Product target : distinct(inCategory(parts, rule.targetCategory))) {
+            Object capacity = compatValue(target, rule.targetField);
+            if (capacity instanceof Number c && total > c.doubleValue()) {
+                issues.add(new Issue(rule.code, severity(rule),
+                        render(rule.messageTemplate, rule.sourceCategory, target.name, String.valueOf(total),
+                                display(capacity))));
+            }
+        }
+    }
+
+    private static void checkCount(CompatibilityRule rule, List<Product> parts, List<Issue> issues) {
+        if (rule.maxCount == null) {
+            return;
+        }
+        int count = inCategory(parts, rule.sourceCategory).size();
+        if (count > rule.maxCount) {
+            issues.add(new Issue(rule.code, severity(rule),
+                    render(rule.messageTemplate, rule.sourceCategory, "cấu hình", String.valueOf(count),
+                            String.valueOf(rule.maxCount))));
         }
     }
 

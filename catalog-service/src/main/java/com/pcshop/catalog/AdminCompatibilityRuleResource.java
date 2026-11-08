@@ -24,7 +24,6 @@ import jakarta.ws.rs.PathParam;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Quản trị luật tương thích (permission product:write).
@@ -34,20 +33,22 @@ import java.util.Set;
 @Authenticated
 public class AdminCompatibilityRuleResource {
 
-    private static final Set<String> RULE_TYPES = Set.of("EQUALS", "IN", "LTE", "SUM_TDP_LTE_WATTAGE");
-
+    /**
+     * targetCategory, sourceField, targetField bắt buộc với mọi kiểu trừ MAX_COUNT (chỉ cần sourceCategory + maxCount);
+     * kiểm tra trong {@link #apply}.
+     */
     public record RuleRequest(@NotBlank @Pattern(regexp = "^[A-Z0-9_]+$", message = "Mã chỉ gồm A-Z, 0-9, _") String code,
-                              @NotBlank String name, @NotBlank String sourceCategory, @NotBlank String targetCategory,
-                              @NotBlank String ruleType, @NotBlank String sourceField, @NotBlank String targetField,
-                              @Positive Double margin, @NotNull @Min(1) @Max(2) Integer severity,
-                              @NotBlank String messageTemplate) {
+                              @NotBlank String name, @NotBlank String sourceCategory, String targetCategory,
+                              @NotBlank String ruleType, String sourceField, String targetField,
+                              @Positive Double margin, @Positive Integer maxCount,
+                              @NotNull @Min(1) @Max(2) Integer severity, @NotBlank String messageTemplate) {
     }
 
     public record UpdateRuleRequest(@NotBlank String name, @NotBlank String sourceCategory,
-                                    @NotBlank String targetCategory, @NotBlank String ruleType,
-                                    @NotBlank String sourceField, @NotBlank String targetField,
-                                    @Positive Double margin, @NotNull @Min(1) @Max(2) Integer severity,
-                                    @NotBlank String messageTemplate) {
+                                    String targetCategory, @NotBlank String ruleType,
+                                    String sourceField, String targetField,
+                                    @Positive Double margin, @Positive Integer maxCount,
+                                    @NotNull @Min(1) @Max(2) Integer severity, @NotBlank String messageTemplate) {
     }
 
     public record ActiveRequest(@NotNull Boolean active) {
@@ -83,8 +84,8 @@ public class AdminCompatibilityRuleResource {
         }
         CompatibilityRule rule = new CompatibilityRule();
         rule.code = r.code();
-        apply(rule, r.name(), r.sourceCategory(), r.targetCategory(), r.ruleType(), r.sourceField(),
-                r.targetField(), r.margin(), r.severity(), r.messageTemplate());
+        apply(rule, new UpdateRuleRequest(r.name(), r.sourceCategory(), r.targetCategory(), r.ruleType(),
+                r.sourceField(), r.targetField(), r.margin(), r.maxCount(), r.severity(), r.messageTemplate()));
         rule.isActive = 1;
         rule.createdAt = Instant.now();
         rule.updatedAt = rule.createdAt;
@@ -97,8 +98,7 @@ public class AdminCompatibilityRuleResource {
     public ResponseData<CompatibilityRule> update(@PathParam("code") String code, @Valid UpdateRuleRequest r) {
         currentUser.requirePermission("product:write");
         CompatibilityRule rule = find(code);
-        apply(rule, r.name(), r.sourceCategory(), r.targetCategory(), r.ruleType(), r.sourceField(),
-                r.targetField(), r.margin(), r.severity(), r.messageTemplate());
+        apply(rule, r);
         rule.updatedAt = Instant.now();
         rules.update(rule);
         return ResponseData.success(rule);
@@ -121,8 +121,7 @@ public class AdminCompatibilityRuleResource {
         currentUser.requirePermission("product:write");
         BulkErrors errors = BulkErrors.check(request.codes());
         List<CompatibilityRule> found = rules.findByCodes(request.codes());
-        AdminCatalogResource.missing(request.codes(), found.stream().map(r -> r.code).toList(), errors);
-        errors.throwIfAny();
+        errors.missing(request.codes(), found.stream().map(r -> r.code).toList(), "Không tìm thấy").throwIfAny();
         Instant now = Instant.now();
         for (CompatibilityRule rule : found) {
             rule.isActive = request.active() ? 1 : 0;
@@ -132,21 +131,33 @@ public class AdminCompatibilityRuleResource {
         return ResponseData.success(found);
     }
 
-    private static void apply(CompatibilityRule rule, String name, String sourceCategory, String targetCategory,
-                              String ruleType, String sourceField, String targetField, Double margin,
-                              Integer severity, String messageTemplate) {
-        if (!RULE_TYPES.contains(ruleType)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "rule_type phải là một trong " + RULE_TYPES);
+    private static void apply(CompatibilityRule rule, UpdateRuleRequest r) {
+        if (!CompatibilityService.RULE_TYPES.contains(r.ruleType())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "rule_type phải là một trong " + CompatibilityService.RULE_TYPES);
         }
-        rule.name = name;
-        rule.sourceCategory = sourceCategory;
-        rule.targetCategory = targetCategory;
-        rule.ruleType = ruleType;
-        rule.sourceField = sourceField;
-        rule.targetField = targetField;
-        rule.margin = margin;
-        rule.severity = severity;
-        rule.messageTemplate = messageTemplate;
+        boolean maxCount = "MAX_COUNT".equals(r.ruleType());
+        if (maxCount && r.maxCount() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Luật MAX_COUNT cần maxCount");
+        }
+        if (!maxCount && (blank(r.targetCategory()) || blank(r.sourceField()) || blank(r.targetField()))) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Luật " + r.ruleType() + " cần targetCategory, sourceField và targetField");
+        }
+        rule.name = r.name();
+        rule.sourceCategory = r.sourceCategory();
+        rule.targetCategory = maxCount ? null : r.targetCategory();
+        rule.ruleType = r.ruleType();
+        rule.sourceField = maxCount ? null : r.sourceField();
+        rule.targetField = maxCount ? null : r.targetField();
+        rule.margin = r.margin();
+        rule.maxCount = maxCount ? r.maxCount() : null;
+        rule.severity = r.severity();
+        rule.messageTemplate = r.messageTemplate();
+    }
+
+    private static boolean blank(String s) {
+        return s == null || s.isBlank();
     }
 
     private CompatibilityRule find(String code) {

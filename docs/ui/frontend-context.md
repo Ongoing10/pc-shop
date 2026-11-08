@@ -10,8 +10,9 @@ giao diện khách hàng và trang quản trị đều nằm ở đây và trong
   khác nhau ở tên trường, **file types đúng** (đã kiểm tra bằng `tsc` với chính các response mẫu).
 - **Ngôn ngữ:** giao diện 100% tiếng Việt. Định danh kỹ thuật (tên trường, tên API, mã trạng thái) giữ tiếng Anh.
 - **Trạng thái backend:** đã có đủ API đọc/ghi cho sản phẩm, giỏ hàng, voucher, xem trước thanh toán, đơn hàng (xem, hủy,
-  đổi trạng thái), tồn kho, review, thông báo, upload file, import/export Excel, chat AI. **Chưa có API tạo đơn hàng**
-  (`POST /orders`) và thanh toán online: thuộc "Đợt 2" (mục k).
+  đổi trạng thái), đặt hàng (`POST /orders`, giữ hàng tự động qua Saga), tồn kho, review, thông báo, upload file,
+  import/export Excel, chat AI, thanh toán online (VNPay; MoMo và môi trường chưa có khóa VNPay dùng trang thanh toán giả lập),
+  hoàn tiền.
 
 ---
 
@@ -154,8 +155,8 @@ cho CORS từ origin này. Muốn dùng cổng khác phải nhờ nhóm backend 
 | Claim | Dùng để |
 |---|---|
 | `sub` | ID người dùng (UUID) ở mọi bảng: so với `userId` của đơn, review, cấu hình PC |
-| `preferred_username` | tên đăng nhập, hiện ở header; cũng là `userDisplayName` của review |
-| `name` / `given_name` / `family_name` | tên hiển thị |
+| `preferred_username` | tên đăng nhập (không hiển thị công khai) |
+| `name` / `given_name` / `family_name` | tên hiển thị; `name` cũng là `userDisplayName` của review |
 | `email` | email |
 | `realm_access.roles` | vai trò: `CUSTOMER` / `STAFF` / `ADMIN` (có thể rỗng với người tự đăng ký) |
 | `resource_access["pcshop-backend"].roles` | permission; **không có khóa này** khi user không có permission nào |
@@ -187,21 +188,23 @@ Mọi response JSON (thành công lẫn lỗi nghiệp vụ) có dạng:
 - Thành công nhưng không có dữ liệu (xóa): `data: null`.
 - Luôn kiểm tra HTTP status trước, rồi mới đọc envelope.
 
-### Lỗi: ba dạng cần xử lý
+### Lỗi: các dạng cần xử lý
+
+Từ 2026-11-07 mọi lỗi (Spring lẫn Quarkus) đều là `ResponseData`, trừ 401 do token sai/hết hạn (body rỗng).
 
 | Trường hợp | HTTP | Body | Frontend làm gì |
 |---|---|---|---|
 | Lỗi nghiệp vụ | 400/403/404/409/422/502/500 | `ResponseData` với `error_code`, `error_message` | hiện `error_message` (toast hoặc dưới form) |
 | Lỗi hàng loạt ("tất cả hoặc không") | 400 | `ResponseData` có `data: [{id, reason}]` | đánh dấu từng dòng theo `id`, hiện `reason` |
-| Lỗi kiểm tra dữ liệu ở service **Quarkus** | 400 | `{"title":"Constraint Violation","status":400,"violations":[{"field","message"}]}` (KHÔNG có envelope) | ghép `field` (lấy phần sau dấu `.` cuối) vào ô form |
-| Chưa đăng nhập / token sai hoặc hết hạn | 401 | **rỗng** | làm mới token rồi thử lại một lần; vẫn 401 thì chuyển đăng nhập |
-| Thiếu role ở tầng framework | 403 | thường **rỗng** (có khi là envelope `FORBIDDEN`) | hiện "Bạn không có quyền thực hiện thao tác này" |
-| Lỗi hệ thống không bắt được (vd AI lỗi) | 500 | có thể rỗng hoặc text | hiện thông báo chung, cho thử lại |
+| Lỗi kiểm tra dữ liệu (mọi service) | 400 | `ResponseData` `VALIDATION_ERROR`, `data: [{field, message}]`; `field` là tên trường trong body (`receiverPhone`, `lines[0].quantity`) | gắn `message` vào ô form theo `field` |
+| Dữ liệu đã bị người khác sửa / trùng | 409 | `ResponseData` `CONFLICT` | báo và tải lại dữ liệu |
+| Token sai hoặc hết hạn | 401 | **rỗng** | làm mới token rồi thử lại một lần; vẫn 401 thì chuyển đăng nhập |
+| Chưa đăng nhập gọi API cần đăng nhập | 401 | `ResponseData` `UNAUTHORIZED` (riêng Spring: rỗng) | như trên |
+| Thiếu role/permission | 403 | `ResponseData` `FORBIDDEN` | hiện `error_message` |
+| Lỗi hệ thống không bắt được | 500 | `ResponseData` `INTERNAL_ERROR` "Lỗi hệ thống" | hiện thông báo chung, cho thử lại |
 
-Service Quarkus: customer (`/me`, `/addresses`, `/locations`, `/admin/users`), catalog (`/products`, `/categories`, `/brands`,
-`/compatibility`, `/pc-builds`, admin sản phẩm), inventory, media, notification, ai. Service Spring (lỗi validate trả envelope
-`VALIDATION_ERROR` với message `"field: lỗi, field2: lỗi"`): cart, ordering (`/orders`, `/vouchers`, `/checkout`,
-`/admin/orders`, `/admin/vouchers`, `/admin/stats/overview|top-products`), review.
+Message là tiếng Việt (ràng buộc mặc định: "không được để trống", "phải lớn hơn hoặc bằng 1"...).
+Frontend nên tự kiểm tra form trước khi gửi, dùng lỗi server làm lớp cuối.
 
 Bảng `ErrorCode` → HTTP: `VALIDATION_ERROR` 400 · `BAD_REQUEST` 400 · `UNAUTHORIZED` 401 · `FORBIDDEN` 403 · `NOT_FOUND` 404 ·
 `CONFLICT` 409 · `OUT_OF_STOCK` 409 · `VOUCHER_INVALID` 422 · `EXTERNAL_SERVICE_ERROR` 502 · `INTERNAL_ERROR` 500.
@@ -243,13 +246,28 @@ Mẫu lỗi thật:
 
 ```json
 {
-  "title": "Constraint Violation",
-  "status": 400,
-  "violations": [
+  "error_status": 0,
+  "error_message": "phoneNumber: Số điện thoại không hợp lệ",
+  "error_code": "VALIDATION_ERROR",
+  "data": [
     {
-      "field": "update.request.phoneNumber",
+      "field": "phoneNumber",
       "message": "Số điện thoại không hợp lệ"
     }
+  ]
+}
+```
+
+`POST /admin/inventory/import` → **HTTP 400**<br>Body: `{"warehouseId": 1, "lines": [{"sku": "", "quantity": 0}]}`
+
+```json
+{
+  "error_status": 0,
+  "error_message": "lines[0].quantity: phải lớn hơn hoặc bằng 1, lines[0].sku: không được để trống",
+  "error_code": "VALIDATION_ERROR",
+  "data": [
+    { "field": "lines[0].quantity", "message": "phải lớn hơn hoặc bằng 1" },
+    { "field": "lines[0].sku", "message": "không được để trống" }
   ]
 }
 ```
@@ -260,8 +278,9 @@ Mẫu lỗi thật:
 { "content": [ ], "page": { "size": 20, "number": 0, "totalElements": 95, "totalPages": 5 } }
 ```
 
-Query `page` (từ 0) và `size` (mặc định 20, tối đa 100; riêng movements mặc định 50). API **không** phân trang (trả mảng):
-`/categories`, `/brands`, `/orders/my`, `/reviews?productId=`, `/pc-builds/my`, `/addresses`, `/warehouses`,
+Query `page` (từ 0) và `size` (mặc định 20, tối đa 100; riêng movements mặc định 50, `/orders/my` và `/reviews` mặc định 10).
+API **không** phân trang (trả mảng):
+`/categories`, `/brands`, `/pc-builds/my`, `/addresses`, `/warehouses`, `/vouchers`,
 `/admin/vouchers`, `/admin/categories`, `/admin/brands`, `/admin/compatibility-rules`, `/admin/stats/*`.
 
 ### API hàng loạt
@@ -280,7 +299,7 @@ một dòng lỗi thì không lưu dòng nào, trả 400 với danh sách `[{id,
 
 | Loại | Trong JSON | Hiển thị |
 |---|---|---|
-| Tiền | `number`, VND, giá trị nguyên. Service Spring có thể trả `7990000.0` | `7.990.000 ₫` (`Intl.NumberFormat('vi-VN', {style:'currency', currency:'VND'})`) |
+| Tiền | `number`, VND, giá trị nguyên (`7990000`) ở mọi service | `7.990.000 ₫` (`Intl.NumberFormat('vi-VN', {style:'currency', currency:'VND'})`) |
 | Gửi tiền lên | số nguyên, không dấu chấm | ô nhập tự định dạng nghìn |
 | Ngày giờ có `Z` (catalog, review, notification) | `"2026-10-27T16:06:20.459Z"` (UTC) | đổi sang giờ VN: `27/10/2026 23:06` |
 | Ngày giờ không múi giờ (ordering, customer, inventory, media) | `"2026-10-24T20:25:34.732737"` (đã là giờ VN) | parse như giờ địa phương, KHÔNG thêm Z |
@@ -293,8 +312,18 @@ Số lẻ thập phân trong thông số (`boost_clock_ghz: 5.3`) hiển thị d
 
 ### Upload và tải file
 
-- **Upload ảnh:** `POST /api/v1/media/upload`, `multipart/form-data` với `file` và `bucket` (`products`, `avatars`, `reviews`,
-  `knowledge-docs`). Trả `MediaFile`, trong đó `url` dùng trực tiếp cho `<img src>`. Ảnh sản phẩm lưu vào
+- **Upload ảnh:** `POST /api/v1/media/upload`, `multipart/form-data` với `file` và `bucket`. Trả `MediaFile`, trong đó `url`
+  dùng trực tiếp cho `<img src>`. Mỗi bucket có quyền, loại file và dung lượng riêng (kiểm tra ở frontend trước khi gửi,
+  `accept` của input file theo bảng):
+
+  | Bucket | Ai upload | Đuôi file | Tối đa |
+  |---|---|---|---|
+  | `products` | permission `product:write` | jpg, jpeg, png, webp, gif | 5 MB |
+  | `avatars` | user đăng nhập | jpg, jpeg, png, webp, gif | 2 MB |
+  | `reviews` | user đăng nhập | jpg, jpeg, png, webp, gif | 5 MB |
+  | `knowledge-docs` | ADMIN hoặc `knowledge:write` | pdf, docx, txt, md | 20 MB |
+
+  Sai đuôi/quá dung lượng → 400, sai quyền → 403. `mimeType` do server đặt theo đuôi file. Ảnh sản phẩm lưu vào
   `product.images[{fileId, url, isPrimary}]` khi tạo/sửa sản phẩm. Hiện sản phẩm seed **chưa có ảnh** (`images: null`):
   frontend cần ảnh giữ chỗ theo danh mục.
 - **Xem file cần token** (bucket `knowledge-docs`): `fetch(url + '/view', {headers: {Authorization}})` → `blob()` → `URL.createObjectURL`.
@@ -342,9 +371,11 @@ Nút chat AI nổi góc phải dưới trên mọi trang khách.
 
 ### K03. Chi tiết sản phẩm (`/p/:sku`)
 - **Dữ liệu:** `GET /products/{sku}`; `GET /categories/{categoryCode}` (nhãn, đơn vị, nhóm thông số); `GET /inventory/{sku}`
-  (404 = chưa có tồn kho → coi như hết hàng); `GET /reviews?productId={product.id}` và `GET /reviews/stats?productId={product.id}`
+  (404 = chưa có tồn kho → coi như hết hàng); `GET /reviews?sku={sku}&page=0` và `GET /reviews/stats?sku={sku}`
   (lưu ý: `productId` là `id` Mongo, không phải SKU); `GET /products/{sku}/price-history` (biểu đồ bậc thang).
 - **Hành động:** chọn số lượng 1–99, thêm vào giỏ, thêm vào PC Builder, viết đánh giá (đăng nhập), sửa/gỡ đánh giá của mình.
+  Đã đăng nhập: `GET /orders/purchased?sku={sku}` → `purchased = true` thì gợi ý "Bạn đã mua sản phẩm này, hãy đánh giá"
+  (ai cũng viết được, nhưng chỉ người đã mua có nhãn "Đã mua hàng").
 - **Trạng thái:** bình thường · đang giảm giá (`originalPrice` > `price`) · hết hàng (nút mua tắt, ghi "Hết hàng") ·
   chưa có đánh giá · 404 (sản phẩm không tồn tại hoặc đã ẩn: "Sản phẩm không tồn tại hoặc đã ngừng bán").
 
@@ -370,15 +401,20 @@ Nút chat AI nổi góc phải dưới trên mọi trang khách.
 - **Dữ liệu:** `GET /addresses`; thêm nhanh địa chỉ (`GET /locations/provinces`, `/locations/provinces/{code}/wards`, `POST /addresses`);
   gợi ý voucher `GET /vouchers`; kiểm tra mã `POST /vouchers/validate`; tổng tiền `POST /checkout/preview {voucherCode, addressId}`
   (gọi lại mỗi khi đổi địa chỉ/voucher).
-- **Hành động:** chọn/thêm địa chỉ, áp/bỏ mã, chọn thanh toán (COD; VNPay vẽ trạng thái "sắp có"), đặt hàng.
+- **Hành động:** chọn/thêm địa chỉ, áp/bỏ mã, chọn thanh toán (COD / VNPay / MoMo), đặt hàng.
 - **Trạng thái:** bình thường · mã không hợp lệ (hiện `reason`) · chưa có địa chỉ · không đặt được (`canPlaceOrder=false`, hiện `warnings`).
-- **Đặt hàng:** `POST /orders` CHƯA CÓ. Nút "Đặt hàng" ở chế độ REAL hiển thị thông báo "Chức năng đặt hàng đang phát triển";
-  chế độ MOCK tạo đơn giả (status 1) rồi chuyển tới trang "Đặt hàng thành công" (`/orders/:code?placed=1`).
+- **Đặt hàng:** `POST /orders {addressId, voucherCode, paymentMethod, note, expectedTotal}` (gửi `expectedTotal` = `totalAmount`
+  của preview đang hiển thị). Thành công → đơn `status 1` (đang giữ hàng), giỏ đã bị xóa phía server (làm mới badge giỏ),
+  chuyển tới `/orders/:code?placed=1`. Trang đó gọi lại `GET /orders/{code}` mỗi 1 giây (tối đa ~10 lần) đến khi status khác 1:
+  4 → "Đặt hàng thành công"; 2 → "Đơn đã được giữ, chờ thanh toán trong 15 phút"; 7 → "Không đủ hàng" + `cancelReason`.
+  Lỗi: 409 `CONFLICT` (giá đổi: cập nhật lại tóm tắt từ `data`, bắt bấm đặt lại), 409 `OUT_OF_STOCK`, 422 `VOUCHER_INVALID`
+  (hiện `error_message`). Khóa nút trong lúc gửi, và gửi header `Idempotency-Key` (một UUID sinh khi vào trang, giữ nguyên khi bấm
+  lại): request lặp trả lại đúng đơn đã tạo. Đơn online: khi status thành 2, gọi `POST /payments/{code}` rồi chuyển tới `paymentUrl` (mục f.7b).
 
 ### K07. Đơn của tôi (`/orders`, `/orders/:code`)
-- **Dữ liệu:** `GET /orders/my`; chi tiết `GET /orders/{code}`; timeline `GET /orders/{code}/timeline`.
+- **Dữ liệu:** `GET /orders/my?page=&size=&status=` (phân trang); chi tiết `GET /orders/{code}`; timeline `GET /orders/{code}/timeline`.
 - **Hành động:** lọc theo nhóm trạng thái (tab: Tất cả / Đang xử lý 1–4 / Đang giao 5 / Hoàn tất 6 / Đã hủy, trả 7–8, lọc ở client),
-  hủy đơn khi status 1/2 (modal nhập lý do, `POST /orders/{code}/cancel`), đánh giá sản phẩm của đơn đã hoàn tất.
+  hủy đơn khi status 1/2/4 và `paymentStatus` ≠ 2 (modal nhập lý do, `POST /orders/{code}/cancel`), đánh giá sản phẩm của đơn đã hoàn tất.
 - **Trạng thái:** danh sách · rỗng ("Bạn chưa có đơn hàng nào") · chi tiết đang giao · chi tiết đã hủy (hiện `cancelReason`) ·
   403/404 (đơn không phải của bạn / không tồn tại).
 - Danh sách đơn không kèm sản phẩm: thẻ đơn chỉ có mã, ngày, trạng thái, phương thức thanh toán, tổng tiền.
@@ -400,8 +436,12 @@ Nút chat AI nổi góc phải dưới trên mọi trang khách.
 - Không stream (API trả một lần). Không có lịch sử chat lưu server: chỉ giữ trong bộ nhớ trang.
 
 ### K10. Thông báo (dropdown chuông + `/notifications`)
-- **Dữ liệu:** `GET /notifications/unread-count` (đếm, gọi lại mỗi 60 giây hoặc khi focus tab), `GET /notifications?page=&size=`.
-- **Hành động:** bấm thông báo → `PATCH /notifications/{id}/read` rồi điều hướng theo `data.order_code` (→ `/orders/:code`);
+- **Dữ liệu:** `GET /notifications?page=&size=`; số chưa đọc và thông báo mới đến **realtime qua SSE** (f.10): sau khi đăng nhập
+  mở một stream cho cả ứng dụng, event `unread-count` đặt badge, event `notification` cộng badge + hiện toast + chèn đầu danh sách.
+  Stream lỗi / mất mạng: mở lại (lấy vé mới); trong lúc chưa có stream thì dùng `GET /notifications/unread-count` mỗi 60 giây.
+  Thông báo tự sinh vài giây sau khi đơn đổi trạng thái (2–8) hoặc cửa hàng trả lời đánh giá (bảng ở f.10).
+- **Hành động:** bấm thông báo → `PATCH /notifications/{id}/read` rồi điều hướng theo `data.order_code` (→ `/orders/:code`)
+  hoặc `data.sku` (REVIEW_REPLY → `/p/:sku#reviews`);
   "Đánh dấu đã đọc tất cả" → `PATCH /notifications/read-all`.
 - **Trạng thái:** có chưa đọc (chấm xanh) · rỗng ("Chưa có thông báo").
 
@@ -460,6 +500,8 @@ Bảng dày (hàng 40px), header bảng dính, chọn nhiều dòng → thanh th
 - **Dữ liệu:** `GET /admin/orders?status=&from=&to=&q=&page=&size=`; `GET /admin/orders/{code}`; timeline `GET /orders/{code}/timeline`
   (nhân viên dùng được API của khách).
 - **Hành động:** đổi trạng thái (chỉ hiện bước hợp lệ, mục g; 7/8 bắt buộc lý do) `PATCH /admin/orders/{code}/status`;
+  xem các lần thanh toán `GET /payments/{code}`; trang "Hoàn tiền" `GET /admin/refunds?status=1` + nút "Đã hoàn"
+  `PATCH /admin/refunds/{id}/complete` (mục f.7b);
   chọn nhiều → `PATCH /admin/orders/bulk/status`; xuất Excel `GET /admin/orders/export?status=&from=&to=&q=` (quá 10.000 đơn → 400).
 - **Trạng thái:** danh sách theo tab trạng thái · chi tiết + timeline · modal đổi trạng thái · lỗi hàng loạt.
 
@@ -1007,7 +1049,8 @@ Cấu hình hợp lệ (i5-14600K + B760M DDR5 + 32GB DDR5 + RTX 4070 SUPER + RM
   "data": {
     "compatible": true,
     "issues": [],
-    "estimatedWattage": 345
+    "estimatedWattage": 345,
+    "requiredWattage": 414
   }
 }
 ```
@@ -1030,7 +1073,8 @@ Sai socket (Ryzen 5 7600X AM5 + mainboard LGA1700):
         "message": "CPU AMD Ryzen 5 7600X dùng socket AM5 không khớp mainboard ASUS TUF B760M-PLUS WIFI DDR5 (LGA1700)"
       }
     ],
-    "estimatedWattage": 105
+    "estimatedWattage": 105,
+    "requiredWattage": 126
   }
 }
 ```
@@ -1041,12 +1085,13 @@ Body sai (Quarkus, không có envelope):
 
 ```json
 {
-  "title": "Constraint Violation",
-  "status": 400,
-  "violations": [
+  "error_status": 0,
+  "error_message": "skus: không được để trống",
+  "error_code": "VALIDATION_ERROR",
+  "data": [
     {
-      "field": "check.request.skus",
-      "message": "must not be empty"
+      "field": "skus",
+      "message": "không được để trống"
     }
   ]
 }
@@ -1089,6 +1134,7 @@ Body sai (Quarkus, không có envelope):
     ],
     "totalPrice": 49050000,
     "estimatedWattage": 445,
+    "requiredWattage": 534,
     "compatibilityResult": {
       "isCompatible": false,
       "checkedAt": "2026-10-27T16:06:13.717948400Z",
@@ -1302,9 +1348,10 @@ Vượt 99:
 
 | Method | Path | Quyền | Query/Body | → |
 |---|---|---|---|---|
-| GET | `/vouchers` | public | | `PublicVoucher[]` (đang bật; chưa lọc hạn dùng) |
+| GET | `/vouchers` | public | | `PublicVoucher[]` (đang bật, trong hạn, còn lượt) |
 | POST | `/vouchers/validate` | user | `{code, subtotal, categories[]}` | `VoucherEvaluation` (luôn 200) |
 | POST | `/checkout/preview` | user | `{voucherCode?, addressId?}` | `CheckoutPreview` |
+| POST | `/orders` | user | `PlaceOrderRequest` | `OrderDetail` (status 1) |
 
 `GET /vouchers` (khách vãng lai) → **HTTP 200**
 
@@ -1315,26 +1362,17 @@ Vượt 99:
   "error_code": null,
   "data": [
     {
-      "createdBy": "99999999-9999-9999-9999-999999999999",
-      "createdAt": "2026-10-27T11:22:34.155819",
-      "updatedBy": "99999999-9999-9999-9999-999999999999",
-      "updatedAt": "2026-10-27T11:22:34.155819",
-      "id": 7,
       "code": "GIAMQ6IQE5",
       "name": "Giảm 10%",
       "type": 1,
-      "value": 10.0,
+      "value": 10,
       "maxDiscountAmount": null,
-      "minOrderAmount": 0.0,
-      "usageLimit": null,
-      "usedCount": 0,
+      "minOrderAmount": 0,
+      "applicableCategories": [],
       "perUserLimit": 1,
       "startAt": null,
-      "endAt": null,
-      "isActive": 1,
-      "version": 0
-    },
-    "...(+6)"
+      "endAt": null
+    }
   ]
 }
 ```
@@ -1351,7 +1389,7 @@ Vượt 99:
     "code": "WELCOME10",
     "name": "Giảm 10% cho đơn đầu tiên",
     "type": 1,
-    "discountAmount": 500000.0,
+    "discountAmount": 500000,
     "freeShipping": false,
     "reason": null
   }
@@ -1418,15 +1456,15 @@ Vượt 99:
       }
     ],
     "subtotal": 19780000,
-    "discountAmount": 500000.0,
+    "discountAmount": 500000,
     "shippingFee": 0,
-    "totalAmount": 19280000.0,
+    "totalAmount": 19280000,
     "voucher": {
       "valid": true,
       "code": "WELCOME10",
       "name": "Giảm 10% cho đơn đầu tiên",
       "type": 1,
-      "discountAmount": 500000.0,
+      "discountAmount": 500000,
       "freeShipping": false,
       "reason": null
     },
@@ -1503,46 +1541,55 @@ thuộc user → 400 "Địa chỉ giao hàng không tồn tại trong sổ đ�
 
 | Method | Path | Quyền | Query/Body | → |
 |---|---|---|---|---|
-| GET | `/orders/my` | user | | `Order[]` (mới nhất trước) |
+| GET | `/orders/my` | user | `status?`, `page` (0), `size` (10) | `PageResponse<Order>` (mới nhất trước) |
 | GET | `/orders/{code}` | owner hoặc STAFF | | `OrderDetail` |
 | GET | `/orders/{code}/timeline` | owner hoặc STAFF | | `OrderStatusHistory[]` |
-| POST | `/orders/{code}/cancel` | owner, khi status 1/2 | `{reason}` (bắt buộc, ≤ 255) | `Order` |
+| POST | `/orders/{code}/cancel` | owner, khi status 1/2/4 và chưa thanh toán | `{reason}` (bắt buộc, ≤ 255) | `Order` |
 
-`GET /orders/my` (customer1) → **HTTP 200**
+`GET /orders/my?size=2` (customer1) → **HTTP 200**
 
 ```json
 {
   "error_status": 1,
   "error_message": null,
   "error_code": null,
-  "data": [
-    {
-      "createdBy": "11111111-1111-1111-1111-111111111111",
-      "createdAt": "2026-10-24T22:30:07.773398",
-      "updatedBy": "33333333-3333-3333-3333-333333333333",
-      "updatedAt": "2026-10-27T11:11:58.384197",
-      "id": 7,
-      "code": "DH20261023000007",
-      "userId": "11111111-1111-1111-1111-111111111111",
-      "status": 6,
-      "paymentMethod": 1,
-      "paymentStatus": 2,
-      "subtotalAmount": 3180000.0,
-      "discountAmount": 0.0,
-      "shippingFee": 20000.0,
-      "totalAmount": 3200000.0,
-      "voucherCode": null,
-      "receiverName": "Khách Một",
-      "receiverPhone": "0900000001",
-      "shippingAddress": "1 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
-      "note": null,
-      "pcBuildId": null,
-      "cancelReason": null,
-      "placedAt": "2026-10-24T22:30:07.773398",
-      "completedAt": "2026-10-27T11:11:58.382784"
-    },
-    "...(+3)"
-  ]
+  "data": {
+    "content": [
+      {
+        "createdBy": "11111111-1111-1111-1111-111111111111",
+        "createdAt": "2026-10-24T22:30:07.773398",
+        "updatedBy": "33333333-3333-3333-3333-333333333333",
+        "updatedAt": "2026-10-27T11:11:58.384197",
+        "id": 7,
+        "code": "DH20261023000007",
+        "userId": "11111111-1111-1111-1111-111111111111",
+        "status": 6,
+        "paymentMethod": 1,
+        "paymentStatus": 2,
+        "subtotalAmount": 3180000,
+        "discountAmount": 0,
+        "shippingFee": 20000,
+        "totalAmount": 3200000,
+        "voucherCode": null,
+        "receiverName": "Khách Một",
+        "receiverPhone": "0900000001",
+        "shippingAddress": "1 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+        "note": null,
+        "pcBuildId": null,
+        "cancelReason": null,
+        "placedAt": "2026-10-24T22:30:07.773398",
+        "completedAt": "2026-10-27T11:11:58.382784",
+        "version": 0
+      },
+      "...(+1)"
+    ],
+    "page": {
+      "size": 2,
+      "number": 0,
+      "totalElements": 4,
+      "totalPages": 2
+    }
+  }
 }
 ```
 
@@ -1565,10 +1612,10 @@ thuộc user → 400 "Địa chỉ giao hàng không tồn tại trong sổ đ�
       "status": 7,
       "paymentMethod": 1,
       "paymentStatus": 1,
-      "subtotalAmount": 25990000.0,
-      "discountAmount": 0.0,
-      "shippingFee": 0.0,
-      "totalAmount": 25990000.0,
+      "subtotalAmount": 25990000,
+      "discountAmount": 0,
+      "shippingFee": 0,
+      "totalAmount": 25990000,
       "voucherCode": null,
       "receiverName": "Khách Một",
       "receiverPhone": "0900000001",
@@ -1588,10 +1635,10 @@ thuộc user → 400 "Địa chỉ giao hàng không tồn tại trong sổ đ�
         "productName": "MSI GeForce RTX 4070 SUPER 12GB Ventus 2X",
         "productImageUrl": null,
         "categoryCode": "GPU",
-        "unitPrice": 17200000.0,
+        "unitPrice": 17200000,
         "quantity": 1,
-        "discountAmount": 0.0,
-        "lineTotal": 17200000.0,
+        "discountAmount": 0,
+        "lineTotal": 17200000,
         "warrantyMonths": 36,
         "createdAt": "2026-10-24T20:25:34.732737"
       },
@@ -1603,10 +1650,10 @@ thuộc user → 400 "Địa chỉ giao hàng không tồn tại trong sổ đ�
         "productName": "Intel Core i5-14600K",
         "productImageUrl": null,
         "categoryCode": "CPU",
-        "unitPrice": 8790000.0,
+        "unitPrice": 8790000,
         "quantity": 1,
-        "discountAmount": 0.0,
-        "lineTotal": 8790000.0,
+        "discountAmount": 0,
+        "lineTotal": 8790000,
         "warrantyMonths": 36,
         "createdAt": "2026-10-24T20:25:34.732737"
       }
@@ -1674,16 +1721,170 @@ thuộc user → 400 "Địa chỉ giao hàng không tồn tại trong sổ đ�
 }
 ```
 
-`POST /orders/DH20261005000003/cancel` (customer1) → **HTTP 400**<br>Body: `{"reason": "Đổi ý"}`
+`POST /orders/DH20261005000003/cancel` (customer1, đơn đã hoàn tất) → **HTTP 400**<br>Body: `{"reason": "Đổi ý"}`
 
 ```json
 {
   "error_status": 0,
-  "error_message": "Đơn đã được xác nhận, không thể tự hủy. Vui lòng liên hệ cửa hàng",
+  "error_message": "Đơn đã thanh toán hoặc đang giao, không thể tự hủy. Vui lòng liên hệ cửa hàng",
   "error_code": "BAD_REQUEST",
   "data": null
 }
 ```
+
+`POST /orders` (customer1, giỏ có 2 case + 1 nguồn) → **HTTP 200**<br>Body: `{"addressId": 1, "paymentMethod": 1, "note": "Giao giờ hành chính", "expectedTotal": 7270000}`
+
+```json
+{
+  "error_status": 1,
+  "error_message": null,
+  "error_code": null,
+  "data": {
+    "order": {
+      "createdBy": "11111111-1111-1111-1111-111111111111",
+      "createdAt": "2026-11-08T10:31:05.534095",
+      "updatedBy": "11111111-1111-1111-1111-111111111111",
+      "updatedAt": "2026-11-08T10:31:05.534095",
+      "id": 16,
+      "code": "DH20261108001000",
+      "userId": "11111111-1111-1111-1111-111111111111",
+      "status": 1,
+      "paymentMethod": 1,
+      "paymentStatus": 1,
+      "subtotalAmount": 7270000,
+      "discountAmount": 0,
+      "shippingFee": 0,
+      "totalAmount": 7270000,
+      "voucherCode": null,
+      "receiverName": "Khách Một",
+      "receiverPhone": "0900000001",
+      "shippingAddress": "1 Lê Lợi, Phường Bến Thành, Thành phố Hồ Chí Minh",
+      "note": "Giao giờ hành chính",
+      "pcBuildId": null,
+      "cancelReason": null,
+      "placedAt": "2026-11-08T10:31:05.492792",
+      "completedAt": null,
+      "version": 0
+    },
+    "items": [
+      {
+        "id": 11,
+        "orderId": 16,
+        "productId": "6adf719d17897e99b062e100",
+        "sku": "CASE-CORSAIR-4000D",
+        "productName": "Corsair 4000D Airflow",
+        "productImageUrl": null,
+        "categoryCode": "CASE",
+        "unitPrice": 2290000,
+        "quantity": 2,
+        "discountAmount": 0,
+        "lineTotal": 4580000,
+        "warrantyMonths": 24,
+        "createdAt": "2026-11-08T10:31:05.565101"
+      },
+      {
+        "id": 12,
+        "orderId": 16,
+        "productId": "6adcb0cc2444ef877c39129c",
+        "sku": "PSU-CORSAIR-RM750E",
+        "productName": "Corsair RM750e 750W 80 Plus Gold",
+        "productImageUrl": null,
+        "categoryCode": "PSU",
+        "unitPrice": 2690000,
+        "quantity": 1,
+        "discountAmount": 0,
+        "lineTotal": 2690000,
+        "warrantyMonths": 84,
+        "createdAt": "2026-11-08T10:31:05.578617"
+      }
+    ]
+  }
+}
+```
+
+Khoảng 1–3 giây sau, `GET /orders/DH20261108001000` trả `status: 4` (COD đã giữ hàng); timeline có thêm dòng
+`{fromStatus: 1, toStatus: 4, reason: "Đã giữ hàng, chờ giao", createdBy: null}`.
+
+`POST /orders` với `expectedTotal` khác tổng tính lại → **HTTP 409**
+
+```json
+{
+  "error_status": 0,
+  "error_message": "Tổng tiền đã thay đổi thành 2810000đ, vui lòng xem lại đơn hàng",
+  "error_code": "CONFLICT",
+  "data": { "items": [ "…như CheckoutPreview…" ], "totalAmount": 2810000, "canPlaceOrder": true }
+}
+```
+
+`POST /orders` với mã giảm giá sai → **HTTP 422** `{"error_code": "VOUCHER_INVALID", "error_message": "Mã giảm giá không tồn tại", "data": null}`.
+Giỏ có món hết hàng/ngừng bán → **HTTP 409** `OUT_OF_STOCK`, `data` = mảng `warnings` như preview. Giỏ trống → 400 "Giỏ hàng trống".
+
+### f.7b Thanh toán online, hoàn tiền (K06, K07, A06)
+
+| Method | Path | Quyền | Query/Body | → |
+|---|---|---|---|---|
+| POST | `/payments/{orderCode}` | owner, đơn status 2, không phải COD | | `PaymentInit` |
+| GET | `/payments/{orderCode}` | owner hoặc STAFF | | `Payment[]` (mới nhất trước) |
+| GET | `/admin/refunds?status=` | STAFF, ADMIN | `status` 1 chờ hoàn / 2 đã hoàn | `RefundView[]` |
+| PATCH | `/admin/refunds/{id}/complete` | perm `order:update-status` | `{providerRefundId?}` | `Refund` |
+
+Luồng: trang đơn (status 2) có nút "Thanh toán ngay" → `POST /payments/{code}` → `window.location = paymentUrl`.
+Thanh toán xong, backend chuyển trình duyệt tới `/orders/payment-result?orderCode=...&result=...` của frontend:
+
+| `result` | Hiển thị |
+|---|---|
+| `success` | "Thanh toán thành công", đọc lại đơn (status 3) |
+| `failed` | "Thanh toán chưa thành công", nút "Thử lại" (gọi lại `POST /payments/{code}`, được đến khi hết hạn 15 phút) |
+| `refund` | "Đơn đã bị hủy trước khi tiền về, cửa hàng sẽ hoàn tiền" |
+| `invalid` | "Không xác nhận được giao dịch", nút về trang đơn (không có `orderCode`) |
+
+`POST /payments/DH20261108001008` (customer1, đơn VNPay chờ thanh toán) → **HTTP 200**
+
+```json
+{
+  "error_status": 1,
+  "error_message": null,
+  "error_code": null,
+  "data": {
+    "paymentCode": "DH20261108001008-01",
+    "paymentUrl": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=1699000000&vnp_Command=pay&...&vnp_SecureHash=5f1c...",
+    "amount": 16990000,
+    "expiresAt": "2026-11-08T12:19:58.40651",
+    "gateway": "VNPAY"
+  }
+}
+```
+
+`gateway`: `VNPAY` khi backend có khóa VNPay; `MOCK` (MoMo, hoặc chưa cấu hình VNPay) → `paymentUrl` là trang giả lập của backend có
+hai nút "Thanh toán thành công / thất bại". Frontend xử lý hai loại như nhau.
+
+`GET /admin/refunds?status=1` (staff1) → **HTTP 200**
+
+```json
+{
+  "error_status": 1,
+  "error_message": null,
+  "error_code": null,
+  "data": [
+    {
+      "id": 1,
+      "orderCode": "DH20261108001008",
+      "paymentCode": "DH20261108001008-02",
+      "method": 2,
+      "amount": 16990000,
+      "reason": "Trả hàng: Card lỗi quạt",
+      "status": 1,
+      "providerRefundId": null,
+      "createdAt": "2026-11-08T12:05:09.352313",
+      "updatedAt": "2026-11-08T12:05:09.352313"
+    }
+  ]
+}
+```
+
+Yêu cầu hoàn tiền tự sinh khi: hủy (7) hoặc trả hàng (8) đơn đã thu tiền (`paymentStatus = 2`, kể cả COD đã giao xong), hoặc tiền về
+sau khi đơn đã bị hủy. Chưa gọi API hoàn tiền của cổng: nhân viên hoàn trên trang VNPay (hoặc trả tiền mặt) rồi bấm "Đã hoàn"
+→ đơn `paymentStatus = 3`.
 
 ### f.8 Tài khoản, địa chỉ, hành chính (K06, K08)
 
@@ -1736,11 +1937,12 @@ thuộc user → 400 "Địa chỉ giao hàng không tồn tại trong sổ đ�
 
 ```json
 {
-  "title": "Constraint Violation",
-  "status": 400,
-  "violations": [
+  "error_status": 0,
+  "error_message": "phoneNumber: Số điện thoại không hợp lệ",
+  "error_code": "VALIDATION_ERROR",
+  "data": [
     {
-      "field": "update.request.phoneNumber",
+      "field": "phoneNumber",
       "message": "Số điện thoại không hợp lệ"
     }
   ]
@@ -1872,14 +2074,19 @@ Dữ liệu hành chính hiện là bản tạm: đủ 34 tỉnh/thành (sau s�
 
 | Method | Path | Quyền | Query/Body | → |
 |---|---|---|---|---|
-| GET | `/reviews` | public | `productId` (= `Product.id`) | `Review[]` (chỉ đã duyệt) |
-| GET | `/reviews/stats` | public | `productId` | `ReviewStats` |
+| GET | `/reviews` | public | `sku` hoặc `productId` (= `Product.id`), `page` (0), `size` (10) | `PageResponse<Review>` (chỉ đã duyệt) |
+| GET | `/reviews/stats` | public | `sku` hoặc `productId` | `ReviewStats` |
 | GET | `/reviews/{id}` | public nếu đã duyệt, ngược lại người viết/STAFF | | `Review` |
 | POST | `/reviews` | user | `CreateReviewRequest` | `Review` (status 1; đã có → 409) |
 | PUT | `/reviews/{id}` | owner, chỉ khi status 1 | `UpdateReviewRequest` | `Review` |
 | DELETE | `/reviews/{id}` | owner | | `Review` (status 4) |
+| GET | `/orders/purchased?sku=` | user | | `{sku, purchased, orderCode}` (đơn hoàn tất gần nhất chứa SKU) |
 
-`POST /reviews` (customer2) → **HTTP 200**<br>Body: `{"productId": "6adf719d17897e99b062e100", "sku": "CASE-CORSAIR-4000D", "rating": 5, "title": "Case rộng, dễ đi dây", "content": "Lắp mATX dư chỗ, airflow tốt."}`
+Khi tạo review, backend tự hỏi ordering: người viết có đơn **hoàn tất** chứa SKU → `verifiedPurchase = true`, `orderCode` = đơn đó
+(hiện nhãn "Đã mua hàng"). Mỗi người một review còn hiệu lực cho mỗi (sản phẩm, đơn): mua lại ở đơn khác thì viết thêm được.
+Duyệt / từ chối / gỡ review → vài giây sau `Product.ratingAvg`, `ratingCount` tự cập nhật (chỉ tính review đã duyệt).
+
+`POST /reviews` (customer2) → **HTTP 200**<br>Body: `{"sku": "CASE-CORSAIR-4000D", "rating": 5, "title": "Case rộng, dễ đi dây", "content": "Lắp mATX dư chỗ, airflow tốt."}`
 
 ```json
 {
@@ -1891,7 +2098,7 @@ Dữ liệu hành chính hiện là bản tạm: đủ 34 tỉnh/thành (sau s�
     "productId": "6adf719d17897e99b062e100",
     "sku": "CASE-CORSAIR-4000D",
     "userId": "22222222-2222-2222-2222-222222222222",
-    "userDisplayName": "customer2",
+    "userDisplayName": "Khách Hai",
     "orderCode": null,
     "rating": 5,
     "title": "Case rộng, dễ đi dây",
@@ -1906,40 +2113,7 @@ Dữ liệu hành chính hiện là bản tạm: đủ 34 tỉnh/thành (sau s�
 }
 ```
 
-`GET /reviews?productId=6adf719d17897e99b062e100` (khách vãng lai) → **HTTP 200**
-
-```json
-{
-  "error_status": 1,
-  "error_message": null,
-  "error_code": null,
-  "data": [
-    {
-      "id": "6ae0cbfce8f7b4c996878bba",
-      "productId": "6adf719d17897e99b062e100",
-      "sku": "CASE-CORSAIR-4000D",
-      "userId": "22222222-2222-2222-2222-222222222222",
-      "userDisplayName": "customer2",
-      "orderCode": null,
-      "rating": 4,
-      "title": "Case rộng, dễ đi dây",
-      "content": "Lắp mATX dư chỗ, airflow tốt. Hơi ồn.",
-      "verifiedPurchase": false,
-      "status": 2,
-      "helpfulCount": 0,
-      "adminReply": {
-        "content": "Cảm ơn bạn đã tin dùng PC Shop!",
-        "repliedBy": "33333333-3333-3333-3333-333333333333",
-        "repliedAt": "2026-10-27T16:06:21.776Z"
-      },
-      "createdAt": "2026-10-27T16:06:20.459Z",
-      "updatedAt": "2026-10-27T16:06:21.776Z"
-    }
-  ]
-}
-```
-
-`GET /reviews/stats?productId=6adf719d17897e99b062e100` (khách vãng lai) → **HTTP 200**
+`GET /reviews?sku=CASE-CORSAIR-4000D` (khách vãng lai) → **HTTP 200**
 
 ```json
 {
@@ -1947,8 +2121,50 @@ Dữ liệu hành chính hiện là bản tạm: đủ 34 tỉnh/thành (sau s�
   "error_message": null,
   "error_code": null,
   "data": {
-    "productId": "6adf719d17897e99b062e100",
-    "average": 4.0,
+    "content": [
+      {
+        "id": "6ae0cbfce8f7b4c996878bba",
+        "productId": "6adf719d17897e99b062e100",
+        "sku": "CASE-CORSAIR-4000D",
+        "userId": "22222222-2222-2222-2222-222222222222",
+        "userDisplayName": "Khách Hai",
+        "orderCode": null,
+        "rating": 4,
+        "title": "Case rộng, dễ đi dây",
+        "content": "Lắp mATX dư chỗ, airflow tốt. Hơi ồn.",
+        "verifiedPurchase": false,
+        "status": 2,
+        "helpfulCount": 0,
+        "adminReply": {
+          "content": "Cảm ơn bạn đã tin dùng PC Shop!",
+          "repliedBy": "33333333-3333-3333-3333-333333333333",
+          "repliedAt": "2026-10-27T16:06:21.776Z"
+        },
+        "createdAt": "2026-10-27T16:06:20.459Z",
+        "updatedAt": "2026-10-27T16:06:21.776Z"
+      }
+    ],
+    "page": {
+      "size": 10,
+      "number": 0,
+      "totalElements": 1,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+`GET /reviews/stats?sku=CASE-CORSAIR-4000D` (khách vãng lai) → **HTTP 200**
+
+```json
+{
+  "error_status": 1,
+  "error_message": null,
+  "error_code": null,
+  "data": {
+    "productId": null,
+    "sku": "CASE-CORSAIR-4000D",
+    "average": 4,
     "count": 1,
     "distribution": {
       "1": 0,
@@ -1983,6 +2199,36 @@ viết (không nằm trong `GET /reviews`). Chưa có API "đánh giá của tô
 | GET | `/notifications/unread-count` | user | | `{count}` |
 | PATCH | `/notifications/{id}/read` | owner | | `Notification` |
 | PATCH | `/notifications/read-all` | user | | `{updated}` |
+| POST | `/notifications/stream-ticket` | user | | `{ticket, expiresIn}` (vé dùng 1 lần, 60 giây) |
+| GET | `/notifications/stream` | Bearer **hoặc** `?ticket=` | | `text/event-stream` |
+
+**Realtime (SSE).** `EventSource` của trình duyệt không gửi được header `Authorization`, nên mở stream bằng vé:
+
+```ts
+const { data } = await api.post('/notifications/stream-ticket');            // có Bearer như mọi API
+const es = new EventSource(`${BASE}/api/v1/notifications/stream?ticket=${data.ticket}`);
+es.addEventListener('unread-count', e => setUnread(JSON.parse(e.data).count));   // gửi ngay khi kết nối
+es.addEventListener('notification', e => onNew(JSON.parse(e.data) as Notification));
+es.onerror = () => { es.close(); /* chờ vài giây, lấy vé MỚI rồi mở lại (vé chỉ dùng 1 lần) */ };
+```
+
+Hoặc dùng thư viện SSE trên `fetch` (vd `@microsoft/fetch-event-source`) với header `Authorization: Bearer`, không cần vé.
+Server gửi comment `: ping` mỗi 25 giây để giữ kết nối (EventSource tự bỏ qua). Mỗi tab một kết nối; đóng stream khi đăng xuất.
+
+**Email.** Mỗi lần đơn đổi trạng thái 2–8, ngoài thông báo trong ứng dụng còn gửi email tới email của tài khoản lúc đặt đơn
+(nút "Xem đơn" / "Thanh toán ngay" trỏ về `/orders/:code` của frontend). Trả lời review chỉ có thông báo trong ứng dụng.
+
+Thông báo tự sinh (`channel` IN_APP):
+
+| Khi | `type` | `title` | `data` |
+|---|---|---|---|
+| Đơn → 2 | ORDER_STATUS | Chờ thanh toán | `{order_code, status}` |
+| Đơn → 3 | PAYMENT | Thanh toán thành công | `{order_code, status}` |
+| Đơn → 4 / 5 / 6 | ORDER_STATUS | Đơn hàng đã được xác nhận / đang được giao / Giao hàng thành công | `{order_code, status}` |
+| Đơn → 7 / 8 | ORDER_STATUS | Đơn hàng đã bị hủy / đã được trả (`content` kèm lý do) | `{order_code, status}` |
+| Cửa hàng trả lời review | REVIEW_REPLY | Cửa hàng đã trả lời đánh giá của bạn (`content` = 200 ký tự đầu) | `{review_id, sku, product_id}` |
+
+Đơn ở 1 (đang giữ hàng, vài giây) không có thông báo.
 
 `GET /notifications` (customer1) → **HTTP 200**
 
@@ -2081,12 +2327,13 @@ Lỗi kiểm tra (thật):
 
 ```json
 {
-  "title": "Constraint Violation",
-  "status": 400,
-  "violations": [
+  "error_status": 0,
+  "error_message": "message: không được để trống",
+  "error_code": "VALIDATION_ERROR",
+  "data": [
     {
-      "field": "chat.request.message",
-      "message": "must not be blank"
+      "field": "message",
+      "message": "không được để trống"
     }
   ]
 }
@@ -2098,7 +2345,7 @@ Khi LLM lỗi: HTTP 500, body có thể rỗng. Frontend hiện "Trợ lý AI đ
 
 | Method | Path | Quyền | Query/Body | → |
 |---|---|---|---|---|
-| POST | `/media/upload` | user | multipart `file`, `bucket` | `MediaFile` |
+| POST | `/media/upload` | theo bucket (mục d "Upload và tải file") | multipart `file`, `bucket` | `MediaFile` |
 | GET | `/media/files/{id}` | public (bucket nội bộ: ADMIN/`knowledge:write`) | | nội dung file (dùng làm `<img src>`) |
 | GET | `/media/files/{id}/view` | như trên | | nội dung file (cho fetch → blob) |
 | GET | `/media/files/{id}/info` | như trên | | `MediaFile` |
@@ -2135,7 +2382,7 @@ Khi LLM lỗi: HTTP 500, body có thể rỗng. Frontend hiện "Trợ lý AI đ
 ```json
 {
   "error_status": 0,
-  "error_message": "Thiếu file hoặc bucket không hợp lệ [avatars, reviews, products, knowledge-docs]",
+  "error_message": "Thiếu file hoặc bucket không hợp lệ [reviews, avatars, knowledge-docs, products]",
   "error_code": "BAD_REQUEST",
   "data": null
 }
@@ -2173,12 +2420,17 @@ Khi LLM lỗi: HTTP 500, body có thể rỗng. Frontend hiện "Trợ lý AI đ
     "from": "2026-10-01",
     "to": "2026-10-31",
     "totalOrders": 7,
-    "revenue": 35250000.0,
-    "grossRevenue": 43240000.0,
+    "revenue": 35250000,
+    "grossRevenue": 43240000,
     "ordersByStatus": {
+      "1": 0,
+      "2": 0,
       "3": 1,
+      "4": 0,
+      "5": 0,
       "6": 4,
-      "7": 2
+      "7": 2,
+      "8": 0
     }
   }
 }
@@ -2196,13 +2448,13 @@ Khi LLM lỗi: HTTP 500, body có thể rỗng. Frontend hiện "Trợ lý AI đ
       "sku": "RAM-KINGSTON-32G-D5",
       "productName": "Kingston Fury Beast 32GB (2x16GB) DDR5 6000",
       "quantity": 3,
-      "revenue": 8370000.0
+      "revenue": 8370000
     },
     {
       "sku": "STORAGE-KINGSTON-NV2-1T",
       "productName": "Kingston NV2 1TB M.2 NVMe PCIe 4.0",
       "quantity": 2,
-      "revenue": 3180000.0
+      "revenue": 3180000
     },
     "...(+3)"
   ]
@@ -2302,15 +2554,16 @@ Tất cả cần `perm:product:write` (thiếu → 403 "Thiếu quyền product:
 
 ```json
 {
-  "title": "Constraint Violation",
-  "status": 400,
-  "violations": [
+  "error_status": 0,
+  "error_message": "price: phải lớn hơn 0, sku: SKU chỉ gồm A-Z, 0-9, -",
+  "error_code": "VALIDATION_ERROR",
+  "data": [
     {
-      "field": "create.r.price",
-      "message": "must be greater than 0"
+      "field": "price",
+      "message": "phải lớn hơn 0"
     },
     {
-      "field": "create.r.sku",
+      "field": "sku",
       "message": "SKU chỉ gồm A-Z, 0-9, -"
     }
   ]
@@ -2805,10 +3058,10 @@ Lỗi cả file và phiên hết hạn:
         "status": 6,
         "paymentMethod": 1,
         "paymentStatus": 2,
-        "subtotalAmount": 3180000.0,
-        "discountAmount": 0.0,
-        "shippingFee": 20000.0,
-        "totalAmount": 3200000.0,
+        "subtotalAmount": 3180000,
+        "discountAmount": 0,
+        "shippingFee": 20000,
+        "totalAmount": 3200000,
         "voucherCode": null,
         "receiverName": "Khách Một",
         "receiverPhone": "0900000001",
@@ -2849,10 +3102,10 @@ Lỗi cả file và phiên hết hạn:
     "status": 4,
     "paymentMethod": 2,
     "paymentStatus": 2,
-    "subtotalAmount": 7990000.0,
-    "discountAmount": 0.0,
-    "shippingFee": 0.0,
-    "totalAmount": 7990000.0,
+    "subtotalAmount": 7990000,
+    "discountAmount": 0,
+    "shippingFee": 0,
+    "totalAmount": 7990000,
     "voucherCode": null,
     "receiverName": "Khách Hai",
     "receiverPhone": "0900000002",
@@ -2914,7 +3167,7 @@ Lỗi cả file và phiên hết hạn:
         "productId": "6adcb0cc2444ef877c39129b",
         "sku": "GPU-MSI-4070S-12G",
         "userId": "99999999-9999-9999-9999-999999999999",
-        "userDisplayName": "admin1",
+        "userDisplayName": "Quản Trị",
         "orderCode": null,
         "rating": 5,
         "title": "Card mát, chơi 2K mượt",
@@ -2949,7 +3202,7 @@ Lỗi cả file và phiên hết hạn:
     "productId": "6adf719d17897e99b062e100",
     "sku": "CASE-CORSAIR-4000D",
     "userId": "22222222-2222-2222-2222-222222222222",
-    "userDisplayName": "customer2",
+    "userDisplayName": "Khách Hai",
     "orderCode": null,
     "rating": 4,
     "title": "Case rộng, dễ đi dây",
@@ -3146,7 +3399,7 @@ Chuyển trạng thái: mọi hướng, trừ quay về 1 khi đã công bố. T
 
 | Mã | Hằng | Nhãn | Màu |
 |---|---|---|---|
-| 1 | PENDING | Chờ xử lý | cobalt |
+| 1 | PENDING | Đang giữ hàng | cobalt |
 | 2 | AWAITING_PAYMENT | Chờ thanh toán | hổ phách |
 | 3 | PAID | Đã thanh toán | cobalt |
 | 4 | CONFIRMED | Đã xác nhận | cobalt |
@@ -3181,8 +3434,8 @@ COD hoàn tất (6) thì backend tự đặt `paymentStatus = 2`.
 ### g.2 Chuyển trạng thái đơn hợp lệ
 
 ```
-1 Chờ xử lý      → 2 Chờ thanh toán, 4 Đã xác nhận, 7 Đã hủy
-2 Chờ thanh toán → 3 Đã thanh toán, 7 Đã hủy
+1 Đang giữ hàng  → 7 Đã hủy                  (2 / 4 / 7 do hệ thống tự chuyển, xem dưới)
+2 Chờ thanh toán → 3 Đã thanh toán, 7 Đã hủy     (3 thường do cổng thanh toán tự chuyển)
 3 Đã thanh toán  → 4 Đã xác nhận, 7 Đã hủy
 4 Đã xác nhận    → 5 Đang giao, 7 Đã hủy
 5 Đang giao      → 6 Hoàn tất, 8 Trả hàng
@@ -3192,7 +3445,15 @@ COD hoàn tất (6) thì backend tự đặt `paymentStatus = 2`.
 
 - Nhân viên (cần `order:update-status`): dropdown chỉ hiện bước hợp lệ từ trạng thái hiện tại; chuyển sang 7 hoặc 8 **bắt buộc lý do**
   (≤ 255 ký tự). Đổi hàng loạt: chỉ cho chọn trạng thái đích hợp lệ với **mọi** đơn đã chọn, hoặc gửi và hiển thị lỗi từng dòng.
-- Khách: chỉ tự hủy khi đơn ở 1 hoặc 2 (nút "Hủy đơn" chỉ hiện khi đó, bắt nhập lý do). Đơn đã xác nhận → "Vui lòng liên hệ cửa hàng".
+- Hệ thống (Saga, `createdBy = null`): 1 → 4 (COD, đã giữ hàng) · 1 → 2 (online, đã giữ hàng) · 1 → 7 ("Không đủ hàng: SKU…") ·
+  2 → 7 khi quá 15 phút chưa thanh toán ("Quá hạn thanh toán") · 2 → 3 khi cổng báo thanh toán thành công.
+  Đơn 1 thường chỉ tồn tại 1–3 giây.
+- Kho: hủy đơn (7) → nhả hàng đang giữ; chuyển 5 Đang giao → trừ hẳn khỏi kho (phiếu "Xuất bán"). Trả hàng (8) KHÔNG tự cộng lại kho
+  (nhân viên kiểm hàng rồi điều chỉnh tồn kho tay). Hủy đơn cũng trả lại lượt dùng mã giảm giá.
+- Tiền: hủy/trả đơn đã thu tiền → tự tạo yêu cầu hoàn tiền (mục f.7b). Hoàn tất (6) → `soldCount` của sản phẩm tăng (vài giây sau);
+  trả hàng sau khi hoàn tất → giảm lại.
+- Khách: tự hủy khi đơn ở 1, 2 hoặc 4 và chưa thanh toán (`paymentStatus` ≠ 2); nút "Hủy đơn" chỉ hiện khi đó, bắt nhập lý do.
+  Còn lại → "Vui lòng liên hệ cửa hàng".
 - Timeline: mỗi dòng `OrderStatusHistory` là một bước; dòng đầu `fromStatus = null` là "Đặt hàng". `createdBy = null` = hệ thống.
   Vẽ timeline dọc theo thứ tự trả về (cũ → mới); bước tương lai (theo luồng chuẩn 1→4→5→6) vẽ mờ.
 
@@ -3210,17 +3471,24 @@ Số lượng mỗi slot 1–8 (thường RAM/ổ cứng mới >1). Gửi `compa
 | `PSU_WATTAGE` | mọi linh kiện → PSU | SUM_TDP_LTE_WATTAGE | tổng `compat.tdp_w` × 1.2 ≤ `compat.wattage` của PSU | Lỗi |
 | `GPU_CASE_LENGTH` | GPU → CASE | LTE | `compat.length_mm` GPU ≤ `compat.max_gpu_length_mm` case | Lỗi |
 | `MB_CASE_FORM_FACTOR` | MAINBOARD → CASE | IN | `compat.form_factor` mainboard ∈ `compat.supported_form_factors` case | Lỗi |
+| `RAM_MB_SLOTS` | RAM → MAINBOARD | SUM_LTE | tổng `compat.modules` mọi RAM (tính cả số lượng) ≤ `compat.ram_slots` mainboard | Lỗi |
+| `CPU_COOLER_SOCKET` | CPU → COOLER | IN | `compat.socket` CPU ∈ `compat.supported_sockets` tản nhiệt | Lỗi |
+| `COOLER_CASE_HEIGHT` | COOLER → CASE | LTE | `compat.height_mm` tản nhiệt ≤ `compat.max_cooler_height_mm` case | Lỗi |
+| `ONE_CPU`, `ONE_MAINBOARD`, `ONE_PSU`, `ONE_CASE` | slot tương ứng | MAX_COUNT | tối đa 1 linh kiện | Lỗi |
+| `ONE_COOLER` | COOLER | MAX_COUNT | tối đa 1 tản nhiệt | Cảnh báo |
 
 - Kiểu EQUALS với một bên là mảng: chỉ cần có phần tử chung (CPU khai `memory_types: ["DDR4","DDR5"]`). So sánh không phân biệt hoa thường.
 - Linh kiện thiếu thông số mà luật cần → luật đó bị bỏ qua (không báo lỗi).
-- `compatible = false` khi có ít nhất một issue `severity = 1`. Issue `severity = 2` là cảnh báo (hiện chưa có luật cảnh báo nào bật,
-  nhưng giao diện phải hỗ trợ).
+- `compatible = false` khi có ít nhất một issue `severity = 1`. Issue `severity = 2` là cảnh báo (vd `ONE_COOLER`).
 - `message` đã là câu tiếng Việt hoàn chỉnh: hiển thị nguyên văn, đặt ngay tại "đoạn nối" giữa hai slot liên quan. Ánh xạ
-  `ruleCode` → cặp slot: `CPU_MB_SOCKET` CPU–Mainboard · `RAM_MB_TYPE` RAM–Mainboard · `GPU_CASE_LENGTH` GPU–Case ·
-  `MB_CASE_FORM_FACTOR` Mainboard–Case · `PSU_WATTAGE` đồng hồ công suất/slot Nguồn. Mã luật lạ → hiện ở khối "Vấn đề khác".
-- **Đồng hồ công suất:** `estimatedWattage` là tổng TDP **chưa** nhân hệ số. Mức cần = `estimatedWattage × 1.2`, so với
+  `ruleCode` → cặp slot: `CPU_MB_SOCKET` CPU–Mainboard · `RAM_MB_TYPE`, `RAM_MB_SLOTS` RAM–Mainboard · `GPU_CASE_LENGTH` GPU–Case ·
+  `MB_CASE_FORM_FACTOR` Mainboard–Case · `CPU_COOLER_SOCKET` CPU–Tản nhiệt · `COOLER_CASE_HEIGHT` Tản nhiệt–Case ·
+  `ONE_*` chính slot đó · `PSU_WATTAGE` đồng hồ công suất/slot Nguồn. Mã luật lạ → hiện ở khối "Vấn đề khác".
+  Ví dụ thật: 2 CPU + 3 kit RAM 2 thanh trên mainboard 4 khe → `ONE_CPU` "Cấu hình chỉ lắp được 1 CPU, đang chọn 2" và
+  `RAM_MB_SLOTS` "Tổng 6 thanh RAM vượt số khe của mainboard ASUS TUF B760M-PLUS WIFI DDR5 (4 khe)".
+- **Đồng hồ công suất:** `estimatedWattage` là tổng TDP **chưa** nhân hệ số; `requiredWattage` là mức cần (đã nhân 1.2), so với
   `compat.wattage` của PSU đã chọn: ≤ 80% lục · 80–100% hổ phách · > 100% đỏ (trùng lúc backend báo `PSU_WATTAGE`).
-  Chưa chọn PSU: hiện "Cần nguồn tối thiểu ~N W". Có thể gợi ý thêm `compat.recommended_psu_w` của GPU.
+  Chưa chọn PSU: hiện "Cần nguồn tối thiểu `requiredWattage` W". Có thể gợi ý thêm `compat.recommended_psu_w` của GPU.
 - Bộ lọc gợi ý khi mở modal chọn linh kiện (lọc phía server bằng query của `GET /products`):
   - Đã có CPU → MAINBOARD lọc `socket=<cpu.compat.socket>`; COOLER lọc `socket=<cpu.compat.socket>` (khớp `supported_sockets`).
   - Đã có mainboard → CPU lọc `socket=<mb.compat.socket>`; RAM lọc `memoryType=<mb.compat.memory_type>`;
@@ -3258,7 +3526,7 @@ Số lượng mỗi slot 1–8 (thường RAM/ổ cứng mới >1). Gửi `compa
   `validate` chỉ để báo nhanh khi người dùng bấm "Áp dụng".
 - Cách tính: type 1 = tiền hàng đủ điều kiện × value% (làm tròn), không quá `maxDiscountAmount`; type 2 = min(value, tiền hàng đủ điều kiện);
   type 3 = `discountAmount 0`, `freeShipping true` → phí ship 0.
-- Mã không phân biệt hoa thường (server đổi IN HOA). `GET /vouchers` chưa lọc hạn dùng: frontend tự ẩn mã đã hết hạn (`endAt < now`)
+- Mã không phân biệt hoa thường (server đổi IN HOA). `GET /vouchers` chỉ trả mã đang dùng được (trong hạn, còn lượt)
   hoặc hết lượt (`usedCount >= usageLimit`) khi gợi ý.
 - Phí vận chuyển (checkout preview): tiền hàng sau giảm ≥ 5.000.000 ₫ → miễn phí; tỉnh có kho (mã `79` TP.HCM, `01` Hà Nội) → 20.000 ₫;
   còn lại 40.000 ₫; chưa chọn địa chỉ tính theo mức ngoại vùng. Hiển thị "Miễn phí" khi `shippingFee = 0`.
@@ -3280,9 +3548,11 @@ Số lượng mỗi slot 1–8 (thường RAM/ổ cứng mới >1). Gửi `compa
 - Giá đang giảm: `originalPrice != null && originalPrice > price` → giá gốc gạch ngang + nhãn "−x%".
 - "Còn hàng": `inStock` (tổng mọi kho). Hiện "Còn N" khi `available ≤ 5`, "Còn hàng" khi lớn hơn, "Hết hàng" khi 0 hoặc 404.
 - Bảo hành: `warrantyMonths` → "36 tháng".
-- Review: một người một review cho một sản phẩm (409 "Bạn đã đánh giá sản phẩm này..."). Chỉ sửa được khi đang chờ duyệt.
-  `verifiedPurchase` hiện luôn false: chưa hiện nhãn "Đã mua hàng".
-- `ratingAvg`/`ratingCount` trong `Product` chưa được cập nhật tự động: dùng `GET /reviews/stats` để hiện sao.
+- Review: một người một review cho mỗi (sản phẩm, đơn đã mua) (409 "Bạn đã đánh giá sản phẩm này..."). Chỉ sửa được khi đang chờ duyệt.
+  `verifiedPurchase = true` → nhãn "Đã mua hàng" (review tạo trước 2026-11-08 luôn false).
+- `ratingAvg`/`ratingCount` trong `Product` tự cập nhật khi review được duyệt/từ chối/gỡ (dùng cho thẻ sản phẩm, sắp xếp
+  `sort=rating`). `null` (chưa từng có review) hoặc `ratingCount = 0` → "Chưa có đánh giá". Trang chi tiết vẫn dùng
+  `GET /reviews/stats` để có phân bố 1–5 sao.
 - Sổ địa chỉ: tối đa 10; số điện thoại `^0\d{9}$`; chọn tỉnh rồi mới chọn phường (phường phụ thuộc tỉnh).
 - Hồ sơ: `PUT /me` ghi đè cả 3 trường, gửi lại giá trị cũ của trường không đổi.
 - Admin voucher `PUT` cũng ghi đè mọi trường: form sửa phải gửi đủ dữ liệu đang có + `version`.
@@ -3589,11 +3859,10 @@ export interface AuthService {
 
 ## k. Ngoài phạm vi
 
-- **Đặt hàng thật** (`POST /orders`, giữ hàng qua Saga Kafka) và **thanh toán VNPay/MoMo thật** (`POST /payments/{orderCode}`, IPN, return URL):
-  chưa có API. Frontend chỉ làm giao diện; MOCK giả lập tạo đơn, REAL báo "đang phát triển".
-- **Realtime:** thông báo đẩy (WebSocket/SSE), chat AI dạng stream. Dùng polling cho số thông báo chưa đọc.
-- Các mục "Đợt 2" khác: event `product.updated` / `product.hidden` / `order.cancelled` (tự cập nhật `soldCount`, `ratingAvg`, nhả hàng khi hủy),
-  giới hạn tần suất `/ai/**`, lịch sử chat lưu server, tóm tắt review bằng AI, kiểm tra "đã mua hàng" cho review, AI PC Builder theo ngân sách.
+- **MoMo thật** và **gọi API hoàn tiền của cổng**: chưa có (MoMo đi qua trang giả lập; hoàn tiền do nhân viên làm tay rồi đánh dấu).
+- **Realtime:** thông báo đẩy (WebSocket/SSE), chat AI dạng stream. Dùng polling cho số thông báo chưa đọc. Chưa gửi email.
+- Các mục "Đợt 2" khác: event `product.updated` / `product.hidden` (AI), giới hạn tần suất `/ai/**`, lịch sử chat lưu server,
+  tóm tắt review bằng AI, AI PC Builder theo ngân sách.
 - API chưa có, đừng thiết kế màn phụ thuộc vào chúng: danh sách "bán chạy" công khai, ảnh sản phẩm trong danh sách đơn, doanh thu theo ngày,
   "đánh giá của tôi", sửa `specSchema` của danh mục, liệt kê/xóa tài liệu tri thức AI, xóa tài khoản người dùng.
 - Theme trang đăng nhập Keycloak, chế độ tối, đa ngôn ngữ.
@@ -3602,16 +3871,15 @@ export interface AuthService {
 
 ## Phụ lục: điểm bất thường của backend cần biết
 
-1. Lỗi validate của service Quarkus không có envelope (dạng `ConstraintViolationReport`), service Spring thì có (`VALIDATION_ERROR`).
-2. 401 và một số 403 trả body rỗng: luôn kiểm tra status trước khi `response.json()`.
-3. Tiền ở service Spring có thể là `7990000.0`; ở Quarkus là `7990000`.
-4. Hai kiểu ngày giờ: có `Z` (UTC) và không múi giờ (giờ VN). Đừng gắn `Z` cho loại sau.
-5. `POST /products/batch` không giữ thứ tự SKU gửi lên và bỏ qua SKU không có/Nháp: luôn map theo `sku`.
-6. `CompatibilityCheckResult.estimatedWattage` chưa nhân hệ số 1.2; message `PSU_WATTAGE` dùng số đã nhân.
-7. `ordersByStatus` có khóa dạng chuỗi (`"6"`), thiếu khóa khi trạng thái không có đơn.
-8. `GET /orders/my`, `GET /reviews` không phân trang.
-9. `Review.productId` là ObjectId của sản phẩm, không phải SKU; `userDisplayName` là username.
-10. `GET /vouchers` (công khai) chưa lọc voucher hết hạn/hết lượt và không có `applicableCategories`.
-11. Người tự đăng ký chưa có role `CUSTOMER`.
-12. Dữ liệu local có một số bản ghi do test tự động tạo (voucher `GIAMQ...`, kho "Kho Đà Nẵng ...", luật `COOLER_Q...` đã tắt, sản phẩm `XLS-...`, `DOC-TEST-...`):
+Đã sửa ngày 2026-11-07 (xem `docs/api-changelog.md`): lỗi validate Quarkus đã có envelope; 403/500 của Quarkus có envelope;
+`ordersByStatus` đủ 8 khóa; `/orders/my`, `/reviews` có phân trang; `GET /vouchers` đã lọc và có `applicableCategories`;
+người tự đăng ký có role `CUSTOMER`; tiền ở Spring không còn `.0`; message validate tiếng Việt; có `requiredWattage`;
+`userDisplayName` là họ tên. Còn lại:
+
+1. 401 do token sai/hết hạn trả body rỗng (cả Spring và Quarkus): luôn kiểm tra status trước khi `response.json()`.
+2. Hai kiểu ngày giờ: có `Z` (UTC) và không múi giờ (giờ VN). Đừng gắn `Z` cho loại sau.
+3. `POST /products/batch` không giữ thứ tự SKU gửi lên và bỏ qua SKU không có/Nháp: luôn map theo `sku`.
+4. `ordersByStatus` có khóa dạng chuỗi (`"6"`).
+5. `Review.productId` là ObjectId của sản phẩm (khác nhau giữa các máy); trang sản phẩm nên dùng `?sku=`. Review tạo trước 2026-11-07 có `userDisplayName` là username.
+6. Dữ liệu local có một số bản ghi do test tự động tạo (voucher `GIAMQ...`, kho "Kho Đà Nẵng ...", luật `COOLER_Q...` đã tắt, sản phẩm `XLS-...`, `DOC-TEST-...`):
     không dùng làm dữ liệu mock.

@@ -8,12 +8,21 @@
   "bruteForceProtected": true,
   "failureFactor": 5,
   "accessTokenLifespan": 300,
+  "defaultRole": { "name": "default-roles-pcshop", "composite": true, "clientRole": false },
 
   "roles": {
     "realm": [
       { "name": "CUSTOMER", "description": "Khách hàng" },
       { "name": "STAFF", "description": "Nhân viên" },
-      { "name": "ADMIN", "description": "Quản trị viên" }
+      { "name": "ADMIN", "description": "Quản trị viên" },
+      { "name": "offline_access", "description": "${role_offline-access}" },
+      { "name": "uma_authorization", "description": "${role_uma_authorization}" },
+      {
+        "name": "default-roles-pcshop",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": { "realm": ["offline_access", "uma_authorization", "CUSTOMER"] }
+      }
     ],
     "client": {
       "pcshop-backend": [

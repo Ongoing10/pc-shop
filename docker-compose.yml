@@ -1,7 +1,7 @@
 # Hạ tầng cho profile `local`. Các service Java chạy trực tiếp trên máy (IntelliJ),
 # chỉ hạ tầng chạy trong Docker.
 #
-#   docker compose up -d                 # Postgres, Mongo, Redis, Kafka, Keycloak
+#   docker compose up -d                 # Postgres, Mongo, Redis, Kafka, Keycloak, Mailpit
 #   docker compose --profile ai up -d    # thêm Ollama (nếu không cài Ollama trực tiếp trên Windows)
 #   docker compose down                  # dừng, GIỮ dữ liệu (volume)
 #   docker compose down -v               # dừng và XÓA SẠCH dữ liệu (Keycloak sẽ import lại realm)
@@ -37,6 +37,13 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+
+  mailpit:
+    # SMTP giả cho profile local: notification-service gửi email vào đây, xem tại http://localhost:8025 (không gửi ra ngoài)
+    image: axllent/mailpit:v1.21.8
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
   kafka:
     # KRaft 1 node, mặc định quảng bá localhost:9092: đủ cho service chạy trên máy host.

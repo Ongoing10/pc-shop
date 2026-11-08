@@ -11,7 +11,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,9 +31,6 @@ public class MeResource {
 
     @Inject
     CurrentUser currentUser;
-
-    @Inject
-    JsonWebToken jwt;
 
     @Inject
     CustomerProfileRepository profiles;
@@ -61,18 +57,10 @@ public class MeResource {
 
     /**
      * Khách đăng ký trên trang của Keycloak nên DB chưa có hồ sơ: tạo khi họ gọi API lần đầu
-     * (just-in-time provisioning) từ thông tin có sẵn trong token.
+     * (just-in-time provisioning) từ thông tin có sẵn trong token. Gọi song song cũng không lỗi trùng khóa.
      */
     private CustomerProfile getOrCreate(AuthUser user) {
-        return profiles.findByIdOptional(user.id()).orElseGet(() -> {
-            CustomerProfile p = new CustomerProfile();
-            p.id = user.id();
-            p.email = user.email();
-            String given = jwt.getClaim("given_name");
-            String family = jwt.getClaim("family_name");
-            p.displayName = ((given == null ? "" : given) + " " + (family == null ? "" : family)).trim();
-            profiles.persist(p);
-            return p;
-        });
+        return profiles.findByIdOptional(user.id()).orElseGet(() ->
+                profiles.findOrCreate(user.id(), user.email(), user.displayName() == null ? "" : user.displayName()));
     }
 }

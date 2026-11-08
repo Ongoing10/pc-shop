@@ -58,6 +58,9 @@ public class PcBuild {
     public BigDecimal totalPrice;
     @BsonProperty("estimated_wattage")
     public Integer estimatedWattage;
+    /** Công suất nguồn tối thiểu (đã nhân hệ số an toàn), xem CompatibilityService.CheckResult */
+    @BsonProperty("required_wattage")
+    public Integer requiredWattage;
     @BsonProperty("compatibility_result")
     public CompatibilityResult compatibilityResult;
     @BsonProperty("is_ai_generated")

@@ -10,6 +10,8 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 /**
  * Tạo index khi khởi động. ensureIndex là idempotent: index đã có thì không làm gì.
  * Thay cho Mongock (chưa xác nhận hỗ trợ Spring Boot mới, xem plan mục 4 - Chiến lược migration).
@@ -35,6 +37,12 @@ public class MongoIndexes implements ApplicationRunner {
                         .on("status", Sort.Direction.ASC)
                         .on("created_at", Sort.Direction.DESC)
                         .named("idx_reviews_product_status_created")),
+                // GET /reviews?sku= (trang sản phẩm dùng SKU trong URL)
+                mongo.indexOps("reviews").ensureIndex(new Index()
+                        .on("sku", Sort.Direction.ASC)
+                        .on("status", Sort.Direction.ASC)
+                        .on("created_at", Sort.Direction.DESC)
+                        .named("idx_reviews_sku_status_created")),
                 // Chỉ tính review còn hiệu lực (PENDING/APPROVED/REJECTED): người viết đã tự gỡ (4) thì viết lại được
                 mongo.indexOps("reviews").ensureIndex(new Index()
                         .on("user_id", Sort.Direction.ASC)
@@ -51,7 +59,16 @@ public class MongoIndexes implements ApplicationRunner {
                 mongo.indexOps("review_summaries").ensureIndex(new Index()
                         .on("product_id", Sort.Direction.ASC)
                         .unique()
-                        .named("uk_review_summaries_product"))
+                        .named("uk_review_summaries_product")),
+                // Outbox (ReviewOutbox): đọc event chưa gửi theo thứ tự; event đã gửi tự xóa sau 7 ngày
+                mongo.indexOps(ReviewOutbox.COLLECTION).ensureIndex(new Index()
+                        .on("status", Sort.Direction.ASC)
+                        .on("created_at", Sort.Direction.ASC)
+                        .named("idx_outbox_status_created")),
+                mongo.indexOps(ReviewOutbox.COLLECTION).ensureIndex(new Index()
+                        .on("sent_at", Sort.Direction.ASC)
+                        .expire(Duration.ofDays(7))
+                        .named("ttl_outbox_sent"))
         ).block();   // chạy 1 lần lúc khởi động, chưa phục vụ request nên block được
     }
 

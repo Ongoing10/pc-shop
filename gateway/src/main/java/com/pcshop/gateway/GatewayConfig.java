@@ -35,7 +35,7 @@ public class GatewayConfig {
                         .uri(urls.catalog()))
                 .route("cart", r -> r.path("/api/v1/cart/**").uri(urls.cart()))
                 .route("ordering", r -> r.path("/api/v1/orders/**", "/api/v1/vouchers/**", "/api/v1/payments/**",
-                                "/api/v1/checkout/**", "/api/v1/admin/vouchers/**", "/api/v1/admin/orders/**",
+                                "/api/v1/checkout/**", "/api/v1/admin/vouchers/**", "/api/v1/admin/orders/**", "/api/v1/admin/refunds/**",
                                 "/api/v1/admin/stats/overview", "/api/v1/admin/stats/top-products")
                         .uri(urls.ordering()))
                 .route("inventory", r -> r.path("/api/v1/inventory/**", "/api/v1/warehouses/**",

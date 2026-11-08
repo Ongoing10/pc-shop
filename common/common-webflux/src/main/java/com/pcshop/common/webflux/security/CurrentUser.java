@@ -61,6 +61,7 @@ public final class CurrentUser {
                 UUID.fromString(jwt.getSubject()),
                 jwt.getClaimAsString("preferred_username"),
                 jwt.getClaimAsString("email"),
+                jwt.getClaimAsString("name"),
                 roles,
                 permissions);
     }

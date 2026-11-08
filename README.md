@@ -11,7 +11,7 @@ Khung dự án theo `ke-hoach-de-tai-pc-shop.md`. Phương án xác thực đang
 | Công cụ | Ghi chú |
 |---|---|
 | **JDK 21** | Cả nhóm dùng chung bản này. Trong IntelliJ: *File → Project Structure → SDK* và *Settings → Build Tools → Maven → Runner → JRE* đều chọn 21 |
-| **Docker Desktop** | Chạy hạ tầng: Postgres + pgvector, MongoDB, Redis, Kafka, Keycloak |
+| **Docker Desktop** | Chạy hạ tầng: Postgres + pgvector, MongoDB, Redis, Kafka, Keycloak, Mailpit |
 | **IntelliJ IDEA** | Community hoặc Ultimate đều được |
 | **Ollama** (cho ai-service) | Cài trực tiếp trên Windows (ollama.com) để dùng GPU, hoặc chạy bằng Docker: `docker compose --profile ai up -d` |
 | Git Bash (tùy chọn) | Để chạy lệnh `curl` trong README |
@@ -50,6 +50,7 @@ pc-shop/
 | MongoDB | 27017 | không mật khẩu |
 | Redis | 6379 | |
 | Kafka | 9092 | |
+| Mailpit (SMTP giả) | 1025 (SMTP), 8025 (xem email: http://localhost:8025) | email notification-service gửi đều nằm ở đây, không ra ngoài |
 | Ollama | 11434 | |
 
 `identity-service` trong plan được thay bằng **`customer-service`**, vì tài khoản đã do Keycloak quản lý. ID người dùng là **UUID** (`sub` của Keycloak) ở mọi bảng.
@@ -130,6 +131,8 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/me
 | Lọc sản phẩm | `GET /api/v1/products?category=MAINBOARD&socket=AM5&sort=price,desc` · `GET /api/v1/products/search?q=rtx` | Công khai |
 | Kiểm tra tương thích | `POST /api/v1/compatibility/check` `{"skus":["CPU-R5-7600X","MB-ASUS-B760M-D5"]}` | Báo lỗi socket (rule engine tất định) |
 | Xem trước thanh toán | customer1: thêm hàng vào giỏ rồi `POST /api/v1/checkout/preview` `{"voucherCode":"WELCOME10","addressId":1}` | Không tạo đơn |
+| Đặt hàng (Saga) | customer1: thêm hàng vào giỏ rồi `POST /api/v1/orders` `{"addressId":1,"paymentMethod":1}`, vài giây sau `GET /api/v1/orders/{code}` | status 1 → 4, `inventory.inventories.reserved_quantity` tăng. Cần Kafka, ordering và inventory cùng chạy |
+| Thanh toán (giả lập) | đặt đơn với `"paymentMethod":3` (hoặc 2 khi `.env` chưa có `VNPAY_TMN_CODE`), chờ status 2, `POST /api/v1/payments/{code}`, mở `paymentUrl` trên trình duyệt, bấm "Thanh toán thành công" | đơn status 3, `paymentStatus` 2 |
 | Timeline đơn | `GET /api/v1/orders/DH20261005000003/timeline` | customer1 |
 | Quản lý đơn | staff1: `GET /api/v1/admin/orders?status=1` · `PATCH /api/v1/admin/orders/{code}/status` `{"status":4}` | |
 | Thống kê | admin1: `GET /api/v1/admin/stats/overview` · `/top-products` · `/low-stock` | |
@@ -195,7 +198,7 @@ Quy tắc khi dùng DB chung (plan mục 7.4):
 - **ai-service:** ingest (chia chunk, embedding bằng bge-m3, lưu pgvector), hybrid retrieval (vector + full-text + lọc metadata), AI service có RAG + tool calling (`getPrice`, `checkStock` gọi realtime sang catalog/inventory) + bộ nhớ hội thoại theo `sessionId`.
 
 **TODO chính (theo plan):**
-- Saga đặt hàng qua Kafka + outbox (ordering ↔ inventory), thanh toán VNPay/MoMo.
+- MoMo thật (đang dùng trang thanh toán giả lập), gọi API hoàn tiền của cổng (nhân viên hoàn tay rồi đánh dấu).
 - Rule engine tương thích + PC Builder (catalog), tool `checkCompatibility` gọi rule engine.
 - Consumer `product.updated` / `product.hidden` ở ai-service (thay cho API `sync-products`).
 - Chat trả lời dạng stream (SSE), lưu lịch sử chat vào MongoDB.
@@ -214,6 +217,7 @@ Quy tắc khi dùng DB chung (plan mục 7.4):
 | Mọi request trả 401 dù có token | Token phải lấy từ `http://localhost:8180` (issuer phải khớp tuyệt đối); token hết hạn sau 5 phút |
 | Service Quarkus chờ khoảng 30 giây rồi báo lỗi OIDC | Keycloak chưa chạy xong; xem `docker compose logs -f keycloak` |
 | Sửa `realm-pcshop.json` mà không thấy thay đổi | Realm đã có trong DB thì Keycloak bỏ qua file. Muốn import lại: `docker compose down -v` (**xóa sạch dữ liệu local**) rồi `up -d` |
+| Người tự đăng ký không có role `CUSTOMER` | Realm import trước ngày 2026-11-07. Không cần xóa dữ liệu, chạy: `docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8180 --realm master --user admin --password admin` rồi `docker compose exec keycloak /opt/keycloak/bin/kcadm.sh add-roles -r pcshop --rname default-roles-pcshop --rolename CUSTOMER` (Git Bash: thêm `MSYS_NO_PATHCONV=1` trước lệnh) |
 | `POST /admin/users` hoặc `PUT /admin/users/{id}/roles` báo 403 từ Keycloak | Realm import trước ngày 2026-10-25 thiếu quyền. Admin Console → realm `pcshop` → Users → `service-account-pcshop-backend` → Role mapping → gán thêm `view-realm`, `view-clients` (client `realm-management`) |
 | ai-service: `Connection refused` tới 11434 | Ollama chưa chạy hoặc chưa `ollama pull` model |
 | ai-service: lỗi số chiều vector | Model embedding không phải 1024 chiều; dùng `bge-m3` hoặc viết migration đổi `vector(1024)` |
