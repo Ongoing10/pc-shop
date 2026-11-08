@@ -254,7 +254,13 @@
     "unavailableTitle": "Some items are out of stock",
     "removeVoucher": "Remove discount code",
     "voucherPlaceholder": "Discount code",
-    "apply": "Apply"
+    "apply": "Apply",
+    "momo": "MoMo wallet",
+    "momoDesc": "Scan the QR code or open the MoMo app to pay.",
+    "codDesc": "Pay in cash when the courier delivers.",
+    "holdOnlineHint": "Stock is reserved as soon as you order. You have 15 minutes to pay, otherwise the order is cancelled.",
+    "holdCodHint": "Stock is reserved as soon as you order; the order is confirmed automatically and prepared for shipping.",
+    "placeFailed": "Could not place the order, please try again."
   },
   "account": {
     "title": "My Account",
@@ -372,15 +378,18 @@
     "subtitle": "Pick a category to filter by price and brand."
   },
   "orderStatus": {
-    "pending": "Pending",
-    "processing": "Preparing",
-    "shipping": "Shipping",
-    "delivered": "Delivered",
-    "cancelled": "Cancelled"
+    "1": "Reserving stock",
+    "2": "Awaiting payment",
+    "3": "Paid",
+    "4": "Confirmed",
+    "5": "Shipping",
+    "6": "Completed",
+    "7": "Cancelled",
+    "8": "Returned"
   },
   "orders": {
     "subtitle": "Track deliveries and your purchase history.",
-    "searchPlaceholder": "Search by order code, e.g. NX20261031",
+    "searchPlaceholder": "Search by order code, e.g. DH20261105001003",
     "searchLabel": "Search orders by code",
     "filterLabel": "Filter by status",
     "all": "All",
@@ -411,9 +420,29 @@
     "cancelTitle": "Cancel order {{code}}",
     "confirmCancel": "Confirm cancellation",
     "keepOrder": "Keep order",
-    "cancelHint": "This order has not been processed yet, so it can be cancelled now. Please tell us why:",
+    "cancelHint": "The order has not shipped or been paid, so it can be cancelled now and the reserved stock released. Please tell us why:",
     "otherReason": "Other reason",
-    "otherReasonPlaceholder": "Enter your reason"
+    "otherReasonPlaceholder": "Enter your reason",
+    "filterProcessing": "Processing",
+    "filterShipping": "Shipping",
+    "filterCompleted": "Completed",
+    "filterClosed": "Cancelled / returned",
+    "payNow": "Pay now",
+    "payDeadline": "Time left to pay",
+    "placed": "Order placed",
+    "placedHolding": "Order received, reserving stock for you...",
+    "placedHoldingDesc": "This usually takes a few seconds. You can leave this page; the result will arrive as a notification.",
+    "placedConfirmed": "Stock reserved, your order is being prepared for shipping.",
+    "placedAwaiting": "Stock reserved, please complete the payment",
+    "placedAwaitingDesc": "You have 15 minutes to pay; after that the order is cancelled and the stock released.",
+    "returnedTitle": "Order returned",
+    "refundPending": "The shop is refunding {{amount}} to you",
+    "refundPendingDesc": "The money will reach your account / wallet within 3–7 business days.",
+    "payments": "Payment attempts",
+    "paymentCode": "Transaction code",
+    "paymentAmount": "Amount",
+    "paymentStatus": "Status",
+    "paymentTime": "Time"
   },
   "address": {
     "subtitle": "Your default address is pre-selected at checkout.",
@@ -519,6 +548,37 @@
     "shopReply": "NEXUS PC replied",
     "deleteConfirm": "Delete your review?",
     "deleted": "Review deleted.",
-    "delete": "Delete review"
+    "delete": "Delete review",
+    "boughtHint": "You bought this product — share a review. It will carry the \"Verified purchase\" badge."
+  },
+  "paymentStatus": {
+    "1": "Unpaid",
+    "2": "Paid",
+    "3": "Refunded"
+  },
+  "paymentRecord": {
+    "1": "Pending",
+    "2": "Succeeded",
+    "3": "Failed",
+    "4": "Expired",
+    "5": "Refunded"
+  },
+  "payment": {
+    "resultTitle": "Payment result",
+    "mockTitle": "Simulated payment gateway",
+    "mockWarning": "Development only (VNPay / MoMo not configured). No real money is charged.",
+    "mockSuccess": "Payment succeeded",
+    "mockFailed": "Payment failed",
+    "expiresAt": "Expires at",
+    "notFound": "Transaction not found",
+    "successTitle": "Payment successful",
+    "successDesc": "Order {{code}} has been paid; the shop will confirm and prepare it.",
+    "failedTitle": "Payment not completed",
+    "failedDesc": "You have not been charged. You can retry within the payment window (15 minutes after ordering).",
+    "retry": "Retry payment",
+    "refundTitle": "The order was cancelled before the payment arrived",
+    "refundDesc": "The shop has recorded your payment and will refund it within 3–7 business days.",
+    "invalidTitle": "Could not verify the transaction",
+    "invalidDesc": "The payment gateway returned invalid data. Please check your order."
   }
 }

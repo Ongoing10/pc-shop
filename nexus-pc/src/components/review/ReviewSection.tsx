@@ -6,6 +6,7 @@ import { FiCheckCircle, FiCornerDownRight } from 'react-icons/fi';
 import { ReviewFormModal } from './ReviewFormModal';
 import { useAuth } from '../../context/AuthContext';
 import { useDeleteReview, useProductReviews, useReviewStats } from '../../hooks/useReviews';
+import { usePurchase } from '../../hooks/useOrders';
 import { Product } from '../../types/product';
 import { formatDate } from '../../utils/orderStatus';
 
@@ -20,6 +21,8 @@ export const ReviewSection: React.FC<{ product: Product }> = ({ product }) => {
   const [starFilter, setStarFilter] = useState<number | null>(null);
 
   const hasMine = reviews.some((r) => r.userId === user?.id);
+  // GET /orders/purchased?sku=: gợi ý người đã mua viết đánh giá (ai cũng viết được, chỉ người đã mua có nhãn)
+  const { data: purchase } = usePurchase(product.id, isAuthenticated);
   const visible = starFilter ? reviews.filter((r) => r.rating === starFilter) : reviews;
 
   const handleWrite = () => {
@@ -62,6 +65,12 @@ export const ReviewSection: React.FC<{ product: Product }> = ({ product }) => {
           })}
         </ul>
 
+        {purchase?.purchased && !hasMine && (
+          <p className="review-bought-hint">
+            <FiCheckCircle aria-hidden="true" />{' '}
+            {t('review.boughtHint', 'Bạn đã mua sản phẩm này, hãy chia sẻ đánh giá. Đánh giá sẽ có nhãn "Đã mua hàng".')}
+          </p>
+        )}
         <Button type="primary" block onClick={handleWrite} disabled={hasMine}>
           {hasMine
             ? t('review.alreadyReviewed', 'Bạn đã đánh giá sản phẩm này')

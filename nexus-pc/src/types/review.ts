@@ -8,7 +8,10 @@ export interface Review {
   rating: number;
   title: string;
   content: string;
+  /** Người viết có đơn HOÀN TẤT chứa sản phẩm lúc viết (backend hỏi ordering) → nhãn "Đã mua hàng" */
   verifiedPurchase: boolean;
+  /** Đơn hoàn tất đó (null nếu chưa mua) */
+  orderCode?: string | null;
   helpfulCount: number;
   status: ReviewStatus;
   adminReply?: { content: string; repliedAt: string };

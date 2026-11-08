@@ -161,6 +161,11 @@ a.admin-cell-title:hover {
   background: var(--panel-2);
 }
 
+/* Yêu cầu hoàn tiền dưới bảng thanh toán của đơn */
+.admin-refund-line {
+  margin-top: 12px;
+}
+
 /* Đánh giá */
 .admin-rate.ant-rate {
   font-size: 13px;

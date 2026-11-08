@@ -2,11 +2,21 @@ import { Voucher, VoucherValidation } from '../../types/order';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const FREE_SHIPPING_THRESHOLD = 2000000;
-export const STANDARD_SHIPPING_FEE = 30000;
+/** Quy tắc phí vận chuyển giống pcshop.shipping của ordering-service */
+export const FREE_SHIPPING_THRESHOLD = 5000000;
+/** Tỉnh có kho: TP.HCM (79), Hà Nội (01) */
+export const INNER_PROVINCES = ['79', '01'];
+export const INNER_SHIPPING_FEE = 20000;
+export const OUTER_SHIPPING_FEE = 40000;
 
-export const calculateShippingFee = (subtotal: number): number =>
-  subtotal === 0 || subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+/**
+ * Phí ship theo tiền hàng SAU giảm giá và tỉnh nhận hàng: đủ ngưỡng → miễn phí; tỉnh có kho 20.000 ₫; còn lại
+ * (hoặc chưa chọn địa chỉ) 40.000 ₫. Số chính thức do POST /checkout/preview tính.
+ */
+export const calculateShippingFee = (amountAfterDiscount: number, provinceCode?: string): number => {
+  if (amountAfterDiscount === 0 || amountAfterDiscount >= FREE_SHIPPING_THRESHOLD) return 0;
+  return provinceCode && INNER_PROVINCES.includes(provinceCode) ? INNER_SHIPPING_FEE : OUTER_SHIPPING_FEE;
+};
 
 const MOCK_VOUCHERS: Voucher[] = [
   {
@@ -31,10 +41,10 @@ const MOCK_VOUCHERS: Voucher[] = [
   {
     code: 'FREESHIP',
     name: 'Miễn phí vận chuyển',
-    description: 'Miễn phí giao hàng cho mọi đơn',
+    description: 'Miễn phí vận chuyển cho đơn từ 500.000 ₫',
     type: 'freeship',
     value: 0,
-    minSubtotal: 0,
+    minSubtotal: 500000,
     expiresAt: '2026-12-31T23:59:59.000Z',
   },
 ];

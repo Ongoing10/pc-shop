@@ -4,7 +4,7 @@ import { Badge, Button, Popover } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { FiBell } from 'react-icons/fi';
 import { NotificationList } from './NotificationList';
-import { useMarkAllNotificationsRead, useNotifications } from '../../hooks/useNotifications';
+import { useMarkAllNotificationsRead, useNotificationStream, useNotifications } from '../../hooks/useNotifications';
 
 const PREVIEW_COUNT = 5;
 
@@ -12,6 +12,8 @@ export const NotificationBell: React.FC = () => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data: notifications = [] } = useNotifications();
+  // Chuông chỉ hiện khi đã đăng nhập: mở stream realtime ở đây (một kết nối cho cả ứng dụng)
+  useNotificationStream(true);
   const markAllRead = useMarkAllNotificationsRead();
   const unread = notifications.filter((n) => !n.read).length;
 

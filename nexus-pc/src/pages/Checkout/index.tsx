@@ -15,6 +15,7 @@ import { formatAddress } from '../../services/api/addressService';
 import { calculateShippingFee, FREE_SHIPPING_THRESHOLD } from '../../services/api/checkoutService';
 import { PaymentMethod, VoucherValidation } from '../../types/order';
 import { formatCurrency } from '../../utils/format';
+import { PAYMENT_METHOD_META, isOnlinePayment } from '../../utils/orderStatus';
 
 export const CheckoutPage: React.FC = () => {
   const { t } = useTranslation();
@@ -22,13 +23,14 @@ export const CheckoutPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { cart, summary, clearCart } = useCart();
   const [step, setStep] = useState<number>(0);
-  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  // Idempotency-Key của POST /orders: một khóa cho lần vào trang này, bấm lại / mạng chập chờn không tạo đơn thứ hai
+  const [requestId] = useState(() => crypto.randomUUID());
 
   const { data: addresses = [], isLoading: loadingAddresses } = useAddresses(isAuthenticated);
   const [addressId, setAddressId] = useState<string | null>(null);
   const [addressFormOpen, setAddressFormOpen] = useState(false);
   const [note, setNote] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(1);
 
   const { data: vouchers = [] } = useVouchers();
   const validateVoucher = useValidateVoucher();
@@ -47,7 +49,10 @@ export const CheckoutPage: React.FC = () => {
 
   const selectedAddress = addresses.find((a) => a.id === addressId);
   const discountAmount = voucher?.valid ? voucher.discountAmount : 0;
-  const shippingFee = voucher?.freeShipping ? 0 : calculateShippingFee(summary.subtotal);
+  // Giống POST /checkout/preview: phí theo tiền hàng sau giảm và tỉnh nhận hàng
+  const shippingFee = voucher?.freeShipping
+    ? 0
+    : calculateShippingFee(Math.max(0, summary.subtotal - discountAmount), selectedAddress?.provinceCode);
   const total = Math.max(0, summary.subtotal - discountAmount + shippingFee);
   const unavailable = cart.filter((item) => item.stock <= 0 || item.qty > item.stock);
 
@@ -80,67 +85,41 @@ export const CheckoutPage: React.FC = () => {
     } else if (step === 1) {
       setStep(2);
     } else if (step === 2 && selectedAddress) {
-      // TODO(Đợt 2): POST /orders. Hiện tạo đơn mock trên localStorage.
+      // POST /orders {addressId, voucherCode, paymentMethod, note, expectedTotal} + header Idempotency-Key.
+      // Backend tính lại tiền từ giỏ; lệch expectedTotal → 409 (cập nhật lại tóm tắt), hết hàng → 409 OUT_OF_STOCK.
       createOrderMutation.mutate(
         {
-          items: cart,
-          shippingAddress: {
-            fullName: selectedAddress.receiverName,
-            phone: selectedAddress.receiverPhone,
-            email: user?.email,
-            city: selectedAddress.provinceName,
-            address: `${selectedAddress.addressDetail}, ${selectedAddress.wardName}`,
-            note: note.trim() || undefined,
+          requestId,
+          payload: {
+            items: cart,
+            shippingAddress: {
+              fullName: selectedAddress.receiverName,
+              phone: selectedAddress.receiverPhone,
+              email: user?.email,
+              provinceCode: selectedAddress.provinceCode,
+              city: selectedAddress.provinceName,
+              address: `${selectedAddress.addressDetail}, ${selectedAddress.wardName}`,
+              note: note.trim() || undefined,
+            },
+            paymentMethod,
+            voucherCode: voucher?.valid ? voucher.code : undefined,
+            discountAmount,
+            shippingFee,
           },
-          paymentMethod,
-          voucherCode: voucher?.valid ? voucher.code : undefined,
-          discountAmount,
-          shippingFee,
         },
         {
+          // Đơn trả về ở trạng thái 1 (đang giữ hàng): trang chi tiết theo dõi đến khi giữ hàng xong
           onSuccess: (order) => {
-            setCreatedOrderId(order.id);
             clearCart();
-            message.success('Đặt hàng thành công!');
+            navigate(`/account/orders/${order.id}?placed=1`, { replace: true });
           },
-          onError: () => {
-            message.error('Không thể hoàn tất đơn hàng, vui lòng thử lại.');
+          onError: (err: any) => {
+            message.error(err?.message || t('checkout.placeFailed', 'Không thể hoàn tất đơn hàng, vui lòng thử lại.'));
           },
         }
       );
     }
   };
-
-  if (createdOrderId) {
-    return (
-      <main className="container page">
-        <Result
-          className="success"
-          status="success"
-          title={t('common.orderSuccess', 'Đặt hàng thành công!')}
-          subTitle={
-            <>
-              <div className="success-code">
-                <span>Mã đơn hàng: </span>
-                <b>{createdOrderId}</b>
-              </div>
-              <p>{t('checkout.orderSuccessDesc', 'Cảm ơn bạn đã mua sắm tại NEXUS PC. Đơn hàng của bạn đã được ghi nhận trên hệ thống.')}</p>
-            </>
-          }
-          extra={[
-            <Link key="order" to={`/account/orders/${createdOrderId}`}>
-              <Button type="primary" size="large">
-                {t('checkout.viewOrder', 'Xem đơn hàng')}
-              </Button>
-            </Link>,
-            <Link key="home" to="/">
-              <Button size="large">{t('checkout.backToHome', 'Về trang chủ')}</Button>
-            </Link>,
-          ]}
-        />
-      </main>
-    );
-  }
 
   if (cart.length === 0) {
     return (
@@ -276,20 +255,24 @@ export const CheckoutPage: React.FC = () => {
               className="payments"
               style={{ display: 'grid', gap: 16 }}
             >
-              <Radio value="cod">
+              <Radio value={1}>
                 <span style={{ fontWeight: 600 }}>{t('checkout.cod', 'Thanh toán khi nhận hàng (COD)')}</span>
                 <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
-                  Thanh toán bằng tiền mặt khi shipper giao hàng tận nơi.
+                  {t('checkout.codDesc', 'Thanh toán bằng tiền mặt khi shipper giao hàng tận nơi.')}
                 </div>
               </Radio>
 
-              <Radio value="vnpay" disabled>
-                <span style={{ fontWeight: 600 }}>
-                  {t('checkout.vnpay', 'Ví VNPay / thẻ ngân hàng')}
-                  <Tag style={{ marginLeft: 8 }}>{t('checkout.comingSoon', 'Sắp có')}</Tag>
-                </span>
+              <Radio value={2}>
+                <span style={{ fontWeight: 600 }}>{t('checkout.vnpay', 'Ví VNPay / thẻ ngân hàng')}</span>
                 <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
                   {t('checkout.vnpayDesc', 'Thanh toán online qua cổng VNPay: thẻ ATM, Visa/Mastercard, QR.')}
+                </div>
+              </Radio>
+
+              <Radio value={3}>
+                <span style={{ fontWeight: 600 }}>{t('checkout.momo', 'Ví MoMo')}</span>
+                <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
+                  {t('checkout.momoDesc', 'Quét mã hoặc mở ứng dụng MoMo để thanh toán.')}
                 </div>
               </Radio>
             </Radio.Group>
@@ -306,7 +289,9 @@ export const CheckoutPage: React.FC = () => {
 
               <div style={{ background: 'var(--panel-2)', padding: 16, borderRadius: 8 }}>
                 <b style={{ color: 'var(--accent)', display: 'block', marginBottom: 8 }}>Phương thức thanh toán:</b>
-                <p style={{ margin: '4px 0' }}>{t('checkout.cod', 'Thanh toán khi nhận hàng (COD)')}</p>
+                <p style={{ margin: '4px 0' }}>
+                  {t(PAYMENT_METHOD_META[paymentMethod].labelKey, PAYMENT_METHOD_META[paymentMethod].label)}
+                </p>
               </div>
 
               {unavailable.length > 0 && (
@@ -322,7 +307,11 @@ export const CheckoutPage: React.FC = () => {
 
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--ok)', fontSize: 13 }}>
                 <FiShield />
-                <span>Nhân viên NEXUS PC sẽ gọi xác nhận đơn trước khi giao.</span>
+                <span>
+                  {isOnlinePayment(paymentMethod)
+                    ? t('checkout.holdOnlineHint', 'Hàng được giữ ngay khi đặt. Bạn có 15 phút để thanh toán, quá hạn đơn tự hủy.')
+                    : t('checkout.holdCodHint', 'Hàng được giữ ngay khi đặt, đơn được xác nhận tự động và chuyển sang chuẩn bị giao.')}
+                </span>
               </div>
             </div>
           )}

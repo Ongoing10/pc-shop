@@ -4,7 +4,9 @@ import {
   AdminCategory,
   AdminOrder,
   AdminOrderStatusHistory,
+  AdminPayment,
   AdminProduct,
+  AdminRefund,
   AdminReview,
   AdminUser,
   AdminVoucher,
@@ -20,7 +22,9 @@ import {
   mockMovements,
   mockOrderHistories,
   mockOrders,
+  mockPayments,
   mockProducts,
+  mockRefunds,
   mockReviews,
   mockRules,
   mockUsers,
@@ -41,6 +45,8 @@ interface AdminDataContextType {
   rules: State<CompatibilityRule>;
   orders: State<AdminOrder>;
   orderHistories: State<AdminOrderStatusHistory>;
+  payments: State<AdminPayment>;
+  refunds: State<AdminRefund>;
   vouchers: State<AdminVoucher>;
   warehouses: State<Warehouse>;
   inventories: State<Inventory>;
@@ -59,6 +65,8 @@ export const AdminDataProvider: React.FC<{ children: ReactNode }> = ({ children 
     rules: useState(mockRules),
     orders: useState(mockOrders),
     orderHistories: useState(mockOrderHistories),
+    payments: useState(mockPayments),
+    refunds: useState(mockRefunds),
     vouchers: useState(mockVouchers),
     warehouses: useState(mockWarehouses),
     inventories: useState(mockInventories),

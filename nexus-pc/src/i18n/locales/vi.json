@@ -254,7 +254,13 @@
     "unavailableTitle": "Một số sản phẩm không đủ hàng",
     "removeVoucher": "Bỏ mã giảm giá",
     "voucherPlaceholder": "Mã giảm giá",
-    "apply": "Áp dụng"
+    "apply": "Áp dụng",
+    "momo": "Ví MoMo",
+    "momoDesc": "Quét mã hoặc mở ứng dụng MoMo để thanh toán.",
+    "codDesc": "Thanh toán bằng tiền mặt khi shipper giao hàng tận nơi.",
+    "holdOnlineHint": "Hàng được giữ ngay khi đặt. Bạn có 15 phút để thanh toán, quá hạn đơn tự hủy.",
+    "holdCodHint": "Hàng được giữ ngay khi đặt, đơn được xác nhận tự động và chuyển sang chuẩn bị giao.",
+    "placeFailed": "Không thể hoàn tất đơn hàng, vui lòng thử lại."
   },
   "account": {
     "title": "Tài khoản của tôi",
@@ -372,15 +378,18 @@
     "subtitle": "Chọn một danh mục để lọc theo giá và thương hiệu."
   },
   "orderStatus": {
-    "pending": "Chờ xác nhận",
-    "processing": "Đang chuẩn bị",
-    "shipping": "Đang giao",
-    "delivered": "Đã giao",
-    "cancelled": "Đã hủy"
+    "1": "Đang giữ hàng",
+    "2": "Chờ thanh toán",
+    "3": "Đã thanh toán",
+    "4": "Đã xác nhận",
+    "5": "Đang giao",
+    "6": "Hoàn tất",
+    "7": "Đã hủy",
+    "8": "Trả hàng"
   },
   "orders": {
     "subtitle": "Theo dõi trạng thái giao hàng và lịch sử mua sắm.",
-    "searchPlaceholder": "Tìm theo mã đơn, ví dụ NX20261031",
+    "searchPlaceholder": "Tìm theo mã đơn, ví dụ DH20261105001003",
     "searchLabel": "Tìm đơn hàng theo mã",
     "filterLabel": "Lọc theo trạng thái",
     "all": "Tất cả",
@@ -411,9 +420,29 @@
     "cancelTitle": "Hủy đơn hàng {{code}}",
     "confirmCancel": "Xác nhận hủy",
     "keepOrder": "Giữ đơn",
-    "cancelHint": "Đơn chưa được xử lý nên có thể hủy ngay. Vui lòng cho biết lý do:",
+    "cancelHint": "Đơn chưa giao và chưa thanh toán nên có thể hủy ngay, hàng đang giữ sẽ được nhả. Vui lòng cho biết lý do:",
     "otherReason": "Lý do khác",
-    "otherReasonPlaceholder": "Nhập lý do hủy đơn"
+    "otherReasonPlaceholder": "Nhập lý do hủy đơn",
+    "filterProcessing": "Đang xử lý",
+    "filterShipping": "Đang giao",
+    "filterCompleted": "Hoàn tất",
+    "filterClosed": "Đã hủy, trả",
+    "payNow": "Thanh toán ngay",
+    "payDeadline": "Thời gian còn lại để thanh toán",
+    "placed": "Đặt hàng",
+    "placedHolding": "Đã nhận đơn, đang giữ hàng cho bạn...",
+    "placedHoldingDesc": "Thường mất vài giây. Bạn có thể rời trang, kết quả sẽ có trong thông báo.",
+    "placedConfirmed": "Hàng đã được giữ, đơn đang được chuẩn bị để giao.",
+    "placedAwaiting": "Đơn đã được giữ hàng, vui lòng thanh toán",
+    "placedAwaitingDesc": "Bạn có 15 phút để thanh toán, quá hạn đơn sẽ tự hủy và nhả hàng.",
+    "returnedTitle": "Đơn hàng đã được trả",
+    "refundPending": "Cửa hàng đang hoàn {{amount}} cho bạn",
+    "refundPendingDesc": "Tiền sẽ về tài khoản / ví đã thanh toán trong 3–7 ngày làm việc.",
+    "payments": "Các lần thanh toán",
+    "paymentCode": "Mã giao dịch",
+    "paymentAmount": "Số tiền",
+    "paymentStatus": "Trạng thái",
+    "paymentTime": "Thời gian"
   },
   "address": {
     "subtitle": "Địa chỉ mặc định được chọn sẵn khi thanh toán.",
@@ -519,6 +548,37 @@
     "shopReply": "NEXUS PC phản hồi",
     "deleteConfirm": "Xóa đánh giá của bạn?",
     "deleted": "Đã xóa đánh giá.",
-    "delete": "Xóa đánh giá"
+    "delete": "Xóa đánh giá",
+    "boughtHint": "Bạn đã mua sản phẩm này, hãy chia sẻ đánh giá. Đánh giá sẽ có nhãn \"Đã mua hàng\"."
+  },
+  "paymentStatus": {
+    "1": "Chưa thanh toán",
+    "2": "Đã thanh toán",
+    "3": "Đã hoàn tiền"
+  },
+  "paymentRecord": {
+    "1": "Đang chờ",
+    "2": "Thành công",
+    "3": "Thất bại",
+    "4": "Hết hạn",
+    "5": "Đã hoàn tiền"
+  },
+  "payment": {
+    "resultTitle": "Kết quả thanh toán",
+    "mockTitle": "Cổng thanh toán giả lập",
+    "mockWarning": "Chỉ dùng khi phát triển (chưa cấu hình VNPay / MoMo). Không có tiền thật nào được trừ.",
+    "mockSuccess": "Thanh toán thành công",
+    "mockFailed": "Thanh toán thất bại",
+    "expiresAt": "Hết hạn lúc",
+    "notFound": "Không tìm thấy giao dịch",
+    "successTitle": "Thanh toán thành công",
+    "successDesc": "Đơn {{code}} đã được thanh toán, cửa hàng sẽ xác nhận và chuẩn bị hàng.",
+    "failedTitle": "Thanh toán chưa thành công",
+    "failedDesc": "Bạn chưa bị trừ tiền. Có thể thử lại trong thời hạn thanh toán (15 phút từ lúc đặt).",
+    "retry": "Thử thanh toán lại",
+    "refundTitle": "Đơn đã bị hủy trước khi tiền về",
+    "refundDesc": "Cửa hàng đã ghi nhận số tiền bạn thanh toán và sẽ hoàn lại trong 3–7 ngày làm việc.",
+    "invalidTitle": "Không xác nhận được giao dịch",
+    "invalidDesc": "Thông tin trả về từ cổng thanh toán không hợp lệ. Vui lòng kiểm tra lại đơn hàng của bạn."
   }
 }

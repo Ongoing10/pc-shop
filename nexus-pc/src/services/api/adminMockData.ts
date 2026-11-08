@@ -9,7 +9,9 @@ import {
   AdminOrder,
   AdminOrderItem,
   AdminOrderStatusHistory,
+  AdminPayment,
   AdminProduct,
+  AdminRefund,
   AdminReview,
   AdminSessionUser,
   AdminUser,
@@ -297,26 +299,50 @@ const seeded = (seed: number) => () => {
 const rand = seeded(20261107);
 const pick = <T,>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
 
-/** Đường đi trạng thái theo tuổi đơn (luồng hợp lệ g.2): đơn mới còn đang xử lý, đơn cũ phần lớn đã xong */
+/**
+ * Đường đi trạng thái theo tuổi đơn (luồng hợp lệ g.2): đơn mới còn đang xử lý, đơn cũ phần lớn đã xong.
+ * 1 Đang giữ hàng chỉ kéo dài vài giây (Saga) nên không có đơn nào dừng ở 1.
+ */
 const DONE: OrderStatus[] = [1, 4, 5, 6];
 const DONE_PAID: OrderStatus[] = [1, 2, 3, 4, 5, 6];
-const RECENT_PATHS: OrderStatus[][] = [[1], [1], [1], [1, 2], [1, 4], [1, 4], [1, 2, 3], [1, 7]];
-const MIDDLE_PATHS: OrderStatus[][] = [[1, 4], [1, 4, 5], [1, 4, 5], [1, 2, 3, 4, 5], DONE, DONE, DONE_PAID, [1, 2, 7]];
+const RECENT_PATHS: OrderStatus[][] = [[1, 4], [1, 4], [1, 2], [1, 2], [1, 4], [1, 2, 3], [1, 2, 3], [1, 7]];
+const MIDDLE_PATHS: OrderStatus[][] = [[1, 4], [1, 4, 5], [1, 4, 5], [1, 2, 3, 4, 5], DONE, DONE, DONE_PAID, [1, 2, 7], [1, 2, 3, 7]];
 // khoảng 1/12 đơn cũ bị hủy, 1/24 trả hàng
 const OLD_PATHS: OrderStatus[][] = [
   ...Array.from({ length: 13 }, () => DONE),
   ...Array.from({ length: 8 }, () => DONE_PAID),
-  [1, 7], [1, 2, 7], [1, 4, 5, 6, 8],
+  [1, 4, 7], [1, 2, 7], [1, 4, 5, 6, 8],
 ];
 
-const reasonFor = (status: OrderStatus) =>
-  status === 7 ? 'Khách đổi ý, gọi điện xin hủy' : status === 8 ? 'Sản phẩm lỗi khi nhận, khách trả lại' : null;
+/** Bước do hệ thống làm (createdBy = null): Saga giữ hàng 1 → 2/4/7, cổng thanh toán 2 → 3, hủy quá hạn 2 → 7 */
+const bySystem = (from: OrderStatus | null, to: OrderStatus) => from === 1 || (from === 2 && (to === 3 || to === 7));
+
+/** Lý do giống backend ghi vào order_status_histories */
+const reasonFor = (from: OrderStatus | null, to: OrderStatus, code: string, sku: string): string | null => {
+  if (from === null) return 'Đặt hàng';
+  if (from === 1 && to === 4) return 'Đã giữ hàng, chờ giao';
+  if (from === 1 && to === 2) return 'Đã giữ hàng, chờ thanh toán';
+  if (from === 1 && to === 7) return `Không đủ hàng: ${sku} (cần 1, còn 0)`;
+  if (from === 2 && to === 3) return `Thanh toán thành công (${code}-01)`;
+  if (from === 2 && to === 7) return 'Quá hạn thanh toán';
+  if (to === 7) return 'Khách đổi ý, gọi điện xin hủy';
+  if (to === 8) return 'Sản phẩm lỗi khi nhận, khách trả lại';
+  return null;
+};
+
+/** Phí ship như ordering-service: miễn phí từ 5 triệu, tỉnh có kho (HCM, Hà Nội) 20.000, còn lại 40.000 */
+const shippingFor = (amount: number, address: string) =>
+  amount >= 5000000 ? 0 : /Hồ Chí Minh|Hà Nội/.test(address) ? 20000 : 40000;
 
 /** Sản phẩm từng được bán (bỏ bản nháp) */
 const sellable = mockProducts.filter((p) => p.status !== 1);
 
 export const mockOrderItems: AdminOrderItem[] = [];
 export const mockOrderHistories: AdminOrderStatusHistory[] = [];
+/** GET /payments/{orderCode} của mọi đơn */
+export const mockPayments: AdminPayment[] = [];
+/** GET /admin/refunds */
+export const mockRefunds: AdminRefund[] = [];
 
 /** ~150 đơn trong 90 ngày, cuối tuần đông hơn; id tăng dần theo thời gian */
 const orderDays = Array.from({ length: 90 }, (_, d) => d)
@@ -355,27 +381,77 @@ export const mockOrders: AdminOrder[] = orderDays.map((created, i) => {
   });
   mockOrderItems.push(...items);
 
+  const placedAt = daysAgo(created, hour);
+  // DH + ngày đặt (yyyyMMdd) + số thứ tự, giống ordering-service
+  const code = `DH${dayjs(placedAt).format('YYYYMMDD')}${String(id).padStart(6, '0')}`;
+  // Saga giữ hàng (1 → x) xong sau vài giây, thanh toán / hủy quá hạn (2 → 3/7) trong 15 phút; các bước sau tính theo ngày
+  const stepAt = (j: number) => {
+    const from = j === 0 ? null : path[j - 1];
+    if (from === 1) return dayjs(placedAt).add(2, 'second').toISOString();
+    if (from === 2) return dayjs(placedAt).add(path[j] === 7 ? 15 : 4, 'minute').toISOString();
+    return j === 0 ? placedAt : daysAgo(Math.max(created - j, 0), Math.min(hour + j * 2, 22));
+  };
+
   path.forEach((status, j) => {
+    const from = j === 0 ? null : path[j - 1];
     mockOrderHistories.push({
       id: id * 10 + j,
       orderId: id,
-      fromStatus: j === 0 ? null : path[j - 1],
+      fromStatus: from,
       toStatus: status,
-      reason: reasonFor(status),
-      createdBy: j === 0 ? c.userId : status === 3 ? null : mockSessionUsers[1].id,
-      createdAt: daysAgo(Math.max(created - j, 0), Math.min(hour + j * 2, 22)),
+      reason: reasonFor(from, status, code, items[0].sku),
+      createdBy: j === 0 ? c.userId : bySystem(from, status) ? null : mockSessionUsers[1].id,
+      createdAt: stepAt(j),
     });
   });
 
   const subtotal = items.reduce((s, it) => s + it.lineTotal, 0);
   const discount = rand() < 0.2 ? Math.min(Math.round(subtotal * 0.1), 500000) : 0;
-  const shipping = subtotal >= 5000000 ? 0 : 30000;
+  const shipping = shippingFor(subtotal - discount, c.address);
   const status = path[path.length - 1];
-  const paymentMethod = (path.includes(2) ? 2 : 1) as AdminOrder['paymentMethod'];
-  const paid = path.includes(3) || (paymentMethod === 1 && path.includes(6));
-  const placedAt = daysAgo(created, hour);
-  // DH + ngày đặt (yyyyMMdd) + số thứ tự, giống ordering-service
-  const code = `DH${dayjs(placedAt).format('YYYYMMDD')}${String(id).padStart(6, '0')}`;
+  const paymentMethod = (path.includes(2) ? (rand() < 0.3 ? 3 : 2) : 1) as AdminOrder['paymentMethod'];
+  const total = subtotal - discount + shipping;
+
+  // Lần thanh toán: online đã trả → "<mã>-01" SUCCESS; quá hạn → "-01" EXPIRED; COD hoàn tất → "COD-<mã>"
+  const paidIdx = path.indexOf(3);
+  const doneIdx = path.indexOf(6);
+  const payment = (paymentCode: string, st: AdminPayment['status'], at: string): AdminPayment => ({
+    id: mockPayments.length + 1,
+    orderId: id,
+    paymentCode,
+    method: paymentMethod,
+    amount: total,
+    status: st,
+    providerTransactionId: st === 2 && paymentMethod !== 1 ? String(14000000 + id) : null,
+    bankCode: st === 2 && paymentMethod === 2 ? 'NCB' : null,
+    paidAt: st === 2 ? at : null,
+    expiredAt: paymentMethod !== 1 ? dayjs(placedAt).add(15, 'minute').toISOString() : null,
+    createdAt: at,
+  });
+  if (paidIdx >= 0) mockPayments.push(payment(`${code}-01`, 2, stepAt(paidIdx)));
+  else if (path.join() === '1,2,7') mockPayments.push(payment(`${code}-01`, 4, stepAt(1)));
+  else if (paymentMethod === 1 && doneIdx >= 0) mockPayments.push(payment(`COD-${code}`, 2, stepAt(doneIdx)));
+  const paid = mockPayments.some((p) => p.orderId === id && p.status === 2);
+
+  // Hủy / trả đơn đã thu tiền → yêu cầu hoàn tiền; đơn cũ đã hoàn xong, đơn mới còn chờ
+  let refunded = false;
+  if (paid && (status === 7 || status === 8)) {
+    const p = mockPayments.filter((x) => x.orderId === id && x.status === 2).pop()!;
+    refunded = created > 8;
+    if (refunded) p.status = 5;
+    mockRefunds.push({
+      id: mockRefunds.length + 1,
+      orderCode: code,
+      paymentCode: p.paymentCode,
+      method: p.method,
+      amount: p.amount,
+      reason: `${status === 7 ? 'Hủy đơn' : 'Trả hàng'}: ${reasonFor(path[path.length - 2], status, code, items[0].sku)}`,
+      status: refunded ? 2 : 1,
+      providerRefundId: refunded ? `RF${id}` : null,
+      createdAt: stepAt(path.length - 1),
+      updatedAt: refunded ? stepAt(path.length) : stepAt(path.length - 1),
+    });
+  }
 
   return {
     id,
@@ -383,17 +459,17 @@ export const mockOrders: AdminOrder[] = orderDays.map((created, i) => {
     userId: c.userId,
     status,
     paymentMethod,
-    paymentStatus: status === 8 && paid ? 3 : paid ? 2 : 1,
+    paymentStatus: refunded ? 3 : paid ? 2 : 1,
     subtotalAmount: subtotal,
     discountAmount: discount,
     shippingFee: shipping,
-    totalAmount: subtotal - discount + shipping,
+    totalAmount: total,
     voucherCode: discount ? 'WELCOME10' : null,
     receiverName: c.name,
     receiverPhone: c.phone,
     shippingAddress: c.address,
     note: rand() < 0.2 ? 'Giao giờ hành chính' : null,
-    cancelReason: status === 7 ? reasonFor(7) : null,
+    cancelReason: status === 7 ? reasonFor(path[path.length - 2], 7, code, items[0].sku) : null,
     placedAt,
     completedAt: status === 6 ? daysAgo(Math.max(created - path.length + 1, 0), hour) : null,
     createdAt: placedAt,

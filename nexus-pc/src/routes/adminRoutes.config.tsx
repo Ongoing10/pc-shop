@@ -11,6 +11,7 @@ import {
   GiftOutlined,
   TeamOutlined,
   RobotOutlined,
+  RollbackOutlined,
 } from '@ant-design/icons';
 import type { AdminAccess } from '../context/AdminSessionContext';
 
@@ -20,6 +21,7 @@ const AdminOrdersPage = lazy(() => import('../pages/Admin/Orders').then((m) => (
 const AdminOrderDetailPage = lazy(() =>
   import('../pages/Admin/Orders/OrderDetailPage').then((m) => ({ default: m.AdminOrderDetailPage }))
 );
+const RefundsPage = lazy(() => import('../pages/Admin/Refunds').then((m) => ({ default: m.RefundsPage })));
 const InventoryPage = lazy(() => import('../pages/Admin/Inventory').then((m) => ({ default: m.InventoryPage })));
 const ReviewsPage = lazy(() => import('../pages/Admin/Reviews').then((m) => ({ default: m.ReviewsPage })));
 const AdminProductsPage = lazy(() => import('../pages/Admin/Products').then((m) => ({ default: m.AdminProductsPage })));
@@ -60,6 +62,7 @@ export const adminRoutesConfig: AdminRouteConfig[] = [
   { path: '', element: <DashboardPage />, title: 'Tổng quan', menu: { group: 'operate', icon: <DashboardOutlined /> } },
   { path: 'orders', element: <AdminOrdersPage />, title: 'Đơn hàng', menu: { group: 'operate', icon: <ShoppingCartOutlined /> } },
   { path: 'orders/:code', element: <AdminOrderDetailPage />, title: 'Chi tiết đơn hàng', menuKey: 'orders' },
+  { path: 'refunds', element: <RefundsPage />, title: 'Hoàn tiền', menu: { group: 'operate', icon: <RollbackOutlined /> } },
   { path: 'inventory', element: <InventoryPage />, title: 'Tồn kho', menu: { group: 'operate', icon: <DatabaseOutlined /> } },
   {
     path: 'inventory/import',

@@ -2,8 +2,10 @@ import {
   CompatSeverity,
   OrderStatus,
   PaymentMethod,
+  PaymentRecordStatus,
   PaymentStatus,
   Permission,
+  RefundStatus,
   ProductStatus,
   RealmRole,
   ReviewStatus,
@@ -22,7 +24,7 @@ export const PRODUCT_STATUS_META: Record<ProductStatus, Meta> = {
 };
 
 export const ORDER_STATUS_META: Record<OrderStatus, Meta> = {
-  1: { label: 'Chờ xử lý', color: 'gold' },
+  1: { label: 'Đang giữ hàng', color: 'gold' },
   2: { label: 'Chờ thanh toán', color: 'orange' },
   3: { label: 'Đã thanh toán', color: 'lime' },
   4: { label: 'Đã xác nhận', color: 'blue' },
@@ -32,9 +34,12 @@ export const ORDER_STATUS_META: Record<OrderStatus, Meta> = {
   8: { label: 'Trả hàng', color: 'magenta' },
 };
 
-/** Bước chuyển trạng thái đơn hợp lệ (frontend-context mục g.2) */
+/**
+ * Bước nhân viên được chuyển tay (frontend-context mục g.2). 1 Đang giữ hàng là bước Saga (vài giây): hệ thống tự chuyển
+ * sang 4 (COD) / 2 (online) / 7 (hết hàng), nhân viên chỉ được hủy. 2 → 3: xác nhận tay khi khách chuyển khoản / trả tại quầy.
+ */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  1: [2, 4, 7],
+  1: [7],
   2: [3, 7],
   3: [4, 7],
   4: [5, 7],
@@ -56,6 +61,19 @@ export const PAYMENT_STATUS_META: Record<PaymentStatus, Meta> = {
   1: { label: 'Chưa thanh toán', color: 'default' },
   2: { label: 'Đã thanh toán', color: 'green' },
   3: { label: 'Đã hoàn tiền', color: 'purple' },
+};
+
+export const PAYMENT_RECORD_STATUS_META: Record<PaymentRecordStatus, Meta> = {
+  1: { label: 'Đang chờ', color: 'gold' },
+  2: { label: 'Thành công', color: 'green' },
+  3: { label: 'Thất bại', color: 'red' },
+  4: { label: 'Hết hạn', color: 'default' },
+  5: { label: 'Đã hoàn tiền', color: 'purple' },
+};
+
+export const REFUND_STATUS_META: Record<RefundStatus, Meta> = {
+  1: { label: 'Chờ hoàn', color: 'orange' },
+  2: { label: 'Đã hoàn', color: 'green' },
 };
 
 export const REVIEW_STATUS_META: Record<ReviewStatus, Meta> = {

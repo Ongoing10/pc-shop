@@ -3330,6 +3330,22 @@ strong.price,
   color: var(--ok);
 }
 
+/* Gợi ý người đã mua (GET /orders/purchased) viết đánh giá */
+.review-bought-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 14px 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ok);
+}
+
+.review-bought-hint svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
 .review-item time {
   font-size: 12px;
   color: var(--muted);
@@ -3809,6 +3825,16 @@ strong.price,
 
 .order-banner .ant-alert-title {
   font-weight: 700;
+}
+
+/* Đếm ngược hạn thanh toán đơn online (15 phút) trong khối "Thanh toán" */
+.order-info .pay-countdown {
+  margin-top: 6px;
+}
+
+.order-info .pay-countdown .ant-statistic-content {
+  font-size: 20px;
+  color: var(--warn);
 }
 
 .oos-note.ant-alert {

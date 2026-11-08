@@ -55,7 +55,8 @@ export const AccountPage: React.FC = () => {
     message.success(t('account.profileSaved', 'Đã lưu thông tin tài khoản.'));
   };
 
-  const activeOrders = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
+  // Đơn còn đang xử lý / giao (chưa hoàn tất, hủy hay trả)
+  const activeOrders = orders.filter((o) => o.status <= 5).length;
 
   const stats = [
     { to: '/account/orders', icon: <FiPackage />, value: activeOrders, label: t('account.statActiveOrders', 'Đơn đang xử lý') },

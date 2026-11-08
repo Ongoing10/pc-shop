@@ -7,13 +7,14 @@ import { AccountShell } from '../../components/account/AccountShell';
 import { OrderStatusTag } from '../../components/order/OrderStatusTag';
 import { OrderListSkeleton } from '../../components/common/CustomSkeleton';
 import { useUserOrders } from '../../hooks/useOrders';
-import { OrderStatus } from '../../types/order';
+import { Order } from '../../types/order';
 import { formatCurrency } from '../../utils/format';
-import { ORDER_STATUS_META, formatDate } from '../../utils/orderStatus';
+import { ORDER_FILTER_LABEL, ORDER_FILTER_STATUSES, OrderFilter, formatDate } from '../../utils/orderStatus';
 
-type StatusFilter = 'all' | OrderStatus;
+type StatusFilter = OrderFilter;
 
-const FILTERS: StatusFilter[] = ['all', 'pending', 'processing', 'shipping', 'delivered', 'cancelled'];
+const FILTERS: StatusFilter[] = ['all', 'processing', 'shipping', 'completed', 'closed'];
+const matches = (o: Order, f: StatusFilter) => f === 'all' || ORDER_FILTER_STATUSES[f].includes(o.status);
 const PREVIEW_ITEMS = 3;
 
 export const OrdersPage: React.FC = () => {
@@ -22,7 +23,8 @@ export const OrdersPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: orders = [], isLoading } = useUserOrders();
 
-  const status = (searchParams.get('status') as StatusFilter) || 'all';
+  const raw = searchParams.get('status') as StatusFilter | null;
+  const status: StatusFilter = raw && FILTERS.includes(raw) ? raw : 'all';
   const [query, setQuery] = useState(searchParams.get('code') || '');
 
   const setStatus = (next: StatusFilter) => {
@@ -33,14 +35,14 @@ export const OrdersPage: React.FC = () => {
   };
 
   const counts = useMemo(() => {
-    const result: Record<StatusFilter, number> = { all: orders.length, pending: 0, processing: 0, shipping: 0, delivered: 0, cancelled: 0 };
-    orders.forEach((o) => (result[o.status] += 1));
+    const result = {} as Record<StatusFilter, number>;
+    FILTERS.forEach((f) => (result[f] = orders.filter((o) => matches(o, f)).length));
     return result;
   }, [orders]);
 
   const q = query.trim().toUpperCase();
   const filtered = orders.filter(
-    (o) => (status === 'all' || o.status === status) && (!q || o.id.toUpperCase().includes(q))
+    (o) => matches(o, status) && (!q || o.id.toUpperCase().includes(q))
   );
 
   // Gõ đúng một mã đơn rồi Enter thì mở thẳng chi tiết (thay cho trang tra cứu cũ)
@@ -60,7 +62,7 @@ export const OrdersPage: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           prefix={<SearchOutlined style={{ color: 'var(--muted)' }} />}
-          placeholder={t('orders.searchPlaceholder', 'Tìm theo mã đơn, ví dụ NX20261031')}
+          placeholder={t('orders.searchPlaceholder', 'Tìm theo mã đơn, ví dụ DH20261105001003')}
           allowClear
           aria-label={t('orders.searchLabel', 'Tìm đơn hàng theo mã')}
         />
@@ -76,7 +78,7 @@ export const OrdersPage: React.FC = () => {
           value: f,
           label: (
             <>
-              {f === 'all' ? t('orders.all', 'Tất cả') : t(ORDER_STATUS_META[f].labelKey, ORDER_STATUS_META[f].label)}
+              {t(ORDER_FILTER_LABEL[f].labelKey, ORDER_FILTER_LABEL[f].label)}
               <span className="chip-count">{counts[f]}</span>
             </>
           ),

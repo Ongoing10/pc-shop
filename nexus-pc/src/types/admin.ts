@@ -9,12 +9,16 @@ export type Permission = 'product:write' | 'order:update-status' | 'inventory:wr
 
 /** 1 Nháp · 2 Đang bán · 3 Đã ẩn · 4 Ngừng bán */
 export type ProductStatus = 1 | 2 | 3 | 4;
-/** 1 Chờ xử lý · 2 Chờ thanh toán · 3 Đã thanh toán · 4 Đã xác nhận · 5 Đang giao · 6 Hoàn tất · 7 Đã hủy · 8 Trả hàng */
+/** 1 Đang giữ hàng · 2 Chờ thanh toán · 3 Đã thanh toán · 4 Đã xác nhận · 5 Đang giao · 6 Hoàn tất · 7 Đã hủy · 8 Trả hàng */
 export type OrderStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 /** 1 COD · 2 VNPay · 3 MoMo */
 export type PaymentMethod = 1 | 2 | 3;
 /** 1 Chưa thanh toán · 2 Đã thanh toán · 3 Đã hoàn tiền */
 export type PaymentStatus = 1 | 2 | 3;
+/** Một lần thanh toán: 1 Đang chờ · 2 Thành công · 3 Thất bại · 4 Hết hạn · 5 Đã hoàn tiền */
+export type PaymentRecordStatus = 1 | 2 | 3 | 4 | 5;
+/** Yêu cầu hoàn tiền: 1 Chờ hoàn · 2 Đã hoàn */
+export type RefundStatus = 1 | 2;
 /** 1 Chờ duyệt · 2 Đã duyệt · 3 Từ chối · 4 Người viết đã gỡ */
 export type ReviewStatus = 1 | 2 | 3 | 4;
 /** 1 Giảm theo % · 2 Giảm số tiền · 3 Miễn phí vận chuyển */
@@ -159,6 +163,35 @@ export interface AdminOrderStatusHistory {
   /** null = hệ thống */
   createdBy: string | null;
   createdAt: string;
+}
+
+/** GET /payments/{orderCode}: mỗi lần khách bấm thanh toán một dòng; COD hoàn tất "COD-<mã>", nhân viên xác nhận tay "MANUAL-<mã>" */
+export interface AdminPayment {
+  id: number;
+  orderId: number;
+  paymentCode: string;
+  method: PaymentMethod;
+  amount: number;
+  status: PaymentRecordStatus;
+  providerTransactionId: string | null;
+  bankCode: string | null;
+  paidAt: string | null;
+  expiredAt: string | null;
+  createdAt: string;
+}
+
+/** GET /admin/refunds (RefundView): tự tạo khi hủy/trả đơn đã thu tiền hoặc tiền về sau khi đơn đã hủy */
+export interface AdminRefund {
+  id: number;
+  orderCode: string;
+  paymentCode: string;
+  method: PaymentMethod;
+  amount: number;
+  reason: string | null;
+  status: RefundStatus;
+  providerRefundId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminVoucher {

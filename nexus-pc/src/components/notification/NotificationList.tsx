@@ -1,15 +1,25 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiPackage, FiTag, FiMessageSquare, FiInfo } from 'react-icons/fi';
+import { FiPackage, FiTag, FiMessageSquare, FiCreditCard, FiBox } from 'react-icons/fi';
 import { AppNotification, NotificationType } from '../../types/notification';
 import { useMarkNotificationRead } from '../../hooks/useNotifications';
 
 const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
-  ORDER: <FiPackage />,
+  ORDER_STATUS: <FiPackage />,
+  PAYMENT: <FiCreditCard />,
   PROMOTION: <FiTag />,
-  REVIEW: <FiMessageSquare />,
-  SYSTEM: <FiInfo />,
+  REVIEW_REPLY: <FiMessageSquare />,
+  STOCK_BACK: <FiBox />,
+};
+
+/** Lớp màu của icon (index.css: .notif-icon.order / .promotion / .review) */
+const TYPE_CLASS: Record<NotificationType, string> = {
+  ORDER_STATUS: 'order',
+  PAYMENT: 'order',
+  PROMOTION: 'promotion',
+  REVIEW_REPLY: 'review',
+  STOCK_BACK: 'promotion',
 };
 
 /** "2 giờ trước", "3 ngày trước" theo ngôn ngữ đang chọn */
@@ -52,7 +62,7 @@ export const NotificationList: React.FC<NotificationListProps> = ({ items, compa
       {items.map((n) => (
         <li key={n.id}>
           <button type="button" className={n.read ? '' : 'unread'} onClick={() => handleOpen(n)}>
-            <span className={`notif-icon ${n.type.toLowerCase()}`} aria-hidden="true">
+            <span className={`notif-icon ${TYPE_CLASS[n.type] ?? ''}`} aria-hidden="true">
               {TYPE_ICON[n.type]}
             </span>
             <span className="notif-text">

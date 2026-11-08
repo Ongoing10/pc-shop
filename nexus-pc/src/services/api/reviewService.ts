@@ -1,6 +1,7 @@
 import { CreateReviewPayload, Review, ReviewStats } from '../../types/review';
 import { storageService } from '../storage/storageService';
 import { initialProducts } from './mockData';
+import { orderService } from './orderService';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -96,14 +97,17 @@ export const reviewService = {
     };
   },
 
+  /** Backend tự hỏi ordering (GET /orders/purchased): có đơn hoàn tất chứa sản phẩm → verifiedPurchase + orderCode */
   async createReview(payload: CreateReviewPayload, user: { id: string; fullName: string }): Promise<Review> {
     await delay(250);
+    const purchase = await orderService.getPurchase(payload.productId);
     const review: Review = {
       id: `rv_${Date.now()}`,
       ...payload,
       userId: user.id,
-      userDisplayName: user.fullName,
-      verifiedPurchase: true,
+      userDisplayName: user.fullName || 'Khách hàng',
+      verifiedPurchase: purchase.purchased,
+      orderCode: purchase.orderCode,
       helpfulCount: 0,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
