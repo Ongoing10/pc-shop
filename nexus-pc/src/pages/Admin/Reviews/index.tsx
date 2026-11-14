@@ -21,9 +21,8 @@ import type { TableColumnsType } from 'antd';
 import { CheckOutlined, CloseOutlined, SendOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
-import { BulkErrorItem, collectBulkErrors } from '../../../components/admin/bulk';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
-import { useAdminUser } from '../../../context/AdminSessionContext';
+import { BulkErrorItem, bulkErrorsOf } from '../../../components/admin/bulk';
+import { useAdminProducts, useAdminReviews, useModerateReviews, useReplyReview } from '../../../hooks/admin/useAdminApi';
 import { AdminReview, ReviewStatus } from '../../../types/admin';
 import { REVIEW_STATUS_META } from '../../../utils/adminStatus';
 import { formatDateTime } from '../../../utils/orderStatus';
@@ -37,11 +36,10 @@ const CAN_REJECT: ReviewStatus[] = [1, 2];
 /** A07: hàng chờ duyệt đánh giá, trả lời khách */
 export const ReviewsPage: React.FC = () => {
   const { message } = App.useApp();
-  const user = useAdminUser();
-  const {
-    reviews: [reviews, setReviews],
-    products: [products],
-  } = useAdminData();
+  const { data: reviews = [], isLoading } = useAdminReviews();
+  const { data: products = [] } = useAdminProducts();
+  const moderateReviews = useModerateReviews();
+  const replyReview = useReplyReview();
 
   const [status, setStatus] = useState<StatusFilter>(1);
   const [sku, setSku] = useState<string>();
@@ -51,7 +49,6 @@ export const ReviewsPage: React.FC = () => {
   const [bulkErrors, setBulkErrors] = useState<BulkErrorItem[]>([]);
   const [busy, setBusy] = useState(false);
 
-  // TODO ghép API: GET /admin/reviews?status=&productId=&page=&size=
   const data = useMemo(
     () =>
       reviews
@@ -73,41 +70,34 @@ export const ReviewsPage: React.FC = () => {
   const counts = (s: ReviewStatus) => reviews.filter((r) => r.status === s).length;
 
   const moderate = async (targets: AdminReview[], next: 2 | 3) => {
-    const allowed = next === 2 ? CAN_APPROVE : CAN_REJECT;
-    // TODO ghép API: PATCH /admin/reviews/{id}/approve|reject, nhiều dòng: PATCH /admin/reviews/bulk/approve|reject {ids}
     setBusy(true);
-    await fakeLatency();
-    setBusy(false);
-    const errors = collectBulkErrors(
-      targets,
-      (r) => r.id,
-      (r) => (allowed.includes(r.status) ? null : `Đang "${REVIEW_STATUS_META[r.status].label}", không ${next === 2 ? 'duyệt' : 'từ chối'} được`)
-    );
-    if (errors.length) {
-      setBulkErrors(errors);
-      return;
+    try {
+      // PATCH /admin/reviews/bulk/approve|reject {ids}: "tất cả hoặc không", lỗi trả data [{id, reason}]
+      await moderateReviews.mutateAsync({ ids: targets.map((r) => r.id), approve: next === 2 });
+      setSelectedKeys([]);
+      setBulkErrors([]);
+      message.success(`Đã ${next === 2 ? 'duyệt' : 'từ chối'} ${targets.length} đánh giá`);
+    } catch (e) {
+      const errors = bulkErrorsOf(e);
+      if (errors) setBulkErrors(errors);
+      else message.error((e as Error).message);
+    } finally {
+      setBusy(false);
     }
-    const ids = new Set(targets.map((r) => r.id));
-    setReviews((prev) => prev.map((r) => (ids.has(r.id) ? { ...r, status: next } : r)));
-    setSelectedKeys([]);
-    setBulkErrors([]);
-    message.success(`Đã ${next === 2 ? 'duyệt' : 'từ chối'} ${ids.size} đánh giá`);
   };
 
   const sendReply = async () => {
     if (!active) return;
-    // TODO ghép API: POST /admin/reviews/{id}/reply {content} (ghi đè câu trả lời cũ)
     setBusy(true);
-    await fakeLatency();
-    setBusy(false);
-    setReviews((prev) =>
-      prev.map((r) =>
-        r.id === active.id
-          ? { ...r, adminReply: { content: reply.trim(), repliedBy: user.id, repliedAt: new Date().toISOString() } }
-          : r
-      )
-    );
-    message.success('Đã gửi trả lời');
+    try {
+      // ghi đè câu trả lời cũ; backend gửi thông báo cho người viết
+      await replyReview.mutateAsync({ id: active.id, content: reply.trim() });
+      message.success('Đã gửi trả lời');
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const columns: TableColumnsType<AdminReview> = [
@@ -227,6 +217,7 @@ export const ReviewsPage: React.FC = () => {
               scroll={{ x: 600 }}
               columns={columns}
               dataSource={data}
+              loading={isLoading}
               rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
               rowClassName={(r) => (r.id === activeId ? 'admin-row-active' : '')}
               onRow={(r) => ({ onClick: () => setActiveId(r.id), style: { cursor: 'pointer' } })}

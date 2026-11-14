@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useCreateOrder } from '../../hooks/useOrders';
 import { useAddresses } from '../../hooks/useAddresses';
-import { useValidateVoucher, useVouchers } from '../../hooks/useVouchers';
+import { useCheckoutPreview, useValidateVoucher, useVouchers } from '../../hooks/useVouchers';
 import { formatAddress } from '../../services/api/addressService';
 import { calculateShippingFee, FREE_SHIPPING_THRESHOLD } from '../../services/api/checkoutService';
 import { PaymentMethod, VoucherValidation } from '../../types/order';
@@ -21,7 +21,7 @@ export const CheckoutPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  const { cart, summary, clearCart } = useCart();
+  const { cart, summary } = useCart();
   const [step, setStep] = useState<number>(0);
   // Idempotency-Key của POST /orders: một khóa cho lần vào trang này, bấm lại / mạng chập chờn không tạo đơn thứ hai
   const [requestId] = useState(() => crypto.randomUUID());
@@ -48,18 +48,26 @@ export const CheckoutPage: React.FC = () => {
   }, [addresses, addressId]);
 
   const selectedAddress = addresses.find((a) => a.id === addressId);
-  const discountAmount = voucher?.valid ? voucher.discountAmount : 0;
-  // Giống POST /checkout/preview: phí theo tiền hàng sau giảm và tỉnh nhận hàng
-  const shippingFee = voucher?.freeShipping
-    ? 0
-    : calculateShippingFee(Math.max(0, summary.subtotal - discountAmount), selectedAddress?.provinceCode);
-  const total = Math.max(0, summary.subtotal - discountAmount + shippingFee);
+  const appliedVoucherCode = voucher?.valid ? voucher.code : undefined;
+  // Tiền chính thức do server tính từ giỏ (POST /checkout/preview); trong lúc chờ dùng ước tính tại chỗ
+  const { data: preview } = useCheckoutPreview(
+    { voucherCode: appliedVoucherCode, addressId: addressId ?? undefined },
+    isAuthenticated && cart.length > 0
+  );
+  const estimatedDiscount = voucher?.valid ? voucher.discountAmount : 0;
+  const discountAmount = preview?.discountAmount ?? estimatedDiscount;
+  const shippingFee =
+    preview?.shippingFee ??
+    (voucher?.freeShipping
+      ? 0
+      : calculateShippingFee(Math.max(0, summary.subtotal - estimatedDiscount), selectedAddress?.provinceCode));
+  const total = preview?.totalAmount ?? Math.max(0, summary.subtotal - discountAmount + shippingFee);
   const unavailable = cart.filter((item) => item.stock <= 0 || item.qty > item.stock);
 
   const applyVoucher = (code: string) => {
     if (!code.trim()) return;
     validateVoucher.mutate(
-      { code, subtotal: summary.subtotal },
+      { code, subtotal: summary.subtotal, categories: cart.map((item) => item.category) },
       {
         onSuccess: (result) => {
           if (result.valid) {
@@ -91,26 +99,17 @@ export const CheckoutPage: React.FC = () => {
         {
           requestId,
           payload: {
-            items: cart,
-            shippingAddress: {
-              fullName: selectedAddress.receiverName,
-              phone: selectedAddress.receiverPhone,
-              email: user?.email,
-              provinceCode: selectedAddress.provinceCode,
-              city: selectedAddress.provinceName,
-              address: `${selectedAddress.addressDetail}, ${selectedAddress.wardName}`,
-              note: note.trim() || undefined,
-            },
+            addressId: selectedAddress.id,
             paymentMethod,
-            voucherCode: voucher?.valid ? voucher.code : undefined,
-            discountAmount,
-            shippingFee,
+            voucherCode: appliedVoucherCode,
+            note: note.trim() || undefined,
+            expectedTotal: total,
           },
         },
         {
           // Đơn trả về ở trạng thái 1 (đang giữ hàng): trang chi tiết theo dõi đến khi giữ hàng xong
           onSuccess: (order) => {
-            clearCart();
+            // backend đã xóa giỏ khi đặt đơn (useCreateOrder làm mới cache giỏ)
             navigate(`/account/orders/${order.id}?placed=1`, { replace: true });
           },
           onError: (err: any) => {

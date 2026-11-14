@@ -11,11 +11,16 @@ import { useAddresses } from '../../hooks/useAddresses';
 import { useMyBuilds } from '../../hooks/usePcBuilds';
 import { PHONE_PATTERN } from '../../services/api/addressService';
 
+type Gender = 'unknown' | 'male' | 'female';
+/** Giới tính ở customer-service: 1 Nam, 2 Nữ, null = không nêu */
+const GENDER_CODE: Record<Gender, 1 | 2 | null> = { unknown: null, male: 1, female: 2 };
+const toGenderOption = (code?: number | null): Gender => (code === 1 ? 'male' : code === 2 ? 'female' : 'unknown');
+
 export const AccountPage: React.FC = () => {
   const { t } = useTranslation();
   const { user, isAuthenticated, updateProfile } = useAuth();
   const { favoritesCount } = useFavorites();
-  const { data: orders = [] } = useUserOrders();
+  const { data: orders = [] } = useUserOrders(isAuthenticated);
   const { data: addresses = [] } = useAddresses(isAuthenticated);
   const { data: builds = [] } = useMyBuilds(isAuthenticated);
 
@@ -24,8 +29,9 @@ export const AccountPage: React.FC = () => {
     email: user?.email || '',
     phone: user?.phone || '',
     birthDate: user?.birthDate || '',
-    gender: 'unknown',
+    gender: 'unknown' as Gender,
   });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -35,24 +41,28 @@ export const AccountPage: React.FC = () => {
         email: user.email,
         phone: user.phone,
         birthDate: user.birthDate || '',
+        gender: toGenderOption(user.gender),
       }));
     }
   }, [user]);
 
   const phoneInvalid = profile.phone.trim() !== '' && !PHONE_PATTERN.test(profile.phone.replace(/[\s.]/g, ''));
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (phoneInvalid) {
       message.warning(t('account.phoneInvalid', 'Số điện thoại gồm 10 số, bắt đầu bằng 0.'));
       return;
     }
-    updateProfile({
-      fullName: profile.name,
-      email: profile.email,
-      phone: profile.phone,
-      birthDate: profile.birthDate,
-    });
-    message.success(t('account.profileSaved', 'Đã lưu thông tin tài khoản.'));
+    // Họ tên và email do Keycloak quản lý nên chỉ gửi số điện thoại, giới tính, ngày sinh (PUT /me)
+    setSaving(true);
+    try {
+      await updateProfile({ phone: profile.phone, birthDate: profile.birthDate, gender: GENDER_CODE[profile.gender] });
+      message.success(t('account.profileSaved', 'Đã lưu thông tin tài khoản.'));
+    } catch (err: any) {
+      message.error(err?.message || t('account.profileSaveFailed', 'Không lưu được thông tin, vui lòng thử lại.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Đơn còn đang xử lý / giao (chưa hoàn tất, hủy hay trả)
@@ -84,11 +94,11 @@ export const AccountPage: React.FC = () => {
       <div className="formgrid">
         <label>
           {t('account.fullName', 'Họ và tên')}
-          <Input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+          <Input value={profile.name} disabled />
         </label>
         <label>
           {t('account.email', 'Email')}
-          <Input value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
+          <Input value={profile.email} disabled />
         </label>
         <label>
           {t('account.phone', 'Số điện thoại')}
@@ -123,7 +133,7 @@ export const AccountPage: React.FC = () => {
           />
         </label>
         <div className="wide" style={{ marginTop: 10 }}>
-          <Button type="primary" onClick={handleSaveProfile}>
+          <Button type="primary" loading={saving} onClick={handleSaveProfile}>
             {t('account.saveChanges', 'Lưu thay đổi')}
           </Button>
         </div>

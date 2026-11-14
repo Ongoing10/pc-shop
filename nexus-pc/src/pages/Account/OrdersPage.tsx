@@ -7,6 +7,7 @@ import { AccountShell } from '../../components/account/AccountShell';
 import { OrderStatusTag } from '../../components/order/OrderStatusTag';
 import { OrderListSkeleton } from '../../components/common/CustomSkeleton';
 import { useUserOrders } from '../../hooks/useOrders';
+import { useAuth } from '../../context/AuthContext';
 import { Order } from '../../types/order';
 import { formatCurrency } from '../../utils/format';
 import { ORDER_FILTER_LABEL, ORDER_FILTER_STATUSES, OrderFilter, formatDate } from '../../utils/orderStatus';
@@ -21,7 +22,8 @@ export const OrdersPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: orders = [], isLoading } = useUserOrders();
+  const { isAuthenticated } = useAuth();
+  const { data: orders = [], isLoading } = useUserOrders(isAuthenticated);
 
   const raw = searchParams.get('status') as StatusFilter | null;
   const status: StatusFilter = raw && FILTERS.includes(raw) ? raw : 'all';

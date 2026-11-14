@@ -1,124 +1,161 @@
-import { Product, Category, ProductFilterParams } from '../../types/product';
+import type * as Api from '../../types/api';
+import { Category, Product, ProductFilterParams, SortOption } from '../../types/product';
 import { PriceHistoryEntry } from '../../types/review';
-import { initialProducts, initialCategories } from './mockData';
+import { BaseService } from './BaseService';
+import { isApiError } from './ApiError';
+import { inventoryService } from './inventoryService';
+import { toCategory, toCategoryCode, toPriceHistory, toProduct } from './mappers/catalogMapper';
 
-// Simulated latency helper for realistic async experience
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const REFS_TTL_MS = 10 * 60 * 1000;
 
-export const productService = {
-  /**
-   * Fetch all categories
-   */
-  async getCategories(): Promise<Category[]> {
-    await delay(120);
-    // Đếm số sản phẩm thật theo danh mục thay cho con số cứng trong mock
-    return initialCategories.map((cat) => ({
-      ...cat,
-      count: initialProducts.filter((p) => p.category === cat.id).length,
-    }));
-  },
+interface CatalogRefs {
+  brandNames: Map<string, string>;
+  specSchemas: Map<string, Api.SpecField[] | null>;
+  categories: Api.Category[];
+}
 
-  /**
-   * Fetch products with optional filtering, search, sorting
-   */
-  async getProducts(params?: ProductFilterParams): Promise<Product[]> {
-    await delay(150);
-    let list = [...initialProducts];
-
-    if (!params) return list;
-
-    const { category, search, sort, brands, maxPrice } = params;
-
-    if (category && category !== 'all') {
-      list = list.filter((p) => p.category === category);
-    }
-
-    if (search && search.trim() !== '') {
-      const q = search.trim().toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.specs.some((s) => s.toLowerCase().includes(q))
-      );
-    }
-
-    if (maxPrice !== undefined && maxPrice > 0) {
-      list = list.filter((p) => p.price <= maxPrice);
-    }
-
-    if (brands && brands.length > 0) {
-      list = list.filter((p) => brands.includes(p.brand));
-    }
-
-    if (sort) {
-      switch (sort) {
-        case 'price-asc':
-          list.sort((a, b) => a.price - b.price);
-          break;
-        case 'price-desc':
-          list.sort((a, b) => b.price - a.price);
-          break;
-        case 'discount':
-          list.sort(
-            (a, b) => (b.oldPrice ? b.oldPrice - b.price : 0) - (a.oldPrice ? a.oldPrice - a.price : 0)
-          );
-          break;
-        case 'rating':
-          list.sort((a, b) => b.rating - a.rating);
-          break;
-        case 'featured':
-        default:
-          // Keep default curated order
-          break;
-      }
-    }
-
-    return list;
-  },
-
-  /**
-   * Get single product by ID
-   */
-  async getProductById(id: string): Promise<Product | null> {
-    await delay(100);
-    const found = initialProducts.find((p) => p.id === id);
-    return found || null;
-  },
-
-  /**
-   * Get featured products (e.g. for homepage hero & showcase)
-   */
-  async getFeaturedProducts(limit = 4): Promise<Product[]> {
-    await delay(100);
-    return initialProducts.slice(0, limit);
-  },
-
-  /**
-   * Get price history of a product (mock; real API: GET /products/{sku}/price-history)
-   */
-  async getPriceHistory(id: string): Promise<PriceHistoryEntry[]> {
-    await delay(100);
-    const product = initialProducts.find((p) => p.id === id);
-    if (!product) return [];
-    const listPrice = product.oldPrice ?? product.price;
-    const daysAgo = (days: number) => new Date(Date.now() - days * 86400000).toISOString();
-    const launchPrice = Math.round((listPrice * 1.06) / 10000) * 10000;
-    const history: PriceHistoryEntry[] = [
-      { oldPrice: launchPrice, newPrice: listPrice, reason: 'Điều chỉnh giá niêm yết', changedAt: daysAgo(120) },
-    ];
-    if (product.price < listPrice) {
-      history.push({ oldPrice: listPrice, newPrice: product.price, reason: 'Khuyến mãi', changedAt: daysAgo(18) });
-    }
-    return history;
-  },
-
-  /**
-   * Get deal products (items with highest discounts)
-   */
-  async getDealProducts(limit = 4): Promise<Product[]> {
-    await delay(100);
-    const deals = [...initialProducts].filter((p) => p.oldPrice && p.oldPrice > p.price);
-    return deals.slice(0, limit);
-  },
+const SERVER_SORT: Partial<Record<SortOption, Api.ProductSort>> = {
+  'price-asc': 'price,asc',
+  'price-desc': 'price,desc',
+  rating: 'rating,desc',
+  featured: 'sold,desc',
 };
+
+const discountOf = (p: Product) => (p.oldPrice ? p.oldPrice - p.price : 0);
+
+/** Sắp xếp phía FE cho trường hợp backend không hỗ trợ (giảm giá nhiều) hoặc dữ liệu đến từ /products/search */
+const sortProducts = (list: Product[], sort?: SortOption): Product[] => {
+  switch (sort) {
+    case 'price-asc':
+      return [...list].sort((a, b) => a.price - b.price);
+    case 'price-desc':
+      return [...list].sort((a, b) => b.price - a.price);
+    case 'discount':
+      return [...list].sort((a, b) => discountOf(b) - discountOf(a));
+    case 'rating':
+      return [...list].sort((a, b) => b.rating - a.rating);
+    default:
+      return list;
+  }
+};
+
+/** catalog-service: danh mục, thương hiệu, sản phẩm. Trả về kiểu của FE (xem mappers/catalogMapper) */
+class ProductService extends BaseService {
+  private refs: Promise<CatalogRefs> | null = null;
+  private refsAt = 0;
+
+  constructor() {
+    super('');
+  }
+
+  /** Danh mục + thương hiệu dùng chung cho mọi lần đổi sản phẩm (tên hãng, nhãn thông số); cache 10 phút */
+  private getRefs(): Promise<CatalogRefs> {
+    if (!this.refs || Date.now() - this.refsAt > REFS_TTL_MS) {
+      this.refsAt = Date.now();
+      this.refs = Promise.all([this.get<Api.Category[]>('/categories'), this.get<Api.Brand[]>('/brands')])
+        .then(([categories, brands]) => ({
+          categories,
+          brandNames: new Map(brands.map((b) => [b.code, b.name])),
+          specSchemas: new Map(categories.map((c) => [c.code, c.specSchema])),
+        }))
+        .catch((e) => {
+          this.refs = null;
+          throw e;
+        });
+    }
+    return this.refs;
+  }
+
+  /** Đổi sản phẩm backend sang kiểu FE và gắn tồn kho (một lần gọi inventory cho cả danh sách) */
+  private async toProducts(list: Api.Product[]): Promise<Product[]> {
+    if (list.length === 0) return [];
+    const [refs, stock] = await Promise.all([this.getRefs(), inventoryService.getAvailability(list.map((p) => p.sku))]);
+    return list.map((p) => toProduct(p, refs, stock.get(p.sku) ?? 0));
+  }
+
+  /** GET /categories + số sản phẩm đang bán của từng danh mục (đọc `page.totalElements` của trang đầu) */
+  async getCategories(): Promise<Category[]> {
+    const { categories } = await this.getRefs();
+    const counts = await Promise.all(
+      categories.map((c) =>
+        this.get<Api.PageResponse<Api.Product>>('/products', { category: c.code, size: 1 }).then((p) => p.page.totalElements)
+      )
+    );
+    return categories.map((c, i) => toCategory(c, counts[i]));
+  }
+
+  /**
+   * Lọc/tìm/sắp xếp. Danh mục, giá, một thương hiệu, sắp xếp chạy ở backend (GET /products);
+   * tìm kiếm dùng GET /products/search (text index) rồi lọc tiếp phía FE vì endpoint đó chỉ nhận `q`.
+   */
+  async getProducts(params: ProductFilterParams = {}): Promise<Product[]> {
+    const { category, search, sort, brands, maxPrice } = params;
+    const refs = await this.getRefs();
+    const brandCodes = new Map([...refs.brandNames].map(([code, name]) => [name, code]));
+    const categoryCode = category && category !== 'all' ? toCategoryCode(category) : undefined;
+    const query = search?.trim();
+
+    let raw: Api.Product[];
+    if (query) {
+      raw = await this.getAllPages<Api.Product>('/products/search', { q: query });
+      if (categoryCode) raw = raw.filter((p) => p.categoryCode === categoryCode);
+      if (maxPrice) raw = raw.filter((p) => p.price <= maxPrice);
+    } else {
+      raw = await this.getAllPages<Api.Product>('/products', {
+        category: categoryCode,
+        maxPrice: maxPrice && maxPrice > 0 ? maxPrice : undefined,
+        brand: brands?.length === 1 ? brandCodes.get(brands[0]) : undefined,
+        sort: sort ? SERVER_SORT[sort] : undefined,
+      });
+    }
+
+    let list = await this.toProducts(raw);
+    if (brands && brands.length > 0) list = list.filter((p) => brands.includes(p.brand));
+    // Kết quả tìm kiếm không có sắp xếp của backend; 'discount' backend không hỗ trợ
+    return query || sort === 'discount' ? sortProducts(list, sort) : list;
+  }
+
+  /** GET /products/{sku}; id sản phẩm ở FE chính là SKU. 404 → null để trang hiện "không tìm thấy" */
+  async getProductById(id: string): Promise<Product | null> {
+    try {
+      const product = await this.get<Api.Product>(`/products/${encodeURIComponent(id)}`);
+      return (await this.toProducts([product]))[0] ?? null;
+    } catch (e) {
+      if (isApiError(e) && e.status === 404) return null;
+      throw e;
+    }
+  }
+
+  /** Nhiều SKU (cấu hình PC đã lưu): lấy chi tiết từng SKU nhưng chỉ gọi tồn kho một lần; SKU không còn bán bị bỏ qua */
+  async getProductsBySkus(skus: string[]): Promise<Product[]> {
+    const raw = await Promise.all(
+      [...new Set(skus)].map((sku) =>
+        this.get<Api.Product>(`/products/${encodeURIComponent(sku)}`).catch((e) => {
+          if (isApiError(e) && e.status === 404) return null;
+          throw e;
+        })
+      )
+    );
+    return this.toProducts(raw.filter((p): p is Api.Product => p !== null));
+  }
+
+  /** Bán chạy nhất (soldCount giảm dần) */
+  async getFeaturedProducts(limit = 4): Promise<Product[]> {
+    const page = await this.get<Api.PageResponse<Api.Product>>('/products', { sort: 'sold,desc', size: limit });
+    return this.toProducts(page.content);
+  }
+
+  /** Giảm giá nhiều nhất: backend chưa có bộ lọc giảm giá nên lấy danh sách rồi lọc phía FE */
+  async getDealProducts(limit = 4): Promise<Product[]> {
+    const all = await this.getAllPages<Api.Product>('/products');
+    const deals = await this.toProducts(all.filter((p) => p.originalPrice && p.originalPrice > p.price));
+    return sortProducts(deals, 'discount').slice(0, limit);
+  }
+
+  /** GET /products/{sku}/price-history */
+  async getPriceHistory(id: string): Promise<PriceHistoryEntry[]> {
+    return toPriceHistory(await this.get<Api.PriceHistory[]>(`/products/${encodeURIComponent(id)}/price-history`));
+  }
+}
+
+export const productService = new ProductService();

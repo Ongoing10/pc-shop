@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DatePicker, Flex, Select, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { Dayjs } from 'dayjs';
-import { useAdminData } from '../../../context/AdminDataContext';
+import { useAdminMovements, useAdminProducts, useAdminWarehouses } from '../../../hooks/admin/useAdminApi';
 import { StockMovement, StockMovementType } from '../../../types/admin';
 import { MOVEMENT_TYPE_META } from '../../../utils/adminStatus';
 import { formatDateTime } from '../../../utils/orderStatus';
@@ -12,15 +12,12 @@ const { RangePicker } = DatePicker;
 
 export const MovementsTab: React.FC = () => {
   const [params] = useSearchParams();
-  const {
-    movements: [movements],
-    warehouses: [warehouses],
-    products: [products],
-  } = useAdminData();
+  const { data: movements = [], isLoading } = useAdminMovements();
+  const { data: warehouses = [] } = useAdminWarehouses();
+  const { data: products = [] } = useAdminProducts();
   const [sku, setSku] = useState<string | undefined>(params.get('sku') ?? undefined);
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
 
-  // TODO ghép API: GET /admin/inventory/movements?sku=&from=&to=&page=&size=
   const data = useMemo(
     () =>
       movements

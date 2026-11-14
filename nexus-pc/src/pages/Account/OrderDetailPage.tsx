@@ -269,7 +269,7 @@ export const OrderDetailPage: React.FC = () => {
           <b>{order.shippingAddress.fullName}</b>
           <span>{order.shippingAddress.phone}</span>
           <span>
-            {order.shippingAddress.address}, {order.shippingAddress.city}
+            {[order.shippingAddress.address, order.shippingAddress.city].filter(Boolean).join(', ')}
           </span>
           {order.shippingAddress.note && (
             <span className="muted-line">

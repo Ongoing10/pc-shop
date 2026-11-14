@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Divider, Empty, Popconfirm } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +7,8 @@ import { QuantityStepper } from '../../components/common/QuantityStepper';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { CompatBadge } from '../../components/builder/CompatibilityPanel';
 import { useCart } from '../../context/CartContext';
-import { checkCompatibility } from '../../services/api/compatibilityService';
+import { EMPTY_COMPATIBILITY } from '../../services/api/compatibilityService';
+import { useCompatibility } from '../../hooks/useCompatibility';
 import { calculateShippingFee, FREE_SHIPPING_THRESHOLD } from '../../services/api/checkoutService';
 import { formatCurrency } from '../../utils/format';
 
@@ -21,11 +22,12 @@ export const CartPage: React.FC = () => {
   const blocked = cart.some((item) => item.stock <= 0 || item.qty > item.stock);
 
   // Giỏ có từ 2 linh kiện ráp máy thì kiểm tra luôn tương thích
-  const compatibility = useMemo(
-    () => checkCompatibility(cart.map((item) => ({ product: item, quantity: item.qty }))),
-    [cart]
-  );
   const showCompat = new Set(cart.map((i) => i.category)).size >= 2;
+  // Rule engine của catalog-service (POST /compatibility/check)
+  const { data: compatibility = EMPTY_COMPATIBILITY } = useCompatibility(
+    cart.map((item) => ({ sku: item.id, quantity: item.qty })),
+    showCompat
+  );
 
   return (
     <main className="container page">

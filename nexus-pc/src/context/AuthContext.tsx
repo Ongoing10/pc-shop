@@ -1,13 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import {
-  UserProfile,
-  LoginCredentials,
-  RegisterData,
-  ResetPasswordData,
-  ChangePasswordData,
-} from '../types/user';
-import { authService } from '../services/api/authService';
 import { message } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
+import { UserProfile, LoginCredentials } from '../types/user';
+import { authService, keycloakPages } from '../services/api/authService';
+import { AUTH_EXPIRED_EVENT } from '../services/api/tokenStore';
 
 export interface AuthContextType {
   user: UserProfile | null;
@@ -15,53 +11,57 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<{ user: UserProfile; token: string }>;
-  register: (data: RegisterData) => Promise<{ user: UserProfile; token: string }>;
   logout: () => void;
-  forgotPassword: (identifier: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
-  resetPassword: (data: ResetPasswordData) => Promise<{ success: boolean; message: string }>;
-  changePassword: (data: ChangePasswordData) => Promise<{ success: boolean; message: string }>;
-  updateProfile: (profile: Partial<UserProfile>) => UserProfile;
+  /** Tài khoản nằm ở Keycloak: các hàm dưới đây chuyển trình duyệt sang trang tương ứng của Keycloak */
+  register: () => void;
+  forgotPassword: () => void;
+  changePassword: () => void;
+  /** PUT /me: chỉ số điện thoại, giới tính, ngày sinh (họ tên, email do Keycloak quản lý) */
+  updateProfile: (changes: Partial<UserProfile>) => Promise<UserProfile>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Initialize session on mount
+  // Khôi phục phiên từ token đã lưu (làm mới access token nếu hết hạn)
   useEffect(() => {
-    try {
-      const currentUser = authService.getCurrentUser();
-      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('nexus_auth_token') : null;
-      if (currentUser && storedToken) {
-        setUser(currentUser);
-        setToken(storedToken);
-      }
-    } catch (e) {
-      console.error('Error hydrating auth state:', e);
-    } finally {
-      setIsLoading(false);
-    }
+    let active = true;
+    authService
+      .restoreSession()
+      .then((session) => {
+        if (!active || !session) return;
+        setUser(session.user);
+        setToken(session.token);
+      })
+      .catch((e) => console.error('Error hydrating auth state:', e))
+      .finally(() => active && setIsLoading(false));
+    return () => {
+      active = false;
+    };
   }, []);
+
+  // Refresh token hết hạn / access token bị từ chối: axiosClient đã xóa token, ở đây đưa giao diện về trạng thái khách
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      setToken(null);
+      queryClient.clear();
+      message.warning('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, [queryClient]);
 
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
       const result = await authService.login(credentials);
-      setUser(result.user);
-      setToken(result.token);
-      return result;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const register = async (data: RegisterData) => {
-    setIsLoading(true);
-    try {
-      const result = await authService.register(data);
+      queryClient.clear();
       setUser(result.user);
       setToken(result.token);
       return result;
@@ -71,29 +71,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    authService.logout();
+    void authService.logout();
     setUser(null);
     setToken(null);
+    queryClient.clear();
     message.info('Đã đăng xuất khỏi tài khoản NEXUS');
   };
 
-  const forgotPassword = async (identifier: string) => {
-    return await authService.requestResetCode(identifier);
-  };
-
-  const resetPassword = async (data: ResetPasswordData) => {
-    return await authService.resetPassword(data);
-  };
-
-  const changePassword = async (data: ChangePasswordData) => {
-    if (!user) {
-      throw new Error('Vui lòng đăng nhập trước khi đổi mật khẩu.');
-    }
-    return await authService.changePassword(user.id, data);
-  };
-
-  const updateProfile = (profile: Partial<UserProfile>) => {
-    const updated = authService.updateProfile(profile);
+  const updateProfile = async (changes: Partial<UserProfile>) => {
+    if (!user) throw new Error('Vui lòng đăng nhập trước khi cập nhật hồ sơ.');
+    const updated = await authService.updateProfile(user, changes);
     setUser(updated);
     return updated;
   };
@@ -104,11 +91,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated: !!user && !!token,
     isLoading,
     login,
-    register,
     logout,
-    forgotPassword,
-    resetPassword,
-    changePassword,
+    register: () => window.location.assign(keycloakPages.register()),
+    forgotPassword: () => window.location.assign(keycloakPages.login()),
+    changePassword: () => window.location.assign(keycloakPages.account()),
     updateProfile,
   };
 

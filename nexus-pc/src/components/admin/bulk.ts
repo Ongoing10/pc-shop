@@ -22,3 +22,11 @@ export const collectBulkErrors = <T,>(
     return reason ? [{ id: getId(row), reason }] : [];
   });
 };
+
+/** Lỗi "tất cả hoặc không" của backend (400, `data` = [{id, reason}]); null nếu lỗi khác (hiển thị thông báo chung) */
+export const bulkErrorsOf = (e: unknown): BulkErrorItem[] | null => {
+  const data = (e as { data?: unknown } | null)?.data;
+  return Array.isArray(data) && data.length > 0 && typeof (data[0] as BulkErrorItem)?.reason === 'string'
+    ? (data as BulkErrorItem[])
+    : null;
+};

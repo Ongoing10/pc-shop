@@ -23,7 +23,8 @@ import {
 import type { TableColumnsType } from 'antd';
 import { LockOutlined, PlusOutlined, UnlockOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import { useAdminUsers, useCreateStaff, useSetUserLocked, useSetUserRoles } from '../../../hooks/admin/useAdminApi';
+import { ApiError } from '../../../services/api/ApiError';
 import { useAdminUser } from '../../../context/AdminSessionContext';
 import { AdminUser, Permission, RealmRole } from '../../../types/admin';
 import { PERMISSION_LABEL, ROLE_LABEL } from '../../../utils/adminStatus';
@@ -48,9 +49,10 @@ interface CreateStaffValues {
 export const UsersPage: React.FC = () => {
   const { message, modal } = App.useApp();
   const me = useAdminUser();
-  const {
-    users: [users, setUsers],
-  } = useAdminData();
+  const { data: users = [], isLoading } = useAdminUsers();
+  const createStaffAccount = useCreateStaff();
+  const setUserRoles = useSetUserRoles();
+  const setUserLocked = useSetUserLocked();
   const [keyword, setKeyword] = useState('');
   const [openId, setOpenId] = useState<string>();
   const [roles, setRoles] = useState<RealmRole[]>([]);
@@ -60,7 +62,6 @@ export const UsersPage: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm] = Form.useForm<CreateStaffValues>();
 
-  // TODO ghép API: GET /admin/users?keyword=&page=&size=
   const data = useMemo(() => {
     const k = keyword.trim().toLowerCase();
     return users.filter(
@@ -68,7 +69,6 @@ export const UsersPage: React.FC = () => {
     );
   }, [users, keyword]);
 
-  // TODO ghép API: GET /admin/users/{id}
   const current = users.find((u) => u.id === openId);
 
   const openUser = (u: AdminUser) => {
@@ -85,12 +85,16 @@ export const UsersPage: React.FC = () => {
       return;
     }
     setSaving(true);
-    // TODO ghép API: PUT /admin/users/{id}/roles {realmRoles, permissions} (danh sách đầy đủ, thay thế)
-    await fakeLatency();
-    setUsers((prev) => prev.map((u) => (u.id === current.id ? { ...u, realmRoles: roles, permissions: perms } : u)));
-    setSaving(false);
-    setRoleError(undefined);
-    message.success(`Đã cập nhật quyền của ${current.username}`);
+    try {
+      // danh sách đầy đủ, thay thế (không cộng thêm)
+      await setUserRoles.mutateAsync({ id: current.id, body: { realmRoles: roles, permissions: perms } });
+      setRoleError(undefined);
+      message.success(`Đã cập nhật quyền của ${current.username}`);
+    } catch (e) {
+      setRoleError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleLock = (u: AdminUser) => {
@@ -102,10 +106,12 @@ export const UsersPage: React.FC = () => {
       okButtonProps: { danger: locking },
       cancelText: 'Hủy',
       onOk: async () => {
-        // TODO ghép API: PUT /admin/users/{id}/lock | /unlock
-        await fakeLatency();
-        setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, active: !locking } : x)));
-        message.success(locking ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản');
+        try {
+          await setUserLocked.mutateAsync({ id: u.id, locked: locking });
+          message.success(locking ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản');
+        } catch (e) {
+          message.error((e as Error).message);
+        }
       },
     });
   };
@@ -113,33 +119,27 @@ export const UsersPage: React.FC = () => {
   const createStaff = async () => {
     const v = await createForm.validateFields();
     setSaving(true);
-    // TODO ghép API: POST /admin/users; username/email trùng → 409
-    await fakeLatency();
-    setSaving(false);
-    if (users.some((u) => u.username === v.username)) {
-      createForm.setFields([{ name: 'username', errors: ['Tên đăng nhập đã tồn tại (409)'] }]);
-      return;
-    }
-    if (users.some((u) => u.email === v.email)) {
-      createForm.setFields([{ name: 'email', errors: ['Email đã được dùng (409)'] }]);
-      return;
-    }
-    setUsers((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
+    try {
+      await createStaffAccount.mutateAsync({
         username: v.username,
         email: v.email,
-        fullName: [v.firstName, v.lastName].filter(Boolean).join(' '),
-        active: true,
-        phoneNumber: null,
-        createdTimestamp: Date.now(),
+        firstName: v.firstName,
+        lastName: v.lastName || null,
+        password: v.password,
+        temporaryPassword: v.temporaryPassword,
         realmRoles: v.realmRoles,
         permissions: v.permissions,
-      },
-    ]);
-    setCreateOpen(false);
-    message.success(`Đã tạo tài khoản ${v.username}`);
+      });
+      setCreateOpen(false);
+      message.success(`Đã tạo tài khoản ${v.username}`);
+    } catch (e) {
+      const err = e as ApiError;
+      // username / email trùng → 409
+      if (err.status === 409) createForm.setFields([{ name: /email/i.test(err.message) ? 'email' : 'username', errors: [err.message] }]);
+      else message.error(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const columns: TableColumnsType<AdminUser> = [
@@ -236,6 +236,7 @@ export const UsersPage: React.FC = () => {
           rowKey="id"
           columns={columns}
           dataSource={data}
+          loading={isLoading}
           onRow={(u) => ({ onClick: () => openUser(u), style: { cursor: 'pointer' } })}
           pagination={{ pageSize: 20, showTotal: (t) => `${t} tài khoản` }}
         />

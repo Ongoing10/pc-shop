@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import { App, Button, Flex, Form, Input, Modal, Switch, Table, Tooltip, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import {
+  useAdminInventory,
+  useAdminWarehouses,
+  useCreateWarehouse,
+  useSetWarehousesActive,
+  useUpdateWarehouse,
+} from '../../../hooks/admin/useAdminApi';
+import { ApiError } from '../../../services/api/ApiError';
 import { useAdminSession } from '../../../context/AdminSessionContext';
 import { Warehouse } from '../../../types/admin';
 
@@ -16,10 +23,11 @@ export const WarehousesTab: React.FC = () => {
   const { message } = App.useApp();
   const { hasRole } = useAdminSession();
   const isAdmin = hasRole('ADMIN');
-  const {
-    warehouses: [warehouses, setWarehouses],
-    inventories: [inventories],
-  } = useAdminData();
+  const { data: warehouses = [], isLoading } = useAdminWarehouses();
+  const { data: inventories = [] } = useAdminInventory();
+  const createWarehouse = useCreateWarehouse();
+  const updateWarehouse = useUpdateWarehouse();
+  const setWarehousesActive = useSetWarehousesActive();
   const [editing, setEditing] = useState<Warehouse | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<WarehouseFormValues>();
@@ -33,29 +41,32 @@ export const WarehousesTab: React.FC = () => {
   const submit = async () => {
     const v = await form.validateFields();
     setSaving(true);
-    await fakeLatency();
-    if (editing === 'new') {
-      // TODO ghép API: POST /admin/warehouses
-      if (warehouses.some((w) => w.code === v.code)) {
-        setSaving(false);
-        form.setFields([{ name: 'code', errors: ['Mã kho đã tồn tại (409)'] }]);
-        return;
+    try {
+      if (editing === 'new') {
+        await createWarehouse.mutateAsync({ code: v.code, name: v.name, address: v.address ?? null });
+        message.success(`Đã thêm kho ${v.name}`);
+      } else if (editing) {
+        await updateWarehouse.mutateAsync({ id: editing.id, body: { name: v.name, address: v.address ?? null } });
+        message.success('Đã lưu kho');
       }
-      setWarehouses((prev) => [...prev, { id: Math.max(0, ...prev.map((w) => w.id)) + 1, code: v.code, name: v.name, address: v.address ?? null, isActive: 1 }]);
-      message.success(`Đã thêm kho ${v.name}`);
-    } else if (editing) {
-      // TODO ghép API: PUT /admin/warehouses/{id}
-      setWarehouses((prev) => prev.map((w) => (w.id === editing.id ? { ...w, name: v.name, address: v.address ?? null } : w)));
-      message.success('Đã lưu kho');
+      setEditing(null);
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.status === 409) form.setFields([{ name: 'code', errors: ['Mã kho đã tồn tại (409)'] }]);
+      else message.error(err.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setEditing(null);
   };
 
   const toggleActive = (w: Warehouse, active: boolean) => {
-    // TODO ghép API: PATCH /admin/warehouses/{id}/active {isActive}
-    setWarehouses((prev) => prev.map((x) => (x.id === w.id ? { ...x, isActive: active ? 1 : 0 } : x)));
-    message.success(active ? `Đã bật ${w.name}` : `Đã tắt ${w.name}`);
+    setWarehousesActive.mutate(
+      { ids: [w.id], active },
+      {
+        onSuccess: () => message.success(active ? `Đã bật ${w.name}` : `Đã tắt ${w.name}`),
+        onError: (e) => message.error(e.message),
+      }
+    );
   };
 
   const columns: TableColumnsType<Warehouse> = [
@@ -103,7 +114,7 @@ export const WarehousesTab: React.FC = () => {
           </Button>
         )}
       </Flex>
-      <Table rowKey="id" columns={columns} dataSource={warehouses} pagination={false} />
+      <Table rowKey="id" columns={columns} dataSource={warehouses} loading={isLoading} pagination={false} />
 
       <Modal
         open={editing !== null}

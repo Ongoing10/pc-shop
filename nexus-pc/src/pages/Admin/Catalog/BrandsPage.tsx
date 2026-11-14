@@ -24,7 +24,14 @@ import type { TableColumnsType } from 'antd';
 import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import {
+  useAdminBrands,
+  useAdminProducts,
+  useCreateBrand,
+  useSetBrandsActive,
+  useUpdateBrand,
+} from '../../../hooks/admin/useAdminApi';
+import { ApiError } from '../../../services/api/ApiError';
 import { AdminBrand } from '../../../types/admin';
 import { PRODUCT_STATUS_META } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
@@ -40,26 +47,31 @@ interface BrandFormValues {
 /** A10: thương hiệu. Không có xóa, chỉ bật/tắt. */
 export const BrandsPage: React.FC = () => {
   const { message } = App.useApp();
-  const {
-    brands: [brands, setBrands],
-    products: [products],
-  } = useAdminData();
+  const { data: brands = [], isLoading } = useAdminBrands();
+  const { data: products = [] } = useAdminProducts();
+  const createBrand = useCreateBrand();
+  const updateBrand = useUpdateBrand();
+  const setBrandsActive = useSetBrandsActive();
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
   const [viewingCode, setViewingCode] = useState<string>();
   const [editing, setEditing] = useState<AdminBrand | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<BrandFormValues>();
 
-  // TODO ghép API: GET /admin/brands (kể cả đã tắt)
   const viewing = brands.find((b) => b.code === viewingCode);
   const productsOf = (code: string) => products.filter((p) => p.brandCode === code);
 
   const setActive = (codes: string[], active: boolean) => {
-    // TODO ghép API: PATCH /admin/brands/{code}/active, nhiều dòng: PATCH /admin/brands/bulk/active {codes, isActive}
-    const set = new Set(codes);
-    setBrands((prev) => prev.map((b) => (set.has(b.code) ? { ...b, isActive: active ? 1 : 0 } : b)));
-    setSelectedKeys([]);
-    message.success(`Đã ${active ? 'bật' : 'tắt'} ${codes.length} thương hiệu`);
+    setBrandsActive.mutate(
+      { codes, active },
+      {
+        onSuccess: () => {
+          setSelectedKeys([]);
+          message.success(`Đã ${active ? 'bật' : 'tắt'} ${codes.length} thương hiệu`);
+        },
+        onError: (e) => message.error(e.message),
+      }
+    );
   };
 
   const openForm = (b: AdminBrand | 'new') => {
@@ -72,29 +84,22 @@ export const BrandsPage: React.FC = () => {
   const submit = async () => {
     const v = await form.validateFields();
     setSaving(true);
-    await fakeLatency();
-    if (editing === 'new' && brands.some((b) => b.code === v.code)) {
+    try {
+      if (editing === 'new') {
+        await createBrand.mutateAsync({ code: v.code, name: v.name, slug: v.slug || null, logoUrl: v.logoUrl || null });
+        message.success(`Đã thêm ${v.name}`);
+      } else if (editing) {
+        await updateBrand.mutateAsync({ code: editing.code, body: { name: v.name, slug: v.slug || null, logoUrl: v.logoUrl || null } });
+        message.success('Đã lưu thương hiệu');
+      }
+      setEditing(null);
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.status === 409) form.setFields([{ name: 'code', errors: ['Mã đã tồn tại (409)'] }]);
+      else message.error(err.message);
+    } finally {
       setSaving(false);
-      form.setFields([{ name: 'code', errors: ['Mã đã tồn tại (409)'] }]);
-      return;
     }
-    const now = new Date().toISOString();
-    if (editing === 'new') {
-      // TODO ghép API: POST /admin/brands
-      setBrands((prev) => [
-        ...prev,
-        { id: `b${Date.now()}`, code: v.code, name: v.name, slug: v.slug, logoUrl: v.logoUrl || null, isActive: 1, updatedAt: now },
-      ]);
-      message.success(`Đã thêm ${v.name}`);
-    } else if (editing) {
-      // TODO ghép API: PUT /admin/brands/{code}
-      setBrands((prev) =>
-        prev.map((b) => (b.id === editing.id ? { ...b, name: v.name, slug: v.slug, logoUrl: v.logoUrl || null, updatedAt: now } : b))
-      );
-      message.success('Đã lưu thương hiệu');
-    }
-    setSaving(false);
-    setEditing(null);
   };
 
   const columns: TableColumnsType<AdminBrand> = [
@@ -166,6 +171,7 @@ export const BrandsPage: React.FC = () => {
           rowKey="code"
           columns={columns}
           dataSource={brands}
+          loading={isLoading}
           rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
           rowClassName={(b) => (b.isActive ? '' : 'admin-row-muted')}
           pagination={false}

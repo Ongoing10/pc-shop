@@ -94,6 +94,18 @@ Kiểm tra nhanh: `GET http://localhost:8082/api/v1/categories` trả 8 danh m�
 4. Consumer `product.updated`/`product.hidden` ở ai-service; chat stream (SSE); lịch sử chat vào Mongo.
 5. Frontend Next.js + `keycloak-js`; CI GitHub Actions.
 
+## Frontend (`nexus-pc`, Vite + React + antd + TanStack Query)
+
+- Luồng gọi API: `services/api/*Service.ts` (class kế thừa `BaseService`, bóc envelope `ResponseData`, lỗi thành `ApiError`)
+  → hook `hooks/use*.ts` dùng `useApiQuery` / `useApiMutation` / `createQueryKeys` của `hooks/BaseHook.ts` → trang.
+- Service đổi kiểu backend (`types/api.ts`, bản sao `docs/ui/api-types.ts`) sang kiểu FE (`types/*.ts`) ở `services/api/mappers/`;
+  id sản phẩm ở FE = SKU, id danh mục FE (`cpu`, `ssd`...) ↔ mã backend (`CPU`, `STORAGE`...) qua `catalogMapper`.
+- Đăng nhập: password grant tới Keycloak (`keycloakClient`, token lưu ở `tokenStore`, tự refresh). Đăng ký / quên mật khẩu / đổi mật khẩu
+  chuyển sang trang của Keycloak (backend không có API). Cấu hình `VITE_API_BASE_URL`, `VITE_KEYCLOAK_*` (xem `.env.example`).
+- Đã ghép API: catalog, giỏ hàng, checkout/đơn/thanh toán, địa chỉ, review, thông báo (SSE), PC Builder, hồ sơ, và khu admin
+  (`services/api/admin/*`, hook `hooks/admin/useAdminApi.ts`; đăng nhập admin = Keycloak + `GET /me` lấy role/permission, chung token với phía khách).
+  Chỉ còn trang Knowledge (ai-service) là giả. Admin tải toàn bộ danh sách (`getAllPages`, tối đa 1000 dòng) rồi lọc/phân trang phía FE.
+
 ## Lưu ý khi làm việc trên máy người dùng
 
 - Máy Windows; IntelliJ IDEA; run configuration dùng chung ở `.run/`.

@@ -6,25 +6,28 @@ import { ShoppingCartOutlined, DollarOutlined, RiseOutlined, WarningOutlined } f
 import dayjs, { Dayjs } from 'dayjs';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import {
-  CategoryRevenueChart,
   DailyTrendChart,
   OrderStatusChart,
   TrendMetric,
 } from '../../../components/admin/DashboardCharts';
-import { useAdminData } from '../../../context/AdminDataContext';
 import {
-  buildCategoryRevenue,
-  buildDailyStats,
-  buildStatsOverview,
-  buildTopProducts,
-} from '../../../services/api/adminMockData';
+  useAdminInventory,
+  useAdminOrders,
+  useAdminProducts,
+  useAdminWarehouses,
+  useStatsOverview,
+  useTopProducts,
+} from '../../../hooks/admin/useAdminApi';
+import { buildDailyStats } from '../../../utils/adminStats';
 import { ORDER_STATUS_META, availableQty } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
-import { Inventory, OrderStatus, TopProduct } from '../../../types/admin';
+import { Inventory, OrderStatus, StatsOverview, TopProduct } from '../../../types/admin';
 
 const { RangePicker } = DatePicker;
 
 const ALL_STATUSES = Object.keys(ORDER_STATUS_META).map(Number) as OrderStatus[];
+
+const EMPTY_OVERVIEW: StatsOverview = { from: '', to: '', totalOrders: 0, revenue: 0, grossRevenue: 0, ordersByStatus: {} as StatsOverview['ordersByStatus'] };
 
 type LowStockRow = Inventory & { productName: string; warehouseName: string; available: number };
 
@@ -33,30 +36,17 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(29, 'day'), dayjs()]);
   const [metric, setMetric] = useState<TrendMetric>('revenue');
-  const {
-    orders: [orders],
-    products: [products],
-    categories: [categories],
-    inventories: [inventories],
-    warehouses: [warehouses],
-  } = useAdminData();
+  const { data: orders = [] } = useAdminOrders();
+  const { data: products = [] } = useAdminProducts();
+  const { data: inventories = [] } = useAdminInventory();
+  const { data: warehouses = [] } = useAdminWarehouses();
 
   const from = range[0].format('YYYY-MM-DD');
   const to = range[1].format('YYYY-MM-DD');
-  // TODO ghép API: GET /admin/stats/overview?from=&to=, GET /admin/stats/top-products?from=&to=&limit=10
-  const overview = useMemo(() => buildStatsOverview(orders, from, to), [orders, from, to]);
-  const topProducts = useMemo(() => buildTopProducts(orders, from, to, 10), [orders, from, to]);
-  // TODO backend: chưa có API theo ngày và theo danh mục (đề xuất GET /admin/stats/daily, /admin/stats/by-category)
+  const { data: overview = EMPTY_OVERVIEW } = useStatsOverview(from, to);
+  const { data: topProducts = [] } = useTopProducts(from, to, 10);
+  // Backend chưa có API thống kê theo ngày: tính từ danh sách đơn
   const daily = useMemo(() => buildDailyStats(orders, from, to), [orders, from, to]);
-  const byCategory = useMemo(
-    () =>
-      buildCategoryRevenue(orders, from, to).map((r) => ({
-        code: r.categoryCode,
-        label: categories.find((c) => c.code === r.categoryCode)?.name ?? r.categoryCode,
-        revenue: r.revenue,
-      })),
-    [orders, from, to, categories]
-  );
   // Giữ thứ tự luồng trạng thái (không xếp theo số lượng) để mắt quen vị trí từng trạng thái
   const statusData = ALL_STATUSES.map((s) => ({
     status: s,
@@ -64,7 +54,7 @@ export const DashboardPage: React.FC = () => {
     count: overview.ordersByStatus[`${s}`] ?? 0,
   }));
 
-  // TODO ghép API: GET /admin/stats/low-stock, ghép tên bằng POST /products/batch
+  // Sắp hết hàng: tính từ tồn kho (GET /admin/inventory), tên sản phẩm ghép từ danh sách sản phẩm
   const lowStock: LowStockRow[] = inventories
     .filter((row) => availableQty(row) <= row.minQuantity)
     .map((row) => ({
@@ -226,9 +216,6 @@ export const DashboardPage: React.FC = () => {
 
         <Col xs={24} xl={10}>
           <Flex vertical gap={16}>
-            <Card title="Doanh thu theo danh mục">
-              {byCategory.length ? <CategoryRevenueChart data={byCategory} /> : emptyRange}
-            </Card>
 
             <Card title="Sắp hết hàng" extra={<Link to="/admin/inventory?lowStock=1">Mở trang tồn kho</Link>}>
               <Table

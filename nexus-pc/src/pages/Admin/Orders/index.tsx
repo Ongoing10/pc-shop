@@ -7,7 +7,9 @@ import { Dayjs } from 'dayjs';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
 import { OrderStatusModal } from '../../../components/admin/OrderStatusModal';
-import { useAdminData } from '../../../context/AdminDataContext';
+import { useAdminOrders } from '../../../hooks/admin/useAdminApi';
+import { adminOrderService } from '../../../services/api/admin/adminOrderService';
+import { saveDownloadedFile } from '../../../utils/download';
 import { useAdminSession } from '../../../context/AdminSessionContext';
 import { AdminOrder, OrderStatus } from '../../../types/admin';
 import { ORDER_STATUS_META, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_META } from '../../../utils/adminStatus';
@@ -24,9 +26,7 @@ export const AdminOrdersPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const { can } = useAdminSession();
   const canUpdate = can('order:update-status');
-  const {
-    orders: [orders],
-  } = useAdminData();
+  const { data: orders = [], isLoading } = useAdminOrders();
   const { changeStatus } = useOrderActions();
 
   const statusParam = params.get('status');
@@ -36,13 +36,12 @@ export const AdminOrdersPage: React.FC = () => {
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
   const [modalOrders, setModalOrders] = useState<AdminOrder[]>([]);
 
-  // TODO ghép API: GET /admin/orders?status=&from=&to=&q=&page=&size= (lọc ở server)
   const filteredNoStatus = useMemo(() => {
     const keyword = q.trim().toLowerCase();
     return orders
       .filter((o) => {
         if (range) {
-          const d = o.createdAt.slice(0, 10);
+          const d = (o.createdAt ?? '').slice(0, 10);
           if (d < range[0].format('YYYY-MM-DD') || d > range[1].format('YYYY-MM-DD')) return false;
         }
         if (!keyword) return true;
@@ -52,7 +51,7 @@ export const AdminOrdersPage: React.FC = () => {
           o.receiverName.toLowerCase().includes(keyword)
         );
       })
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
   }, [orders, q, range]);
 
   const data = activeStatus ? filteredNoStatus.filter((o) => o.status === activeStatus) : filteredNoStatus;
@@ -84,7 +83,7 @@ export const AdminOrdersPage: React.FC = () => {
       title: 'Ngày đặt',
       dataIndex: 'createdAt',
       width: 150,
-      sorter: (a, b) => a.createdAt.localeCompare(b.createdAt),
+      sorter: (a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
       render: (v: string) => formatDateTime(v),
     },
     {
@@ -152,9 +151,18 @@ export const AdminOrdersPage: React.FC = () => {
     },
   ];
 
-  const handleExport = () => {
-    // TODO ghép API: GET /admin/orders/export?status=&from=&to=&q= (quá 10.000 đơn → 400)
-    message.info(`Sẽ xuất ${data.length} đơn ra Excel khi ghép API`);
+  const handleExport = async () => {
+    // GET /admin/orders/export (quá 10.000 đơn → 400); bộ lọc theo trạng thái và khoảng ngày đang chọn
+    try {
+      const file = await adminOrderService.exportOrders({
+        status: activeStatus,
+        from: range?.[0].format('YYYY-MM-DD'),
+        to: range?.[1].format('YYYY-MM-DD'),
+      });
+      saveDownloadedFile(file, 'don-hang.xlsx');
+    } catch (e) {
+      message.error((e as Error).message);
+    }
   };
 
   return (
@@ -208,6 +216,7 @@ export const AdminOrdersPage: React.FC = () => {
           scroll={{ x: 1000 }}
           columns={columns}
           dataSource={data}
+          loading={isLoading}
           rowSelection={canUpdate ? { selectedRowKeys: selectedKeys, onChange: setSelectedKeys } : undefined}
           pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `${t} đơn` }}
         />

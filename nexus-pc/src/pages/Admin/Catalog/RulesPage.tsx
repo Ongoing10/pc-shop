@@ -24,7 +24,14 @@ import type { TableColumnsType } from 'antd';
 import { EditOutlined, EyeOutlined, PlusOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import {
+  useAdminCategories,
+  useAdminRules,
+  useCreateRule,
+  useSetRulesActive,
+  useUpdateRule,
+} from '../../../hooks/admin/useAdminApi';
+import { ApiError } from '../../../services/api/ApiError';
 import { CompatSeverity, CompatibilityRule } from '../../../types/admin';
 import { SEVERITY_META } from '../../../utils/adminStatus';
 
@@ -55,10 +62,11 @@ const RuleCondition: React.FC<{ rule: CompatibilityRule }> = ({ rule }) => (
 /** A10: luật tương thích của rule engine (catalog). LLM chỉ diễn giải kết quả, không tự kiểm tra. */
 export const RulesPage: React.FC = () => {
   const { message } = App.useApp();
-  const {
-    rules: [rules, setRules],
-    categories: [categories],
-  } = useAdminData();
+  const { data: rules = [], isLoading } = useAdminRules();
+  const { data: categories = [] } = useAdminCategories();
+  const createRule = useCreateRule();
+  const updateRule = useUpdateRule();
+  const setRulesActive = useSetRulesActive();
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
   const [viewingCode, setViewingCode] = useState<string>();
   const [editing, setEditing] = useState<CompatibilityRule | 'new' | null>(null);
@@ -66,7 +74,6 @@ export const RulesPage: React.FC = () => {
   const [form] = Form.useForm<RuleFormValues>();
   const ruleType = Form.useWatch('ruleType', form);
 
-  // TODO ghép API: GET /admin/compatibility-rules (kể cả đã tắt)
   const viewing = rules.find((r) => r.code === viewingCode);
   const categoryName = (code: string) => (code === '*' ? 'Mọi linh kiện' : categories.find((c) => c.code === code)?.name ?? code);
 
@@ -76,11 +83,16 @@ export const RulesPage: React.FC = () => {
   ];
 
   const setActive = (codes: string[], active: boolean) => {
-    // TODO ghép API: PATCH /admin/compatibility-rules/{code}/active, nhiều dòng: PATCH .../bulk/active
-    const set = new Set(codes);
-    setRules((prev) => prev.map((r) => (set.has(r.code) ? { ...r, isActive: active ? 1 : 0 } : r)));
-    setSelectedKeys([]);
-    message.success(`Đã ${active ? 'bật' : 'tắt'} ${codes.length} luật`);
+    setRulesActive.mutate(
+      { codes, active },
+      {
+        onSuccess: () => {
+          setSelectedKeys([]);
+          message.success(`Đã ${active ? 'bật' : 'tắt'} ${codes.length} luật`);
+        },
+        onError: (e) => message.error(e.message),
+      }
+    );
   };
 
   const openForm = (r: CompatibilityRule | 'new') => {
@@ -93,24 +105,24 @@ export const RulesPage: React.FC = () => {
   const submit = async () => {
     const v = await form.validateFields();
     setSaving(true);
-    await fakeLatency();
-    const body = { ...v, margin: v.ruleType === 'SUM_TDP_LTE_WATTAGE' ? v.margin ?? null : null };
-    if (editing === 'new') {
-      if (rules.some((r) => r.code === v.code)) {
-        setSaving(false);
-        form.setFields([{ name: 'code', errors: ['Mã luật đã tồn tại (409)'] }]);
-        return;
+    const { code, ...rest } = v;
+    const body = { ...rest, margin: v.ruleType === 'SUM_TDP_LTE_WATTAGE' ? v.margin ?? null : null };
+    try {
+      if (editing === 'new') {
+        await createRule.mutateAsync({ code, ...body });
+        message.success(`Đã tạo luật ${code}`);
+      } else if (editing) {
+        await updateRule.mutateAsync({ code: editing.code, body });
+        message.success('Đã lưu luật');
       }
-      // TODO ghép API: POST /admin/compatibility-rules
-      setRules((prev) => [...prev, { ...body, id: `r${Date.now()}`, isActive: 1 }]);
-      message.success(`Đã tạo luật ${v.code}`);
-    } else if (editing) {
-      // TODO ghép API: PUT /admin/compatibility-rules/{code}
-      setRules((prev) => prev.map((r) => (r.id === editing.id ? { ...r, ...body, code: r.code } : r)));
-      message.success('Đã lưu luật');
+      setEditing(null);
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.status === 409) form.setFields([{ name: 'code', errors: ['Mã luật đã tồn tại (409)'] }]);
+      else message.error(err.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setEditing(null);
   };
 
   const columns: TableColumnsType<CompatibilityRule> = [
@@ -184,6 +196,7 @@ export const RulesPage: React.FC = () => {
           rowKey="code"
           columns={columns}
           dataSource={rules}
+          loading={isLoading}
           rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
           rowClassName={(r) => (r.isActive ? '' : 'admin-row-muted')}
           pagination={false}
@@ -232,7 +245,7 @@ export const RulesPage: React.FC = () => {
               {
                 key: 'target',
                 label: 'Đích',
-                children: `${categoryName(viewing.targetCategory)} · trường ${viewing.targetField}`,
+                children: `${categoryName(viewing.targetCategory ?? "")} · trường ${viewing.targetField}`,
               },
               ...(viewing.margin ? [{ key: 'margin', label: 'Hệ số an toàn', children: `× ${viewing.margin}` }] : []),
               {

@@ -15,7 +15,7 @@ import 'dayjs/locale/vi';
 import { colors } from '../../theme/colors';
 import { formatCurrency } from '../../utils/format';
 import type { OrderStatus } from '../../types/admin';
-import type { DailyStat } from '../../services/api/adminMockData';
+import type { DailyStat } from '../../utils/adminStats';
 
 /**
  * Màu biểu đồ lấy từ token có sẵn. Mọi biểu đồ ở đây chỉ có MỘT chuỗi dữ liệu nên dùng một màu.

@@ -1,44 +1,31 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pcBuildService } from '../services/api/pcBuildService';
 import { SavePcBuildPayload } from '../types/pcBuild';
+import { createQueryKeys, useApiMutation, useApiQuery } from './BaseHook';
+
+const keys = createQueryKeys('pc-builds');
 
 export const pcBuildKeys = {
-  all: ['pc-builds'] as const,
-  my: () => [...pcBuildKeys.all, 'my'] as const,
-  detail: (code: string) => [...pcBuildKeys.all, 'detail', code] as const,
+  all: keys.all,
+  my: () => keys.of('my'),
+  detail: (code: string) => keys.of('detail', code),
 };
 
 export function useMyBuilds(enabled = true) {
-  return useQuery({
-    queryKey: pcBuildKeys.my(),
-    queryFn: () => pcBuildService.getMyBuilds(),
-    enabled,
-  });
+  return useApiQuery(pcBuildKeys.my(), () => pcBuildService.getMyBuilds(), { enabled });
 }
 
 export function usePcBuild(code: string | undefined) {
-  return useQuery({
-    queryKey: pcBuildKeys.detail(code || ''),
-    queryFn: () => pcBuildService.getBuild(code || ''),
-    enabled: Boolean(code),
-  });
+  return useApiQuery(pcBuildKeys.detail(code || ''), () => pcBuildService.getBuild(code!), { enabled: Boolean(code) });
 }
 
 export function useSavePcBuild() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ payload, ownerName, code }: { payload: SavePcBuildPayload; ownerName: string; code?: string }) =>
+  return useApiMutation(
+    ({ payload, ownerName, code }: { payload: SavePcBuildPayload; ownerName: string; code?: string }) =>
       pcBuildService.saveBuild(payload, ownerName, code),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: pcBuildKeys.all }),
-  });
+    { invalidate: [pcBuildKeys.all] }
+  );
 }
 
 export function useDeletePcBuilds() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (codes: string[]) => pcBuildService.deleteBuilds(codes),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: pcBuildKeys.all }),
-  });
+  return useApiMutation((codes: string[]) => pcBuildService.deleteBuilds(codes), { invalidate: [pcBuildKeys.all] });
 }

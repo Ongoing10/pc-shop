@@ -25,8 +25,16 @@ import {
   PlusOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
-import { useAdminSession, useAdminUser } from '../../../context/AdminSessionContext';
+import { useAdminSession } from '../../../context/AdminSessionContext';
+import {
+  useAdjustStock,
+  useAdminInventory,
+  useAdminProducts,
+  useAdminWarehouses,
+  useImportStock,
+} from '../../../hooks/admin/useAdminApi';
+import { adminInventoryService } from '../../../services/api/admin/adminInventoryService';
+import { saveDownloadedFile } from '../../../utils/download';
 import { Inventory } from '../../../types/admin';
 import { availableQty } from '../../../utils/adminStatus';
 
@@ -47,14 +55,12 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
   const { message } = App.useApp();
   const [params] = useSearchParams();
   const { can } = useAdminSession();
-  const user = useAdminUser();
   const canWrite = can('inventory:write');
-  const {
-    inventories: [inventories, setInventories],
-    movements: [, setMovements],
-    warehouses: [warehouses],
-    products: [products],
-  } = useAdminData();
+  const { data: inventories = [], isLoading } = useAdminInventory();
+  const { data: warehouses = [] } = useAdminWarehouses();
+  const { data: products = [] } = useAdminProducts();
+  const importStock = useImportStock();
+  const adjustStock = useAdjustStock();
 
   const [warehouseId, setWarehouseId] = useState<number>();
   const [lowStock, setLowStock] = useState(params.get('lowStock') === '1');
@@ -68,7 +74,7 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
   const productName = (sku: string) => products.find((p) => p.sku === sku)?.name ?? '(chưa có trong catalog)';
   const warehouseName = (id: number) => warehouses.find((w) => w.id === id)?.name ?? `#${id}`;
 
-  // TODO ghép API: GET /admin/inventory?warehouseId=&lowStock=&page=&size=, tên SP ghép bằng POST /products/batch
+  // Tên sản phẩm ghép từ danh sách sản phẩm (inventory-service chỉ trả SKU)
   const data = useMemo(() => {
     const keyword = q.trim().toLowerCase();
     return inventories
@@ -79,43 +85,23 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
       );
   }, [inventories, warehouseId, lowStock, q, products]);
 
-  const recordMovement = (row: Inventory, type: 1 | 4, quantity: number, after: number, refCode: string | null, note: string | null) => ({
-    id: Date.now() + Math.floor(Math.random() * 1000),
-    sku: row.sku,
-    warehouseId: row.warehouseId,
-    type,
-    quantity,
-    quantityAfter: after,
-    referenceType: type === 1 ? 'IMPORT' : 'ADJUST',
-    referenceCode: refCode,
-    note,
-    createdBy: user.username,
-    createdAt: new Date().toISOString(),
-  });
-
   const submitImport = async () => {
     const v = await importForm.validateFields();
     setSaving(true);
-    // TODO ghép API: POST /admin/inventory/import {warehouseId, referenceCode, note, lines}; 409 → tải lại rồi nhập lại
-    await fakeLatency();
-    const next = [...inventories];
-    const newMovements: ReturnType<typeof recordMovement>[] = [];
-    v.lines.forEach((line) => {
-      let row = next.find((r) => r.sku === line.sku && r.warehouseId === v.warehouseId);
-      if (!row) {
-        row = { id: Date.now() + next.length, sku: line.sku, warehouseId: v.warehouseId, quantity: 0, reservedQuantity: 0, minQuantity: 2, version: 0 };
-        next.push(row);
-      }
-      const idx = next.indexOf(row);
-      const updated = { ...row, quantity: row.quantity + line.quantity, version: row.version + 1 };
-      next[idx] = updated;
-      newMovements.push(recordMovement(updated, 1, line.quantity, updated.quantity, v.referenceCode ?? null, v.note ?? null));
-    });
-    setInventories(next);
-    setMovements((prev) => [...newMovements, ...prev]);
-    setSaving(false);
-    setImportOpen(false);
-    message.success(`Đã nhập ${v.lines.length} dòng vào ${warehouseName(v.warehouseId)}`);
+    try {
+      await importStock.mutateAsync({
+        warehouseId: v.warehouseId,
+        referenceCode: v.referenceCode || null,
+        note: v.note || null,
+        lines: v.lines.map((l) => ({ sku: l.sku, quantity: l.quantity })),
+      });
+      setImportOpen(false);
+      message.success(`Đã nhập ${v.lines.length} dòng vào ${warehouseName(v.warehouseId)}`);
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const submitAdjust = async () => {
@@ -127,14 +113,15 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
       return;
     }
     setSaving(true);
-    // TODO ghép API: PUT /inventory/{sku}/adjust?warehouseId=&delta=&note=
-    await fakeLatency();
-    const updated = { ...adjusting, quantity: after, version: adjusting.version + 1 };
-    setInventories((prev) => prev.map((r) => (r.id === adjusting.id ? updated : r)));
-    setMovements((prev) => [recordMovement(updated, 4, v.delta, after, null, v.note), ...prev]);
-    setSaving(false);
-    setAdjusting(null);
-    message.success(`Đã điều chỉnh ${adjusting.sku}: ${v.delta > 0 ? '+' : ''}${v.delta}`);
+    try {
+      await adjustStock.mutateAsync({ sku: adjusting.sku, warehouseId: adjusting.warehouseId, delta: v.delta, note: v.note });
+      setAdjusting(null);
+      message.success(`Đã điều chỉnh ${adjusting.sku}: ${v.delta > 0 ? '+' : ''}${v.delta}`);
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const columns: TableColumnsType<Inventory> = [
@@ -229,8 +216,13 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
         <Flex gap={8} wrap>
           <Button
             icon={<DownloadOutlined />}
-            // TODO ghép API: GET /admin/inventory/export?warehouseId=&lowStock=
-            onClick={() => message.info(`Sẽ xuất ${data.length} dòng tồn kho ra Excel khi ghép API`)}
+            onClick={async () => {
+              try {
+                saveDownloadedFile(await adminInventoryService.exportInventory({ warehouseId, lowStock: lowStock || undefined }), 'ton-kho.xlsx');
+              } catch (e) {
+                message.error((e as Error).message);
+              }
+            }}
           >
             Xuất Excel
           </Button>
@@ -259,6 +251,7 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
         sticky
         columns={columns}
         dataSource={data}
+        loading={isLoading}
         pagination={{ pageSize: 20, showTotal: (t) => `${t} dòng` }}
       />
 

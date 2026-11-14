@@ -1,135 +1,111 @@
-import { CreateReviewPayload, Review, ReviewStats } from '../../types/review';
+import type * as Api from '../../types/api';
+import { CreateReviewPayload, Review, ReviewStats, ReviewStatus } from '../../types/review';
 import { storageService } from '../storage/storageService';
-import { initialProducts } from './mockData';
-import { orderService } from './orderService';
+import { BaseService } from './BaseService';
+import { isApiError } from './ApiError';
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const STATUS: Partial<Record<Api.ReviewStatus, ReviewStatus>> = { 1: 'PENDING', 2: 'APPROVED', 3: 'REJECTED' };
 
-const MY_REVIEWS_KEY = 'nexus_my_reviews';
+/** productId của FE chính là SKU (id sản phẩm ở FE = SKU) */
+export const toReview = (r: Api.Review): Review => ({
+  id: r.id,
+  productId: r.sku,
+  userId: r.userId,
+  userDisplayName: r.userDisplayName,
+  rating: r.rating,
+  title: r.title ?? '',
+  content: r.content ?? '',
+  verifiedPurchase: r.verifiedPurchase,
+  orderCode: r.orderCode,
+  helpfulCount: r.helpfulCount,
+  status: STATUS[r.status] ?? 'PENDING',
+  adminReply: r.adminReply ? { content: r.adminReply.content, repliedAt: r.adminReply.repliedAt } : undefined,
+  createdAt: r.createdAt,
+});
 
-const REVIEW_POOL: Array<Pick<Review, 'userDisplayName' | 'rating' | 'title' | 'content' | 'verifiedPurchase' | 'helpfulCount'> & { reply?: string }> = [
-  {
-    userDisplayName: 'Minh Tuấn',
-    rating: 5,
-    title: 'Đúng như mô tả, đóng gói kỹ',
-    content: 'Hàng chính hãng, tem bảo hành đầy đủ. Lắp vào chạy ổn định, nhiệt độ mát hơn mình nghĩ.',
-    verifiedPurchase: true,
-    helpfulCount: 12,
-    reply: 'Cảm ơn anh Tuấn đã tin tưởng NEXUS PC. Chúc anh có trải nghiệm thật tốt!',
-  },
-  {
-    userDisplayName: 'Hoàng Long',
-    rating: 5,
-    title: 'Hiệu năng tốt trong tầm giá',
-    content: 'Chơi game 2K mượt, không thấy coil whine. Nhân viên tư vấn cấu hình nhiệt tình.',
-    verifiedPurchase: true,
-    helpfulCount: 7,
-  },
-  {
-    userDisplayName: 'Thu Hà',
-    rating: 4,
-    title: 'Ổn, giao hơi chậm',
-    content: 'Sản phẩm tốt, tuy nhiên giao mất 4 ngày do cuối tuần. Đóng gói chống sốc cẩn thận.',
-    verifiedPurchase: true,
-    helpfulCount: 3,
-    reply: 'NEXUS PC xin lỗi chị Hà vì thời gian giao hàng. Bên em đã ghi nhận để cải thiện ạ.',
-  },
-  {
-    userDisplayName: 'Quang Huy',
-    rating: 4,
-    title: 'Đáng tiền',
-    content: 'So với mấy chỗ khác giá tốt hơn một chút, bảo hành dài. Trừ một sao vì hộp hơi móp.',
-    verifiedPurchase: false,
-    helpfulCount: 1,
-  },
-];
+/**
+ * Backend chưa có API "đánh giá của tôi", mà đánh giá đang chờ duyệt không nằm trong danh sách công khai.
+ * Nên FE nhớ các đánh giá đã gửi từ trình duyệt này (id + sku + người viết) và lấy lại từng cái bằng GET /reviews/{id}
+ * (chủ review xem được cả khi chưa duyệt). Đổi trình duyệt thì chỉ còn thấy các đánh giá đã duyệt.
+ */
+const MY_REFS_KEY = 'nexus_my_review_refs';
+interface ReviewRef {
+  id: string;
+  sku: string;
+  userId: string;
+}
+const readRefs = (): ReviewRef[] => storageService.get<ReviewRef[]>(MY_REFS_KEY, []);
+const writeRefs = (refs: ReviewRef[]) => storageService.set(MY_REFS_KEY, refs);
 
-/** Băm đơn giản để mỗi sản phẩm có bộ đánh giá mẫu cố định */
-const hashOf = (text: string) => [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const PAGE_SIZE = 50;
 
-const sampleReviews = (productId: string): Review[] => {
-  const start = hashOf(productId) % REVIEW_POOL.length;
-  return [0, 1, 2].map((offset, i) => {
-    const r = REVIEW_POOL[(start + offset) % REVIEW_POOL.length];
-    const createdAt = new Date(Date.now() - (i * 9 + 3) * 86400000).toISOString();
-    return {
-      id: `rv_${productId}_${i}`,
-      productId,
-      userId: `usr_sample_${i}`,
-      userDisplayName: r.userDisplayName,
-      rating: r.rating,
-      title: r.title,
-      content: r.content,
-      verifiedPurchase: r.verifiedPurchase,
-      helpfulCount: r.helpfulCount,
-      status: 'APPROVED',
-      adminReply: r.reply ? { content: r.reply, repliedAt: createdAt } : undefined,
-      createdAt,
-    };
-  });
-};
+/** review-service: đánh giá sản phẩm */
+class ReviewService extends BaseService {
+  constructor() {
+    super('/reviews');
+  }
 
-const readMine = (): Review[] => storageService.get<Review[]>(MY_REVIEWS_KEY, []);
-
-// Mock. Bản thật: review-service (GET /reviews?productId=, GET /reviews/stats, POST/PUT/DELETE /reviews).
-export const reviewService = {
-  /** Đánh giá đã duyệt của mọi người + đánh giá của chính mình (kể cả đang chờ duyệt) */
+  /** Đánh giá đã duyệt của mọi người + đánh giá của chính mình (kể cả đang chờ duyệt, đứng đầu danh sách) */
   async getReviews(productId: string, userId?: string): Promise<Review[]> {
-    await delay(150);
-    const mine = readMine().filter((r) => r.productId === productId && r.userId === userId);
-    return [...mine, ...sampleReviews(productId)];
-  },
+    const [page, mine] = await Promise.all([
+      this.get<Api.PageResponse<Api.Review>>('', { sku: productId, page: 0, size: PAGE_SIZE }),
+      userId ? this.getMine(userId, productId) : Promise.resolve<Api.Review[]>([]),
+    ]);
+    const approvedIds = new Set(page.content.map((r) => r.id));
+    return [...mine.filter((r) => !approvedIds.has(r.id)), ...page.content].map(toReview);
+  }
+
+  private async getMine(userId: string, sku: string): Promise<Api.Review[]> {
+    const refs = readRefs().filter((r) => r.userId === userId && r.sku === sku);
+    const found = await Promise.all(
+      refs.map((ref) =>
+        this.get<Api.Review>(`/${ref.id}`).catch((e) => {
+          // đã bị xóa / không còn xem được: bỏ khỏi danh sách nhớ
+          if (isApiError(e) && (e.status === 404 || e.status === 403)) {
+            writeRefs(readRefs().filter((r) => r.id !== ref.id));
+            return null;
+          }
+          throw e;
+        })
+      )
+    );
+    return found.filter((r): r is Api.Review => r !== null && r.status !== 4);
+  }
 
   async getStats(productId: string): Promise<ReviewStats> {
-    await delay(100);
-    const product = initialProducts.find((p) => p.id === productId);
-    const count = product?.reviews ?? 0;
-    const average = product?.rating ?? 0;
-    // Phân bố xấp xỉ theo điểm trung bình của sản phẩm mẫu
-    const weights =
-      average >= 4.8 ? [0.01, 0.01, 0.03, 0.12, 0.83] : average >= 4.5 ? [0.02, 0.04, 0.07, 0.22, 0.65] : [0.05, 0.08, 0.12, 0.3, 0.45];
-    const counts = weights.map((w) => Math.round(w * count));
-    counts[4] += count - counts.reduce((a, b) => a + b, 0);
+    const s = await this.get<Api.ReviewStats>('/stats', { sku: productId });
     return {
-      average,
-      count,
-      distribution: { 1: counts[0], 2: counts[1], 3: counts[2], 4: counts[3], 5: counts[4] },
+      average: s.average,
+      count: s.count,
+      distribution: { 1: s.distribution['1'], 2: s.distribution['2'], 3: s.distribution['3'], 4: s.distribution['4'], 5: s.distribution['5'] },
     };
-  },
+  }
 
-  /** Backend tự hỏi ordering (GET /orders/purchased): có đơn hoàn tất chứa sản phẩm → verifiedPurchase + orderCode */
+  /** Backend tự hỏi ordering: có đơn hoàn tất chứa sản phẩm → verifiedPurchase + orderCode. Mỗi người một đánh giá cho một sản phẩm (409) */
   async createReview(payload: CreateReviewPayload, user: { id: string; fullName: string }): Promise<Review> {
-    await delay(250);
-    const purchase = await orderService.getPurchase(payload.productId);
-    const review: Review = {
-      id: `rv_${Date.now()}`,
-      ...payload,
-      userId: user.id,
-      userDisplayName: user.fullName || 'Khách hàng',
-      verifiedPurchase: purchase.purchased,
-      orderCode: purchase.orderCode,
-      helpfulCount: 0,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
+    const body: Api.CreateReviewRequest = {
+      sku: payload.productId,
+      rating: payload.rating,
+      title: payload.title || null,
+      content: payload.content || null,
     };
-    storageService.set(MY_REVIEWS_KEY, [review, ...readMine()]);
-    return review;
-  },
+    const created = await this.post<Api.Review>('', body);
+    writeRefs([...readRefs(), { id: created.id, sku: created.sku, userId: user.id }]);
+    return toReview(created);
+  }
 
   /** Khách chỉ xóa được đánh giá của mình (backend chuyển sang DELETED_BY_USER) */
   async deleteReview(id: string): Promise<void> {
-    await delay(150);
-    storageService.set(
-      MY_REVIEWS_KEY,
-      readMine().filter((r) => r.id !== id)
-    );
-  },
+    await this.remove(`/${id}`);
+    writeRefs(readRefs().filter((r) => r.id !== id));
+  }
 
-  /** Sản phẩm (trong đơn) mà user đã viết đánh giá */
+  /** SKU sản phẩm mà user đã gửi đánh giá từ trình duyệt này (xem ghi chú ở MY_REFS_KEY) */
   async getReviewedProductIds(userId: string): Promise<string[]> {
-    await delay(60);
-    return readMine()
+    return readRefs()
       .filter((r) => r.userId === userId)
-      .map((r) => r.productId);
-  },
-};
+      .map((r) => r.sku);
+  }
+}
+
+export const reviewService = new ReviewService();

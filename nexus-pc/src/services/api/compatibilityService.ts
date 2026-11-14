@@ -1,5 +1,7 @@
+import type * as Api from '../../types/api';
 import { Product } from '../../types/product';
 import { CompatibilityIssue, CompatibilityResult } from '../../types/pcBuild';
+import { BaseService } from './BaseService';
 
 /** Công suất cho mainboard, RAM, ổ cứng, quạt: cộng một lần khi cấu hình có linh kiện */
 const BASE_SYSTEM_WATTAGE = 80;
@@ -12,8 +14,9 @@ export interface CompatibilityLine {
 }
 
 /**
- * Bản mô phỏng rule engine của catalog-service (POST /compatibility/check): tất định, cùng đầu vào luôn cùng kết quả.
- * Khi ghép API chỉ cần thay thân hàm bằng lời gọi API, giữ nguyên kiểu trả về.
+ * Bản rút gọn của rule engine (cùng quy tắc với catalog-service) chỉ để GỢI Ý nhanh trong ngăn chọn linh kiện của
+ * PC Builder: kiểm tra từng ứng viên mà gọi API cho mỗi cái thì quá nhiều request. Kết quả chính thức của cả cấu hình
+ * (cảnh báo hiển thị, lưu cấu hình) luôn lấy từ POST /compatibility/check qua compatibilityService.check.
  */
 export function checkCompatibility(lines: CompatibilityLine[]): CompatibilityResult {
   const bySlot = (category: Product['category']) => lines.find((l) => l.product.category === category)?.product;
@@ -86,3 +89,35 @@ export function checkCompatibility(lines: CompatibilityLine[]): CompatibilityRes
     estimatedWattage,
   };
 }
+
+export const EMPTY_COMPATIBILITY: CompatibilityResult = { compatible: true, issues: [], estimatedWattage: 0 };
+
+const SEVERITY: Record<Api.CompatSeverity, CompatibilityIssue['severity']> = { 1: 'ERROR', 2: 'WARNING' };
+
+export const toCompatibilityIssue = (i: Api.CompatibilityIssue): CompatibilityIssue => ({
+  ruleCode: i.ruleCode,
+  severity: SEVERITY[i.severity],
+  message: i.message,
+});
+
+/** catalog-service: rule engine tương thích tất định (đọc compatibility_rules + products.compat) */
+class CompatibilityService extends BaseService {
+  constructor() {
+    super('/compatibility');
+  }
+
+  /** POST /compatibility/check: tối đa 30 SKU, SKU lặp tính là nhiều chiếc */
+  async check(lines: Array<{ sku: string; quantity: number }>): Promise<CompatibilityResult> {
+    const skus = lines.flatMap((l) => Array<string>(l.quantity).fill(l.sku)).slice(0, 30);
+    if (skus.length === 0) return EMPTY_COMPATIBILITY;
+    const r = await this.post<Api.CompatibilityCheckResult>('/check', { skus } satisfies Api.SkuBatchRequest);
+    return {
+      compatible: r.compatible,
+      issues: r.issues.map(toCompatibilityIssue),
+      estimatedWattage: r.estimatedWattage,
+      requiredWattage: r.requiredWattage,
+    };
+  }
+}
+
+export const compatibilityService = new CompatibilityService();

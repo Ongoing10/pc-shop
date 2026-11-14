@@ -1,64 +1,53 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { reviewService } from '../services/api/reviewService';
 import { productService } from '../services/api/productService';
 import { CreateReviewPayload } from '../types/review';
+import { MINUTE, createQueryKeys, useApiMutation, useApiQuery } from './BaseHook';
+import { productKeys } from './useProducts';
+
+const keys = createQueryKeys('reviews');
 
 export const reviewKeys = {
-  all: ['reviews'] as const,
-  list: (productId: string, userId?: string) => [...reviewKeys.all, 'list', productId, userId] as const,
-  stats: (productId: string) => [...reviewKeys.all, 'stats', productId] as const,
-  reviewedIds: (userId: string) => [...reviewKeys.all, 'reviewed', userId] as const,
+  all: keys.all,
+  list: (productId: string, userId?: string) => keys.of('list', productId, userId),
+  stats: (productId: string) => keys.of('stats', productId),
+  reviewedIds: (userId: string) => keys.of('reviewed', userId),
   priceHistory: (productId: string) => ['price-history', productId] as const,
 };
 
 export function useProductReviews(productId: string | undefined, userId?: string) {
-  return useQuery({
-    queryKey: reviewKeys.list(productId || '', userId),
-    queryFn: () => reviewService.getReviews(productId || '', userId),
+  return useApiQuery(reviewKeys.list(productId || '', userId), () => reviewService.getReviews(productId!, userId), {
     enabled: Boolean(productId),
   });
 }
 
 export function useReviewStats(productId: string | undefined) {
-  return useQuery({
-    queryKey: reviewKeys.stats(productId || ''),
-    queryFn: () => reviewService.getStats(productId || ''),
+  return useApiQuery(reviewKeys.stats(productId || ''), () => reviewService.getStats(productId!), {
     enabled: Boolean(productId),
   });
 }
 
 export function useReviewedProductIds(userId: string | undefined) {
-  return useQuery({
-    queryKey: reviewKeys.reviewedIds(userId || ''),
-    queryFn: () => reviewService.getReviewedProductIds(userId || ''),
+  return useApiQuery(reviewKeys.reviewedIds(userId || ''), () => reviewService.getReviewedProductIds(userId!), {
     enabled: Boolean(userId),
   });
 }
 
+// Đánh giá được duyệt mới vào điểm của sản phẩm (ratingAvg), nên làm mới cả nhóm sản phẩm khi gửi/gỡ đánh giá
 export function useCreateReview() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ payload, user }: { payload: CreateReviewPayload; user: { id: string; fullName: string } }) =>
+  return useApiMutation(
+    ({ payload, user }: { payload: CreateReviewPayload; user: { id: string; fullName: string } }) =>
       reviewService.createReview(payload, user),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: reviewKeys.all }),
-  });
+    { invalidate: [reviewKeys.all] }
+  );
 }
 
 export function useDeleteReview() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => reviewService.deleteReview(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: reviewKeys.all }),
-  });
+  return useApiMutation((id: string) => reviewService.deleteReview(id), { invalidate: [reviewKeys.all, productKeys.all] });
 }
 
 export function usePriceHistory(productId: string | undefined) {
-  return useQuery({
-    queryKey: reviewKeys.priceHistory(productId || ''),
-    queryFn: () => productService.getPriceHistory(productId || ''),
+  return useApiQuery(reviewKeys.priceHistory(productId || ''), () => productService.getPriceHistory(productId!), {
     enabled: Boolean(productId),
-    staleTime: 1000 * 60 * 10,
+    staleTime: 10 * MINUTE,
   });
 }

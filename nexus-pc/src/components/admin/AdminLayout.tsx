@@ -5,7 +5,6 @@ import type { MenuProps } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, ShopOutlined, LogoutOutlined } from '@ant-design/icons';
 import { antdAdminTheme } from '../../theme/themeConfig';
 import { AdminSessionProvider, useAdminSession, useAdminUser } from '../../context/AdminSessionContext';
-import { AdminDataProvider } from '../../context/AdminDataContext';
 import { ADMIN_MENU_GROUPS, adminRoutesConfig } from '../../routes/adminRoutes.config';
 import { ROLE_LABEL } from '../../utils/adminStatus';
 import { LogoMark } from '../common/LogoMark';
@@ -147,18 +146,17 @@ const AdminShell: React.FC = () => {
 
 /** Khung có sidebar: chưa đăng nhập thì chuyển về /admin/login, nhớ trang đang mở để quay lại */
 export const AdminLayout: React.FC = () => {
-  const { user } = useAdminSession();
+  const { user, isLoading } = useAdminSession();
   const location = useLocation();
 
+  if (isLoading) return <PageSpinner />;
   if (!user) {
     const redirect = location.pathname + location.search;
     return <Navigate to={`/admin/login?redirect=${encodeURIComponent(redirect)}`} replace />;
   }
 
   return (
-    <AdminDataProvider>
-      <AdminShell />
-    </AdminDataProvider>
+    <AdminShell />
   );
 };
 

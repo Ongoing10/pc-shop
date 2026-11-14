@@ -1,37 +1,27 @@
-import { useQuery } from '@tanstack/react-query';
 import { productService } from '../services/api/productService';
 import { ProductFilterParams } from '../types/product';
+import { MINUTE, createQueryKeys, useApiQuery } from './BaseHook';
+
+const keys = createQueryKeys('products');
 
 export const productKeys = {
-  all: ['products'] as const,
-  lists: () => [...productKeys.all, 'list'] as const,
-  list: (params?: ProductFilterParams) => [...productKeys.lists(), params] as const,
-  featured: (limit: number) => [...productKeys.all, 'featured', limit] as const,
-  deals: (limit: number) => [...productKeys.all, 'deals', limit] as const,
-  details: () => [...productKeys.all, 'detail'] as const,
-  detail: (id: string) => [...productKeys.details(), id] as const,
+  all: keys.all,
+  lists: () => keys.of('list'),
+  list: (params?: ProductFilterParams) => keys.of('list', params),
+  featured: (limit: number) => keys.of('featured', limit),
+  deals: (limit: number) => keys.of('deals', limit),
+  details: () => keys.of('detail'),
+  detail: (id: string) => keys.of('detail', id),
 };
 
 export function useProducts(params?: ProductFilterParams) {
-  return useQuery({
-    queryKey: productKeys.list(params),
-    queryFn: () => productService.getProducts(params),
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
-  });
+  return useApiQuery(productKeys.list(params), () => productService.getProducts(params), { staleTime: 5 * MINUTE });
 }
 
 export function useFeaturedProducts(limit = 4) {
-  return useQuery({
-    queryKey: productKeys.featured(limit),
-    queryFn: () => productService.getFeaturedProducts(limit),
-    staleTime: 1000 * 60 * 5,
-  });
+  return useApiQuery(productKeys.featured(limit), () => productService.getFeaturedProducts(limit), { staleTime: 5 * MINUTE });
 }
 
 export function useDealProducts(limit = 4) {
-  return useQuery({
-    queryKey: productKeys.deals(limit),
-    queryFn: () => productService.getDealProducts(limit),
-    staleTime: 1000 * 60 * 5,
-  });
+  return useApiQuery(productKeys.deals(limit), () => productService.getDealProducts(limit), { staleTime: 5 * MINUTE });
 }

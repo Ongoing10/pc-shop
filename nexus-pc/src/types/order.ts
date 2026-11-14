@@ -1,4 +1,5 @@
 import { CartItem } from './cart';
+import { UserAddress } from './user';
 import type {
   OrderStatus as ApiOrderStatus,
   PaymentMethod as ApiPaymentMethod,
@@ -80,13 +81,15 @@ export interface Order {
   estimatedDelivery?: string;
 }
 
+/** POST /orders: backend tính lại tiền từ giỏ trên server; `expectedTotal` khác số server tính → 409 */
 export interface CreateOrderPayload {
-  items: CartItem[];
-  shippingAddress: ShippingAddress;
+  /** id trong sổ địa chỉ của chính người dùng */
+  addressId: string;
   paymentMethod: PaymentMethod;
   voucherCode?: string;
-  discountAmount?: number;
-  shippingFee?: number;
+  note?: string;
+  /** Tổng tiền đang hiển thị cho khách */
+  expectedTotal?: number;
 }
 
 /** POST /payments/{orderCode} */
@@ -128,4 +131,18 @@ export interface VoucherValidation {
   discountAmount: number;
   freeShipping: boolean;
   reason?: string;
+}
+
+/** Kết quả POST /checkout/preview: giá hiện tại, giảm giá, phí ship, tổng (giỏ lấy trên server) */
+export interface CheckoutPreview {
+  items: CartItem[];
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  totalAmount: number;
+  voucher: VoucherValidation | null;
+  address: UserAddress | null;
+  warnings: string[];
+  /** false khi chưa có địa chỉ, giỏ có món không mua được hoặc giỏ trống */
+  canPlaceOrder: boolean;
 }

@@ -10,7 +10,6 @@ import { CheckoutPage } from '../pages/Checkout';
 import { AccountPage } from '../pages/Account';
 import { OrdersPage } from '../pages/Account/OrdersPage';
 import { OrderDetailPage } from '../pages/Account/OrderDetailPage';
-import { MockGatewayPage } from '../pages/Payment/MockGateway';
 import { PaymentResultPage } from '../pages/Payment/Result';
 import { AddressesPage } from '../pages/Account/AddressesPage';
 import { BuildsPage } from '../pages/Account/BuildsPage';
@@ -127,15 +126,6 @@ export const appRoutesConfig: RouteConfig[] = [
     titleKey: 'payment.resultTitle',
     defaultTitle: 'Kết quả thanh toán',
     showInNav: false,
-  },
-  {
-    // chỉ dùng khi chạy mock; bản thật trang này do backend / VNPay phục vụ
-    path: '/payment/mock/:paymentCode',
-    element: <MockGatewayPage />,
-    titleKey: 'payment.mockTitle',
-    defaultTitle: 'Cổng thanh toán giả lập',
-    showInNav: false,
-    dynamicParams: ['paymentCode'],
   },
   {
     path: '/account/addresses',

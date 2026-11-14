@@ -1,112 +1,97 @@
-import { AppNotification, NotificationData, NotificationStreamEvent, NotificationType } from '../../types/notification';
-import { storageService } from '../storage/storageService';
+import { API_BASE_URL } from '../../config/env';
+import type * as Api from '../../types/api';
+import { AppNotification, NotificationData, NotificationStreamEvent } from '../../types/notification';
+import { BaseService } from './BaseService';
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const NOTIFICATIONS_KEY = 'nexus_notifications_v2';
-
-const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3600000).toISOString();
-
-/** Đường dẫn trong app từ data của thông báo (backend chỉ trả data) */
-export const linkOf = (data?: NotificationData): string | undefined => {
+/** Đường dẫn trong app từ data của thông báo (backend chỉ trả data, id sản phẩm trên URL FE là SKU) */
+export const linkOf = (data?: NotificationData | null): string | undefined => {
   if (data?.order_code) return `/account/orders/${data.order_code}`;
-  if (data?.product_id) return `/product/${data.product_id}#reviews`;
+  if (data?.sku) return `/product/${data.sku}#reviews`;
   return undefined;
 };
 
-const DEMO_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'nt_01',
-    type: 'ORDER_STATUS',
-    title: 'Đơn hàng đang được giao',
-    content: 'Đơn DH20261105001003 đã bàn giao cho đơn vị vận chuyển.',
-    data: { order_code: 'DH20261105001003', status: 5 },
-    read: false,
-    createdAt: hoursAgo(2),
-  },
-  {
-    id: 'nt_02',
-    type: 'PROMOTION',
-    title: 'Mã BUILD500K cho cấu hình trọn bộ',
-    content: 'Giảm 500.000 ₫ cho đơn từ 20 triệu. Áp dụng đến hết 31/12.',
-    read: false,
-    createdAt: hoursAgo(20),
-  },
-  {
-    id: 'nt_03',
-    type: 'REVIEW_REPLY',
-    title: 'Cửa hàng đã trả lời đánh giá của bạn',
-    content: 'Cảm ơn bạn đã đánh giá Samsung 990 PRO 1TB NVMe M.2.',
-    data: { product_id: 'ssd990' },
-    read: true,
-    createdAt: hoursAgo(72),
-  },
-  {
-    id: 'nt_04',
-    type: 'ORDER_STATUS',
-    title: 'Giao hàng thành công',
-    content: 'Đơn DH20261025001001 đã giao xong. Hãy đánh giá sản phẩm bạn đã mua nhé!',
-    data: { order_code: 'DH20261025001001', status: 6 },
-    read: true,
-    createdAt: hoursAgo(240),
-  },
-];
-
-const read = (): AppNotification[] =>
-  (storageService.get<AppNotification[] | null>(NOTIFICATIONS_KEY, null) ?? DEMO_NOTIFICATIONS).map((n) => ({
-    ...n,
-    link: n.link ?? linkOf(n.data),
-  }));
-const write = (list: AppNotification[]) => storageService.set(NOTIFICATIONS_KEY, list);
+const toNotification = (n: Api.Notification): AppNotification => {
+  const data = (n.data ?? undefined) as NotificationData | undefined;
+  return {
+    id: n.id,
+    type: n.type as AppNotification['type'],
+    title: n.title,
+    content: n.content,
+    data,
+    link: linkOf(data),
+    read: n.isRead,
+    createdAt: n.createdAt,
+  };
+};
 
 type Listener = (event: NotificationStreamEvent) => void;
-const listeners = new Set<Listener>();
 
-// Mock trên localStorage. Bản thật: notification-service (/notifications, /unread-count, /{id}/read, /read-all)
-// và stream SSE: POST /notifications/stream-ticket rồi new EventSource(`/api/v1/notifications/stream?ticket=...`).
-export const notificationService = {
+const STREAM_RETRY_MS = 5000;
+const LIST_SIZE = 50;
+
+/** notification-service: thông báo trong ứng dụng + stream realtime (SSE) */
+class NotificationService extends BaseService {
+  constructor() {
+    super('/notifications');
+  }
+
+  /** Chỉ lấy kênh IN_APP (kênh EMAIL là bản ghi gửi thư, không hiển thị trong chuông) */
   async getNotifications(): Promise<AppNotification[]> {
-    await delay(120);
-    return [...read()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  },
+    const page = await this.get<Api.PageResponse<Api.Notification>>('', { page: 0, size: LIST_SIZE });
+    return page.content.filter((n) => n.channel === 'IN_APP').map(toNotification);
+  }
 
   async markRead(id: string): Promise<void> {
-    await delay(60);
-    write(read().map((n) => (n.id === id ? { ...n, read: true } : n)));
-  },
+    await this.patch(`/${id}/read`);
+  }
 
   async markAllRead(): Promise<void> {
-    await delay(100);
-    write(read().map((n) => ({ ...n, read: true })));
-  },
+    await this.patch('/read-all');
+  }
 
   /**
-   * Giả lập stream SSE: gửi ngay "unread-count", sau đó "notification" mỗi khi có thông báo mới.
-   * Bản thật: EventSource, addEventListener('unread-count' | 'notification'); trả về hàm đóng stream.
+   * Stream SSE: POST /notifications/stream-ticket lấy vé dùng một lần (EventSource không gửi được header
+   * Authorization) rồi mở /notifications/stream?ticket=. Mất kết nối thì chờ vài giây, lấy vé mới và mở lại.
+   * Trả về hàm đóng stream.
    */
   subscribe(listener: Listener): () => void {
-    listeners.add(listener);
-    listener({ event: 'unread-count', data: { count: read().filter((n) => !n.read).length } });
-    return () => listeners.delete(listener);
-  },
+    let source: EventSource | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let closed = false;
 
-  /**
-   * Phía backend: NotificationConsumer sinh thông báo từ event (order.status-changed, review.replied).
-   * Mock: orderService gọi hàm này khi đơn đổi trạng thái.
-   */
-  push(type: NotificationType, title: string, content: string, data?: NotificationData): AppNotification {
-    const n: AppNotification = {
-      id: `nt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      type,
-      title,
-      content,
-      data,
-      link: linkOf(data),
-      read: false,
-      createdAt: new Date().toISOString(),
+    const open = async () => {
+      try {
+        const { ticket } = await this.post<Api.StreamTicket>('/stream-ticket');
+        if (closed) return;
+        source = new EventSource(`${API_BASE_URL}/notifications/stream?ticket=${encodeURIComponent(ticket)}`);
+        source.addEventListener('unread-count', (e) =>
+          listener({ event: 'unread-count', data: JSON.parse((e as MessageEvent).data) })
+        );
+        source.addEventListener('notification', (e) =>
+          listener({ event: 'notification', data: toNotification(JSON.parse((e as MessageEvent).data)) })
+        );
+        source.onerror = () => {
+          // vé chỉ dùng một lần nên không để EventSource tự nối lại
+          source?.close();
+          scheduleRetry();
+        };
+      } catch {
+        scheduleRetry();
+      }
     };
-    write([n, ...read()]);
-    listeners.forEach((l) => l({ event: 'notification', data: n }));
-    return n;
-  },
-};
+
+    const scheduleRetry = () => {
+      if (!closed) retryTimer = setTimeout(open, STREAM_RETRY_MS);
+    };
+
+    open();
+
+    return () => {
+      closed = true;
+      clearTimeout(retryTimer);
+      source?.close();
+    };
+  }
+}
+
+export const notificationService = new NotificationService();

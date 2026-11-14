@@ -21,7 +21,7 @@ import {
 } from 'antd';
 import { CloudUploadOutlined, SearchOutlined, SyncOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import { useAdminCategories, useAdminProducts } from '../../../hooks/admin/useAdminApi';
 
 interface KnowledgeFormValues {
   title: string;
@@ -44,13 +44,14 @@ const SOURCE_TYPE_LABEL: Record<1 | 2 | 3 | 4, string> = { 1: 'Sản phẩm', 2:
 /** Kích thước chunk như ai-service: ~2000 ký tự, overlap 200 */
 const estimateChunks = (len: number) => (len <= 2000 ? (len ? 1 : 0) : Math.ceil((len - 200) / 1800));
 
+/** Màn này thuộc ai-service (chưa ghép, ngoài phạm vi đợt này): giữ độ trễ giả lập để nút có trạng thái loading */
+const fakeLatency = (ms = 400) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** A11: thêm tài liệu cho RAG, đồng bộ sản phẩm, thử truy vấn hybrid */
 export const KnowledgePage: React.FC = () => {
   const { message } = App.useApp();
-  const {
-    products: [products],
-    categories: [categories],
-  } = useAdminData();
+  const { data: products = [] } = useAdminProducts();
+  const { data: categories = [] } = useAdminCategories();
   const [form] = Form.useForm<KnowledgeFormValues>();
   const content = Form.useWatch('content', form) ?? '';
   const [saving, setSaving] = useState(false);

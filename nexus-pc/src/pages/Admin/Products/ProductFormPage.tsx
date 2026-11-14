@@ -18,6 +18,7 @@ import {
   Row,
   Select,
   Space,
+  Spin,
   Switch,
   Tag,
   Typography,
@@ -26,7 +27,18 @@ import {
 import type { UploadFile } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, SaveOutlined, DollarOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import {
+  useAdminBrands,
+  useAdminCategories,
+  useAdminProduct,
+  useAdminProducts,
+  useCreateProduct,
+  useSetProductPrice,
+  useSetProductStatus,
+  useUpdateProduct,
+} from '../../../hooks/admin/useAdminApi';
+import { ApiError } from '../../../services/api/ApiError';
+import { mediaService } from '../../../services/api/mediaService';
 import { AdminProduct, ProductStatus, SpecField, SpecValue } from '../../../types/admin';
 import { PRODUCT_STATUS_META } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
@@ -127,21 +139,21 @@ export const ProductFormPage: React.FC = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm<ProductFormValues>();
   const [priceForm] = Form.useForm<{ price: number; originalPrice?: number | null; reason?: string }>();
-  const {
-    products: [products, setProducts],
-    categories: [categories],
-    brands: [brands],
-  } = useAdminData();
+  const { data: products = [] } = useAdminProducts();
+  const { data: categories = [] } = useAdminCategories();
+  const { data: brands = [] } = useAdminBrands();
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const setProductStatus = useSetProductStatus();
+  const setProductPrice = useSetProductPrice();
 
   const isEdit = Boolean(sku);
-  // TODO ghép API: GET /admin/products/{sku}
-  const product = isEdit ? products.find((p) => p.sku === sku) : undefined;
+  const { data: product, isLoading: loadingProduct } = useAdminProduct(sku);
   const [saving, setSaving] = useState(false);
   const [priceOpen, setPriceOpen] = useState(false);
   const [files, setFiles] = useState<UploadFile[]>([]);
 
   const categoryCode = Form.useWatch('categoryCode', form);
-  // TODO ghép API: GET /categories/{code} → specSchema
   const category = categories.find((c) => c.code === categoryCode);
   const schema = category?.specSchema ?? null;
   const compatFields = useMemo(() => schema?.filter((f) => f.group === 'compat') ?? [], [schema]);
@@ -164,6 +176,7 @@ export const ProductFormPage: React.FC = () => {
     );
   }, [product, form]);
 
+  if (isEdit && loadingProduct) return <Spin style={{ display: 'block', margin: '80px auto' }} />;
   if (isEdit && !product) {
     return (
       <Result
@@ -177,15 +190,13 @@ export const ProductFormPage: React.FC = () => {
 
   const handleSave = async (values: ProductFormValues) => {
     setSaving(true);
-    await fakeLatency();
     const slug = values.slug?.trim() || toSlug(values.name);
-    if (products.some((p) => p.slug === slug && p.sku !== product?.sku)) {
-      setSaving(false);
-      form.setFields([{ name: 'slug', errors: ['Slug đã được dùng cho sản phẩm khác (409)'] }]);
-      return;
-    }
     const freeSpecs = values.freeSpecs?.filter((r) => r?.key) ?? [];
-    const images = files.map((f, i) => ({ fileId: null, url: f.url ?? f.thumbUrl ?? '', isPrimary: i === 0 }));
+    const images = files.map((f, i) => ({
+      fileId: (f.response as { fileId?: number } | undefined)?.fileId ?? null,
+      url: f.url ?? f.thumbUrl ?? '',
+      isPrimary: i === 0,
+    }));
     const common = {
       name: values.name.trim(),
       slug,
@@ -198,36 +209,42 @@ export const ProductFormPage: React.FC = () => {
       images,
       specs: schema ? compact(values.specs) : compact(Object.fromEntries(freeSpecs.map((r) => [r.key, r.value]))),
       compat: schema ? compact(values.compat) : null,
-      updatedAt: new Date().toISOString(),
     };
 
-    if (product) {
-      // TODO ghép API: PUT /admin/products/{sku} (không gửi giá/trạng thái)
-      setProducts((prev) => prev.map((p) => (p.sku === product.sku ? { ...p, ...common } : p)));
-      message.success('Đã lưu thông tin sản phẩm');
-    } else {
-      // TODO ghép API: POST /admin/products; ảnh tải trước bằng POST /media/upload (bucket products)
-      const created: AdminProduct = {
-        ...common,
-        id: values.sku.toLowerCase(),
-        sku: values.sku,
-        price: values.price!,
-        originalPrice: values.originalPrice ?? null,
-        status: values.status ?? 1,
-        soldCount: 0,
-      };
-      setProducts((prev) => [created, ...prev]);
-      message.success(`Đã tạo sản phẩm ${values.sku}`);
-      navigate(`/admin/products/${values.sku}`, { replace: true });
+    try {
+      if (product) {
+        // PUT không nhận giá và trạng thái (đổi bằng API riêng)
+        await updateProduct.mutateAsync({ sku: product.sku, body: common });
+        message.success('Đã lưu thông tin sản phẩm');
+      } else {
+        const created = await createProduct.mutateAsync({
+          ...common,
+          sku: values.sku,
+          price: values.price!,
+          originalPrice: values.originalPrice ?? null,
+          status: values.status === 2 ? 2 : 1,
+        });
+        message.success(`Đã tạo sản phẩm ${created.sku}`);
+        navigate(`/admin/products/${created.sku}`, { replace: true });
+      }
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.status === 409) form.setFields([{ name: product ? 'slug' : 'sku', errors: [err.message || 'Đã tồn tại (409)'] }]);
+      else message.error(err.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const changeStatus = (status: ProductStatus) => {
     if (!product) return;
-    // TODO ghép API: PATCH /admin/products/{sku}/status
-    setProducts((prev) => prev.map((p) => (p.sku === product.sku ? { ...p, status } : p)));
-    message.success(`Đã chuyển sang "${PRODUCT_STATUS_META[status].label}"`);
+    setProductStatus.mutate(
+      { sku: product.sku, status },
+      {
+        onSuccess: () => message.success(`Đã chuyển sang "${PRODUCT_STATUS_META[status].label}"`),
+        onError: (e) => message.error(e.message),
+      }
+    );
   };
 
   const submitPrice = async () => {
@@ -237,13 +254,16 @@ export const ProductFormPage: React.FC = () => {
       priceForm.setFields([{ name: 'price', errors: ['Giá không đổi'] }]);
       return;
     }
-    // TODO ghép API: PATCH /admin/products/{sku}/price {price, originalPrice, reason}
-    await fakeLatency();
-    setProducts((prev) =>
-      prev.map((p) => (p.sku === product.sku ? { ...p, price: v.price, originalPrice: v.originalPrice ?? null } : p))
-    );
-    setPriceOpen(false);
-    message.success('Đã đổi giá, lịch sử giá được ghi lại');
+    try {
+      await setProductPrice.mutateAsync({
+        sku: product.sku,
+        body: { price: v.price, originalPrice: v.originalPrice ?? null, reason: v.reason || null },
+      });
+      setPriceOpen(false);
+      message.success('Đã đổi giá, lịch sử giá được ghi lại');
+    } catch (e) {
+      message.error((e as Error).message);
+    }
   };
 
   // Đã công bố thì không quay về Nháp
@@ -505,12 +525,21 @@ export const ProductFormPage: React.FC = () => {
                   accept="image/*"
                   multiple
                   fileList={files}
-                  // Chưa ghép API: giữ ảnh ở trình duyệt; sau này gọi POST /media/upload (bucket products)
+                  // Tải ngay lên media-service (bucket products); ảnh lưu kèm fileId để xóa/thay về sau
                   beforeUpload={(file) => {
-                    setFiles((prev) => [
-                      ...prev,
-                      { uid: file.uid, name: file.name, status: 'done', url: URL.createObjectURL(file) },
-                    ]);
+                    const uid = file.uid;
+                    setFiles((prev) => [...prev, { uid, name: file.name, status: 'uploading' }]);
+                    mediaService
+                      .upload(file, 'products')
+                      .then((media) =>
+                        setFiles((prev) =>
+                          prev.map((f) => (f.uid === uid ? { ...f, status: 'done', url: media.url, response: { fileId: media.id } } : f))
+                        )
+                      )
+                      .catch((e: Error) => {
+                        setFiles((prev) => prev.filter((f) => f.uid !== uid));
+                        message.error(`Không tải được ảnh: ${e.message}`);
+                      });
                     return false;
                   }}
                   onRemove={(file) => setFiles((prev) => prev.filter((f) => f.uid !== file.uid))}

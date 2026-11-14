@@ -1,17 +1,28 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { message } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { Product } from '../types/product';
 import { CartItem, CartSummary } from '../types/cart';
-import { storageService } from '../services/storage/storageService';
+import {
+  EMPTY_CART,
+  cartKeys,
+  useAddCartItem,
+  useAddCartItems,
+  useCartQuery,
+  useClearCart,
+  useRemoveCartItem,
+  useSetCartQuantity,
+} from '../hooks/useCartApi';
 
 interface CartContextType {
   cart: CartItem[];
   cartCount: number;
   summary: CartSummary;
   isDrawerOpen: boolean;
+  isLoading: boolean;
   addToCart: (product: Product, quantity?: number) => void;
   addItemsToCart: (items: Array<{ product: Product; quantity: number }>) => void;
   updateQuantity: (productId: string, quantity: number) => void;
@@ -23,21 +34,28 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'nexus_cart_items';
-
+/** Giỏ hàng nằm ở cart-service (Redis); context chỉ giữ trạng thái ngăn kéo và gói lại các lời gọi API */
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
-  const [cart, setCart] = useState<CartItem[]>(() =>
-    storageService.get<CartItem[]>(CART_STORAGE_KEY, [])
-  );
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  const { data: view = EMPTY_CART, isLoading } = useCartQuery(isAuthenticated);
+  const addItem = useAddCartItem();
+  const addItems = useAddCartItems();
+  const setQuantity = useSetCartQuantity();
+  const removeItem = useRemoveCartItem();
+  const clear = useClearCart();
+
+  // Đăng xuất: bỏ giỏ của tài khoản cũ khỏi bộ nhớ đệm
   useEffect(() => {
-    storageService.set(CART_STORAGE_KEY, cart);
-  }, [cart]);
+    if (!isAuthenticated) queryClient.removeQueries({ queryKey: cartKeys.all });
+  }, [isAuthenticated, queryClient]);
+
+  const showError = (err: Error) => message.error(err.message);
 
   /** Chưa đăng nhập thì chuyển sang trang đăng nhập, xong quay lại đúng trang đang xem */
   const ensureLoggedIn = () => {
@@ -49,75 +67,52 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addToCart = (product: Product, quantity = 1) => {
     if (!ensureLoggedIn()) return;
-    setCart((prev) => {
-      const exists = prev.find((item) => item.id === product.id);
-      if (exists) {
-        return prev.map((item) =>
-          item.id === product.id ? { ...item, qty: item.qty + quantity } : item
-        );
+    addItem.mutate(
+      { sku: product.id, quantity },
+      {
+        onSuccess: () => message.success(t('common.addedToCart', 'Đã thêm sản phẩm vào giỏ hàng')),
+        onError: showError,
       }
-      return [...prev, { ...product, qty: quantity }];
-    });
-    message.success(t('common.addedToCart', 'Đã thêm sản phẩm vào giỏ hàng'));
+    );
   };
 
-  /** Thêm nhiều món một lần (cả cấu hình PC, mua lại đơn cũ), chỉ báo một thông báo */
+  /** Thêm nhiều món một lần (cả cấu hình PC), chỉ báo một thông báo */
   const addItemsToCart = (items: Array<{ product: Product; quantity: number }>) => {
     if (items.length === 0 || !ensureLoggedIn()) return;
-    setCart((prev) => {
-      const next = [...prev];
-      items.forEach(({ product, quantity }) => {
-        const index = next.findIndex((item) => item.id === product.id);
-        if (index >= 0) next[index] = { ...next[index], qty: next[index].qty + quantity };
-        else next.push({ ...product, qty: quantity });
-      });
-      return next;
-    });
-    message.success(
-      t('common.addedManyToCart', { count: items.length, defaultValue: `Đã thêm ${items.length} sản phẩm vào giỏ hàng` })
+    addItems.mutate(
+      items.map(({ product, quantity }) => ({ sku: product.id, quantity })),
+      {
+        onSuccess: () =>
+          message.success(
+            t('common.addedManyToCart', { count: items.length, defaultValue: `Đã thêm ${items.length} sản phẩm vào giỏ hàng` })
+          ),
+        onError: showError,
+      }
     );
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
-    setCart((prev) => {
-      if (quantity <= 0) {
-        return prev.filter((item) => item.id !== productId);
-      }
-      return prev.map((item) =>
-        item.id === productId ? { ...item, qty: quantity } : item
-      );
-    });
+    setQuantity.mutate({ sku: productId, quantity: Math.min(99, Math.max(0, quantity)) }, { onError: showError });
   };
 
   const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.id !== productId));
+    removeItem.mutate(productId, { onError: showError });
   };
 
   const clearCart = () => {
-    setCart([]);
+    clear.mutate(undefined, { onError: showError });
   };
 
-  const openDrawer = () => setIsDrawerOpen(true);
-  const closeDrawer = () => setIsDrawerOpen(false);
-
-  const cartCount = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.qty, 0);
-  }, [cart]);
+  const cart = view.items;
+  const cartCount = view.totalQuantity;
 
   const summary = useMemo<CartSummary>(() => {
-    const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    const shipping = 0; // Free shipping
+    const subtotal = view.subtotal;
+    // Phí ship và giảm giá do POST /checkout/preview tính ở trang thanh toán
+    const shipping = 0;
     const discount = 0;
-    const total = Math.max(0, subtotal - discount + shipping);
-
-    return {
-      subtotal,
-      discount,
-      shipping,
-      total,
-      totalItems: cartCount,
-    };
-  }, [cart, cartCount]);
+    return { subtotal, discount, shipping, total: Math.max(0, subtotal - discount + shipping), totalItems: cartCount };
+  }, [view.subtotal, cartCount]);
 
   return (
     <CartContext.Provider
@@ -126,13 +121,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         cartCount,
         summary,
         isDrawerOpen,
+        isLoading,
         addToCart,
         addItemsToCart,
         updateQuantity,
         removeFromCart,
         clearCart,
-        openDrawer,
-        closeDrawer,
+        openDrawer: () => setIsDrawerOpen(true),
+        closeDrawer: () => setIsDrawerOpen(false),
       }}
     >
       {children}

@@ -1,44 +1,45 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL } from '../../config/env';
+import type * as Api from '../../types/api';
+import { ApiError, describeError } from './ApiError';
+import { keycloakClient } from './keycloakClient';
+import { tokenStore } from './tokenStore';
 
-// Create configured Axios instance
 export const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 10000,
+  baseURL: API_BASE_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 });
 
-// Request Interceptor
-axiosClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Add auth token if available in local storage
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('nexus_auth_token');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
-);
+/** Gắn Bearer token (làm mới nếu sắp hết hạn). API công khai vẫn chạy bình thường khi chưa đăng nhập */
+axiosClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  const token = await keycloakClient.getAccessToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-// Response Interceptor
+/** Mọi lỗi ra khỏi client đều là ApiError (đọc từ envelope ResponseData khi có) */
 axiosClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  (error: AxiosError) => {
-    // Standard error logging or handling
-    if (error.response?.status === 401) {
-      // Handle unauthorized session
-      console.warn('Unauthorized request intercepted.');
+  (response) => response,
+  (error: AxiosError<Partial<Api.ResponseData<unknown>>>) => {
+    if (!error.response) {
+      return Promise.reject(
+        new ApiError(0, error.code === 'ECONNABORTED' ? 'Máy chủ phản hồi quá lâu.' : 'Không kết nối được máy chủ.')
+      );
     }
-    return Promise.reject(error);
+    const { status, data } = error.response;
+    // 401 có gửi token = token bị từ chối (đã bị thu hồi / sai realm): bỏ phiên để người dùng đăng nhập lại
+    if (status === 401 && error.config?.headers?.Authorization && tokenStore.get()) {
+      tokenStore.clear();
+      tokenStore.notifyExpired();
+    }
+    const fallback =
+      status === 401 ? 'Vui lòng đăng nhập.' : status === 403 ? 'Bạn không có quyền thực hiện thao tác này.' : `Lỗi máy chủ (${status}).`;
+    const message = describeError(data?.error_message || fallback, data?.data);
+    return Promise.reject(new ApiError(status, message, data?.error_code ?? null, data?.data ?? null));
   }
 );
 

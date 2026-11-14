@@ -1,14 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
 import { productService } from '../services/api/productService';
+import { MINUTE, createQueryKeys, useApiQuery } from './BaseHook';
 
-export const categoryKeys = {
-  all: ['categories'] as const,
-};
+const keys = createQueryKeys('categories');
+
+export const categoryKeys = { all: keys.all };
 
 export function useCategories() {
-  return useQuery({
-    queryKey: categoryKeys.all,
-    queryFn: () => productService.getCategories(),
-    staleTime: 1000 * 60 * 30, // 30 minutes
-  });
+  return useApiQuery(categoryKeys.all, () => productService.getCategories(), { staleTime: 30 * MINUTE });
 }

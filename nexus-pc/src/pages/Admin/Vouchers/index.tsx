@@ -25,7 +25,14 @@ import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import {
+  useAdminCategories,
+  useAdminVouchers,
+  useCreateVoucher,
+  useSetVouchersActive,
+  useUpdateVoucher,
+} from '../../../hooks/admin/useAdminApi';
+import { ApiError } from '../../../services/api/ApiError';
 import { AdminVoucher, VoucherType } from '../../../types/admin';
 import { VOUCHER_PHASE_META, VOUCHER_TYPE_LABEL, VoucherPhase, voucherPhase } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
@@ -57,10 +64,11 @@ const voucherValueText = (v: AdminVoucher) =>
 /** A08: quản lý voucher (chỉ ADMIN) */
 export const VouchersPage: React.FC = () => {
   const { message } = App.useApp();
-  const {
-    vouchers: [vouchers, setVouchers],
-    categories: [categories],
-  } = useAdminData();
+  const { data: vouchers = [], isLoading } = useAdminVouchers();
+  const { data: categories = [] } = useAdminCategories();
+  const createVoucher = useCreateVoucher();
+  const updateVoucher = useUpdateVoucher();
+  const setVouchersActive = useSetVouchersActive();
   const [phase, setPhase] = useState<VoucherPhase | 'all'>('all');
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
   const [editing, setEditing] = useState<AdminVoucher | 'new' | null>(null);
@@ -68,7 +76,6 @@ export const VouchersPage: React.FC = () => {
   const [form] = Form.useForm<VoucherFormValues>();
   const type = Form.useWatch('type', form);
 
-  // TODO ghép API: GET /admin/vouchers
   const data = useMemo(
     () => vouchers.filter((v) => phase === 'all' || voucherPhase(v) === phase).sort((a, b) => b.id - a.id),
     [vouchers, phase]
@@ -86,17 +93,21 @@ export const VouchersPage: React.FC = () => {
   };
 
   const setActive = (ids: number[], active: boolean) => {
-    // TODO ghép API: PATCH /admin/vouchers/{id}/active, nhiều dòng: PATCH /admin/vouchers/bulk/active {ids, isActive}
-    const set = new Set(ids);
-    setVouchers((prev) => prev.map((v) => (set.has(v.id) ? { ...v, isActive: active ? 1 : 0, version: v.version + 1 } : v)));
-    setSelectedKeys([]);
-    message.success(`Đã ${active ? 'bật' : 'tắt'} ${ids.length} voucher`);
+    setVouchersActive.mutate(
+      { ids, active },
+      {
+        onSuccess: () => {
+          setSelectedKeys([]);
+          message.success(`Đã ${active ? 'bật' : 'tắt'} ${ids.length} voucher`);
+        },
+        onError: (e) => message.error(e.message),
+      }
+    );
   };
 
   const submit = async () => {
     const v = await form.validateFields();
     setSaving(true);
-    await fakeLatency();
     const body = {
       name: v.name.trim(),
       type: v.type,
@@ -109,26 +120,23 @@ export const VouchersPage: React.FC = () => {
       startAt: toLocalDateTime(v.period?.[0]),
       endAt: toLocalDateTime(v.period?.[1]),
     };
-    if (editing === 'new') {
-      // TODO ghép API: POST /admin/vouchers (server đổi code sang IN HOA, trùng → 409)
-      const code = v.code.toUpperCase();
-      if (vouchers.some((x) => x.code === code)) {
-        setSaving(false);
-        form.setFields([{ name: 'code', errors: ['Mã voucher đã tồn tại'] }]);
-        return;
+    try {
+      if (editing === 'new') {
+        const created = await createVoucher.mutateAsync({ ...body, code: v.code.trim() });
+        message.success(`Đã tạo voucher ${created.code}`);
+      } else if (editing) {
+        // version chống ghi đè: lệch → 409 "Voucher đã bị người khác thay đổi"
+        await updateVoucher.mutateAsync({ id: editing.id, body: { ...body, version: editing.version } });
+        message.success('Đã lưu voucher');
       }
-      setVouchers((prev) => [
-        ...prev,
-        { ...body, id: Math.max(0, ...prev.map((x) => x.id)) + 1, code, usedCount: 0, isActive: 1, version: 0 },
-      ]);
-      message.success(`Đã tạo voucher ${code}`);
-    } else if (editing) {
-      // TODO ghép API: PUT /admin/vouchers/{id} kèm version; lệch → 409 "Voucher đã bị người khác thay đổi, vui lòng tải lại"
-      setVouchers((prev) => prev.map((x) => (x.id === editing.id ? { ...x, ...body, version: x.version + 1 } : x)));
-      message.success('Đã lưu voucher');
+      setEditing(null);
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.status === 409 && editing === 'new') form.setFields([{ name: 'code', errors: ['Mã voucher đã tồn tại'] }]);
+      else message.error(err.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setEditing(null);
   };
 
   const columns: TableColumnsType<AdminVoucher> = [
@@ -271,6 +279,7 @@ export const VouchersPage: React.FC = () => {
           scroll={{ x: 1100 }}
           columns={columns}
           dataSource={data}
+          loading={isLoading}
           rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
           rowClassName={(v) => (v.isActive ? '' : 'admin-row-muted')}
           pagination={false}

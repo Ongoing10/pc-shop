@@ -22,7 +22,14 @@ import type { TableColumnsType } from 'antd';
 import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import {
+  useAdminCategories,
+  useAdminProducts,
+  useCreateCategory,
+  useSetCategoriesActive,
+  useUpdateCategory,
+} from '../../../hooks/admin/useAdminApi';
+import { ApiError } from '../../../services/api/ApiError';
 import { AdminCategory, SpecField } from '../../../types/admin';
 import { formatDateTime } from '../../../utils/orderStatus';
 
@@ -88,26 +95,31 @@ const SpecSchemaTable: React.FC<{ schema: SpecField[] | null }> = ({ schema }) =
 /** A10: danh mục sản phẩm. Không có xóa, chỉ bật/tắt. */
 export const CategoriesPage: React.FC = () => {
   const { message } = App.useApp();
-  const {
-    categories: [categories, setCategories],
-    products: [products],
-  } = useAdminData();
+  const { data: categories = [], isLoading } = useAdminCategories();
+  const { data: products = [] } = useAdminProducts();
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
+  const setCategoriesActive = useSetCategoriesActive();
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
   const [viewingCode, setViewingCode] = useState<string>();
   const [editing, setEditing] = useState<AdminCategory | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<CategoryFormValues>();
 
-  // TODO ghép API: GET /admin/categories (kể cả đã tắt)
   const viewing = categories.find((c) => c.code === viewingCode);
   const productCount = (code: string) => products.filter((p) => p.categoryCode === code).length;
 
   const setActive = (codes: string[], active: boolean) => {
-    // TODO ghép API: PATCH /admin/categories/{code}/active, nhiều dòng: PATCH /admin/categories/bulk/active {codes, isActive}
-    const set = new Set(codes);
-    setCategories((prev) => prev.map((c) => (set.has(c.code) ? { ...c, isActive: active ? 1 : 0 } : c)));
-    setSelectedKeys([]);
-    message.success(`Đã ${active ? 'bật' : 'tắt'} ${codes.length} danh mục`);
+    setCategoriesActive.mutate(
+      { codes, active },
+      {
+        onSuccess: () => {
+          setSelectedKeys([]);
+          message.success(`Đã ${active ? 'bật' : 'tắt'} ${codes.length} danh mục`);
+        },
+        onError: (e) => message.error(e.message),
+      }
+    );
   };
 
   const openForm = (c: AdminCategory | 'new') => {
@@ -120,46 +132,23 @@ export const CategoriesPage: React.FC = () => {
   const submit = async () => {
     const v = await form.validateFields();
     setSaving(true);
-    await fakeLatency();
-    const conflict = categories.find(
-      (c) => (c.code === v.code || c.slug === v.slug) && (editing === 'new' || c.id !== editing?.id)
-    );
-    if (conflict) {
+    const body = { name: v.name, slug: v.slug || null, pcSlot: v.pcSlot ?? null, sortOrder: v.sortOrder ?? null };
+    try {
+      if (editing === 'new') {
+        await createCategory.mutateAsync({ code: v.code, ...body });
+        message.success(`Đã tạo danh mục ${v.name}`);
+      } else if (editing) {
+        await updateCategory.mutateAsync({ code: editing.code, body });
+        message.success('Đã lưu danh mục');
+      }
+      setEditing(null);
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.status === 409) form.setFields([{ name: editing === 'new' ? 'code' : 'slug', errors: ['Đã tồn tại (409)'] }]);
+      else message.error(err.message);
+    } finally {
       setSaving(false);
-      form.setFields([{ name: conflict.code === v.code ? 'code' : 'slug', errors: ['Đã tồn tại (409)'] }]);
-      return;
     }
-    const now = new Date().toISOString();
-    if (editing === 'new') {
-      // TODO ghép API: POST /admin/categories
-      setCategories((prev) => [
-        ...prev,
-        {
-          id: `c${Date.now()}`,
-          code: v.code,
-          name: v.name,
-          slug: v.slug,
-          pcSlot: v.pcSlot ?? null,
-          sortOrder: v.sortOrder ?? null,
-          isActive: 1,
-          specSchema: null,
-          updatedAt: now,
-        },
-      ]);
-      message.success(`Đã tạo danh mục ${v.name}`);
-    } else if (editing) {
-      // TODO ghép API: PUT /admin/categories/{code}
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === editing.id
-            ? { ...c, name: v.name, slug: v.slug, pcSlot: v.pcSlot ?? null, sortOrder: v.sortOrder ?? null, updatedAt: now }
-            : c
-        )
-      );
-      message.success('Đã lưu danh mục');
-    }
-    setSaving(false);
-    setEditing(null);
   };
 
   const columns: TableColumnsType<AdminCategory> = [
@@ -232,6 +221,7 @@ export const CategoriesPage: React.FC = () => {
           rowKey="code"
           columns={columns}
           dataSource={[...categories].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99))}
+          loading={isLoading}
           rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
           rowClassName={(c) => (c.isActive ? '' : 'admin-row-muted')}
           pagination={false}

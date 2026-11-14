@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { App, Avatar, Button, Card, Col, Descriptions, Flex, Result, Row, Table, Tag, Timeline, Typography } from 'antd';
+import { App, Spin, Avatar, Button, Card, Col, Descriptions, Flex, Result, Row, Table, Tag, Timeline, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { PrinterOutlined, SwapOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { OrderStatusModal } from '../../../components/admin/OrderStatusModal';
-import { useAdminData } from '../../../context/AdminDataContext';
+import { useAdminOrderDetail, useAdminRefunds } from '../../../hooks/admin/useAdminApi';
 import { useAdminSession } from '../../../context/AdminSessionContext';
-import { mockOrderItems, mockUsers } from '../../../services/api/adminMockData';
 import { AdminOrderItem, AdminPayment, OrderStatus } from '../../../types/admin';
 import {
   ORDER_MAIN_FLOW,
@@ -27,18 +26,14 @@ export const AdminOrderDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const { can } = useAdminSession();
-  const {
-    orders: [orders],
-    orderHistories: [histories],
-    payments: [payments],
-    refunds: [refunds],
-  } = useAdminData();
+  const { data: detail, isLoading } = useAdminOrderDetail(code);
+  const { data: refunds = [] } = useAdminRefunds();
   const { changeStatus } = useOrderActions();
   const [modalOpen, setModalOpen] = useState(false);
 
-  // TODO ghép API: GET /admin/orders/{code} (order + items), GET /orders/{code}/timeline
-  const order = orders.find((o) => o.code === code);
+  const order = detail?.order;
 
+  if (isLoading) return <Spin style={{ display: 'block', margin: '80px auto' }} />;
   if (!order) {
     return (
       <Result
@@ -50,13 +45,13 @@ export const AdminOrderDetailPage: React.FC = () => {
     );
   }
 
-  const items = mockOrderItems.filter((it) => it.orderId === order.id);
-  const timeline = histories.filter((h) => h.orderId === order.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const items = detail.items;
+  const timeline = [...detail.timeline].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  // Backend chỉ trả id người thao tác (UUID Keycloak): khách là chủ đơn, còn lại là nhân viên
   const actorName = (id: string | null) =>
-    id === null ? 'Hệ thống' : id === order.userId ? 'Khách hàng' : mockUsers.find((u) => u.id === id)?.username ?? id;
+    id === null ? 'Hệ thống' : id === order.userId ? 'Khách hàng' : `Nhân viên ${id.slice(0, 8)}`;
 
-  // TODO ghép API: GET /payments/{code}; yêu cầu hoàn tiền: GET /admin/refunds (lọc theo mã đơn ở client)
-  const orderPayments = payments.filter((p) => p.orderId === order.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const orderPayments = [...detail.payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const orderRefunds = refunds.filter((r) => r.orderCode === order.code);
 
   // Bước tương lai theo luồng chuẩn (COD 1 → 4 → 5 → 6, online 1 → 2 → 3 → 4 → 5 → 6), vẽ mờ

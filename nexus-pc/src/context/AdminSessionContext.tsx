@@ -1,7 +1,11 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react';
-import { AdminSessionUser, AdminUser, Permission, RealmRole } from '../types/admin';
-import { mockUsers } from '../services/api/adminMockData';
-import { fakeLatency } from './AdminDataContext';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AdminSessionUser, Permission, RealmRole } from '../types/admin';
+import type * as Api from '../types/api';
+import { authService } from '../services/api/authService';
+import { keycloakClient } from '../services/api/keycloakClient';
+import { ApiError } from '../services/api/ApiError';
+import { AUTH_EXPIRED_EVENT, decodeJwt, tokenStore } from '../services/api/tokenStore';
 
 /** Điều kiện vào một màn admin: cần role hoặc permission (bỏ trống = chỉ cần STAFF/ADMIN) */
 export interface AdminAccess {
@@ -12,75 +16,81 @@ export interface AdminAccess {
 interface AdminSessionContextType {
   /** null = chưa đăng nhập */
   user: AdminSessionUser | null;
-  login: (username: string, password: string, remember: boolean) => Promise<AdminSessionUser>;
+  /** true trong lúc khôi phục phiên từ token đã lưu */
+  isLoading: boolean;
+  /** `remember` không còn tác dụng: token do Keycloak cấp và tự làm mới, lưu chung với phía khách */
+  login: (username: string, password: string, remember?: boolean) => Promise<AdminSessionUser>;
   logout: () => void;
   hasRole: (role: RealmRole) => boolean;
   can: (permission: Permission) => boolean;
   canAccess: (access?: AdminAccess) => boolean;
 }
 
-const SESSION_KEY = 'nexus_admin_session';
-
-const toSessionUser = (u: AdminUser): AdminSessionUser => ({
-  id: u.id,
-  username: u.username,
-  fullName: u.fullName,
-  realmRoles: u.realmRoles,
-  permissions: u.permissions,
-});
-
 const isStaff = (u: { realmRoles: RealmRole[] }) => u.realmRoles.includes('STAFF') || u.realmRoles.includes('ADMIN');
 
-/** Khôi phục phiên đã lưu (localStorage nếu "ghi nhớ", sessionStorage nếu không) */
-const restoreSession = (): AdminSessionUser | null => {
-  try {
-    const id = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY);
-    const found = mockUsers.find((u) => u.id === id && u.active && isStaff(u));
-    return found ? toSessionUser(found) : null;
-  } catch {
-    return null;
-  }
-};
-
-const clearStoredSession = () => {
-  try {
-    localStorage.removeItem(SESSION_KEY);
-    sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // bộ nhớ trình duyệt bị chặn: không có gì để xóa
-  }
+/** GET /me → người dùng khu admin; tên lấy từ claim `name` của token (hồ sơ shop không có họ tên) */
+const loadSessionUser = async (): Promise<AdminSessionUser> => {
+  const me: Api.MeResponse = await authService.getMe();
+  const token = tokenStore.get()?.accessToken;
+  const claims = (token && decodeJwt<{ name?: string }>(token)) || {};
+  return {
+    id: me.id,
+    username: me.username,
+    fullName: claims.name || me.profile.displayName || me.username,
+    realmRoles: me.roles,
+    permissions: me.permissions,
+  };
 };
 
 const AdminSessionContext = createContext<AdminSessionContextType | undefined>(undefined);
 
 export const AdminSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AdminSessionUser | null>(restoreSession);
+  const queryClient = useQueryClient();
+  const [user, setUser] = useState<AdminSessionUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  /**
-   * TODO ghép Keycloak: bỏ form, gọi keycloak.login({ redirectUri }) rồi đọc realm_access.roles và
-   * resource_access['pcshop-backend'].roles từ token. Khi đó trang /admin/login chỉ còn nút "Đăng nhập bằng Keycloak".
-   */
-  const login = async (username: string, password: string, remember: boolean) => {
-    await fakeLatency(500);
-    const found = mockUsers.find((u) => u.username === username.trim().toLowerCase() || u.email === username.trim());
-    // Dữ liệu giả không lưu mật khẩu: chỉ kiểm tra độ dài như chính sách mật khẩu của realm
-    if (!found || password.length < 6) throw new Error('Sai tên đăng nhập hoặc mật khẩu');
-    if (!found.active) throw new Error('Tài khoản đã bị khóa. Liên hệ quản trị viên để mở lại.');
-    if (!isStaff(found)) throw new Error('Tài khoản này không có quyền vào trang quản trị.');
+  // Khôi phục phiên từ token đã lưu; token của khách hàng (không có role STAFF/ADMIN) thì không tính là đã đăng nhập admin
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        if (!(await keycloakClient.getAccessToken())) return;
+        const session = await loadSessionUser();
+        if (active && isStaff(session)) setUser(session);
+      } catch {
+        // token hỏng / backend không phản hồi: coi như chưa đăng nhập
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
-    const session = toSessionUser(found);
-    clearStoredSession();
+  useEffect(() => {
+    const onExpired = () => setUser(null);
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, []);
+
+  const login = async (username: string, password: string) => {
+    await keycloakClient.login(username.trim(), password);
     try {
-      (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, session.id);
-    } catch {
-      // bộ nhớ trình duyệt bị chặn: phiên chỉ còn trong bộ nhớ, tải lại trang phải đăng nhập lại
+      const session = await loadSessionUser();
+      if (!isStaff(session)) throw new ApiError(403, 'Tài khoản này không có quyền vào trang quản trị.', 'FORBIDDEN');
+      queryClient.clear();
+      setUser(session);
+      return session;
+    } catch (e) {
+      await keycloakClient.logout();
+      throw e;
     }
-    setUser(session);
-    return session;
   };
 
   const logout = () => {
-    clearStoredSession();
+    void keycloakClient.logout();
+    queryClient.clear();
     setUser(null);
   };
 
@@ -94,7 +104,7 @@ export const AdminSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   return (
-    <AdminSessionContext.Provider value={{ user, login, logout, hasRole, can, canAccess }}>
+    <AdminSessionContext.Provider value={{ user, isLoading, login, logout, hasRole, can, canAccess }}>
       {children}
     </AdminSessionContext.Provider>
   );

@@ -22,8 +22,16 @@ import type { TableColumnsType } from 'antd';
 import { DownloadOutlined, EditOutlined, PlusOutlined, UploadOutlined, DownOutlined, DollarOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
-import { BulkErrorItem, collectBulkErrors } from '../../../components/admin/bulk';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import { BulkErrorItem, bulkErrorsOf } from '../../../components/admin/bulk';
+import {
+  useAdminBrands,
+  useAdminCategories,
+  useAdminProducts,
+  useSetProductsPrice,
+  useSetProductsStatus,
+} from '../../../hooks/admin/useAdminApi';
+import { adminCatalogService } from '../../../services/api/admin/adminCatalogService';
+import { saveDownloadedFile } from '../../../utils/download';
 import { AdminProduct, ProductStatus } from '../../../types/admin';
 import { PRODUCT_STATUS_META } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
@@ -42,11 +50,11 @@ interface BulkPriceForm {
 export const AdminProductsPage: React.FC = () => {
   const navigate = useNavigate();
   const { message, modal } = App.useApp();
-  const {
-    products: [products, setProducts],
-    categories: [categories],
-    brands: [brands],
-  } = useAdminData();
+  const { data: products = [], isLoading } = useAdminProducts();
+  const { data: categories = [] } = useAdminCategories();
+  const { data: brands = [] } = useAdminBrands();
+  const setProductsStatus = useSetProductsStatus();
+  const setProductsPrice = useSetProductsPrice();
 
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<string>();
@@ -57,7 +65,6 @@ export const AdminProductsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [priceForm] = Form.useForm<BulkPriceForm>();
 
-  // TODO ghép API: GET /admin/products?status=&category=&q=&page=&size=
   const data = useMemo(() => {
     const keyword = q.trim().toLowerCase();
     return products
@@ -81,28 +88,16 @@ export const AdminProductsPage: React.FC = () => {
       okText: 'Đồng ý',
       cancelText: 'Hủy',
       onOk: async () => {
-        // TODO ghép API: PATCH /admin/products/bulk/status {skus, status}
-        await fakeLatency();
-        const errors = collectBulkErrors(
-          selected,
-          (p) => p.sku,
-          (p) =>
-            p.status === next
-              ? 'Đã ở trạng thái này'
-              : next === 1 && p.status !== 1
-                ? 'Sản phẩm đã công bố không quay về Nháp được'
-                : null
-        );
-        if (errors.length) {
-          setBulkErrors(errors);
-          return;
+        try {
+          await setProductsStatus.mutateAsync({ skus: selected.map((p) => p.sku), status: next });
+          setBulkErrors([]);
+          setSelectedKeys([]);
+          message.success(`Đã cập nhật ${selected.length} sản phẩm`);
+        } catch (e) {
+          const errors = bulkErrorsOf(e);
+          if (errors) setBulkErrors(errors);
+          else message.error((e as Error).message);
         }
-        const skus = new Set(selected.map((p) => p.sku));
-        const now = new Date().toISOString();
-        setProducts((prev) => prev.map((p) => (skus.has(p.sku) ? { ...p, status: next, updatedAt: now } : p)));
-        setBulkErrors([]);
-        setSelectedKeys([]);
-        message.success(`Đã cập nhật ${skus.size} sản phẩm`);
       },
     });
   };
@@ -110,46 +105,42 @@ export const AdminProductsPage: React.FC = () => {
   const applyBulkPrice = async () => {
     const values = await priceForm.validateFields();
     setSaving(true);
-    // TODO ghép API: PATCH /admin/products/bulk/price {items: [{sku, price, originalPrice}], reason}
-    await fakeLatency();
     const priced = selected.map((p) => {
       const raw = values.mode === 'percent' ? p.price * (1 - values.value / 100) : p.price - values.value;
       return { p, price: Math.round(raw / 1000) * 1000 };
     });
-    const errors = collectBulkErrors(
-      priced,
-      ({ p }) => p.sku,
-      ({ p, price }) => (price <= 0 ? 'Giá mới phải lớn hơn 0' : price === p.price ? 'Giá không đổi' : null)
-    );
-    setSaving(false);
-    if (errors.length) {
-      setBulkErrors(errors);
+    try {
+      await setProductsPrice.mutateAsync({
+        items: priced.map(({ p, price }) => ({
+          sku: p.sku,
+          price,
+          originalPrice: values.keepOriginal ? p.originalPrice ?? p.price : null,
+        })),
+        reason: values.reason || null,
+      });
+      setBulkErrors([]);
+      setSelectedKeys([]);
       setPriceOpen(false);
-      return;
+      message.success(`Đã đổi giá ${priced.length} sản phẩm`);
+    } catch (e) {
+      const errors = bulkErrorsOf(e);
+      if (errors) {
+        setBulkErrors(errors);
+        setPriceOpen(false);
+      } else {
+        message.error((e as Error).message);
+      }
+    } finally {
+      setSaving(false);
     }
-    const map = new Map(priced.map(({ p, price }) => [p.sku, price]));
-    const now = new Date().toISOString();
-    setProducts((prev) =>
-      prev.map((p) =>
-        map.has(p.sku)
-          ? {
-              ...p,
-              price: map.get(p.sku)!,
-              originalPrice: values.keepOriginal ? p.originalPrice ?? p.price : null,
-              updatedAt: now,
-            }
-          : p
-      )
-    );
-    setBulkErrors([]);
-    setSelectedKeys([]);
-    setPriceOpen(false);
-    message.success(`Đã đổi giá ${map.size} sản phẩm`);
   };
 
-  const handleExport = () => {
-    // TODO ghép API: GET /admin/products/export?category=&status= (category bắt buộc)
-    message.info(`Sẽ xuất ${data.length} sản phẩm ${categoryName(category!)} ra Excel khi ghép API`);
+  const handleExport = async () => {
+    try {
+      saveDownloadedFile(await adminCatalogService.exportProducts({ category, status }), `san-pham-${category}.xlsx`);
+    } catch (e) {
+      message.error((e as Error).message);
+    }
   };
 
   const columns: TableColumnsType<AdminProduct> = [
@@ -307,6 +298,7 @@ export const AdminProductsPage: React.FC = () => {
           scroll={{ x: 1100 }}
           columns={columns}
           dataSource={data}
+          loading={isLoading}
           rowClassName={(p) => (errorIds.has(p.sku) ? 'admin-row-error' : '')}
           rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
           pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `${t} sản phẩm` }}

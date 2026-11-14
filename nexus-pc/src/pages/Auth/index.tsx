@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Input, Button, Checkbox, message, Progress, Segmented } from 'antd';
+import { Input, Button, Checkbox, message, Segmented } from 'antd';
 import { useTranslation } from 'react-i18next';
-import {
-  UserOutlined,
-  LockOutlined,
-  MailOutlined,
-  PhoneOutlined,
-} from '@ant-design/icons';
-import { FiCheck, FiX } from 'react-icons/fi';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Logo } from '../../components/common/Logo';
 import { AuthAside } from '../../components/common/AuthAside';
 import { useAuth } from '../../context/AuthContext';
-import { evaluatePasswordStrength, checkPasswordRequirements } from '../../services/api/authService';
 
 export const AuthPage: React.FC = () => {
   const { t } = useTranslation();
@@ -30,14 +23,6 @@ export const AuthPage: React.FC = () => {
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-
-  // Register form state
-  const [regFullName, setRegFullName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regConfirmPassword, setRegConfirmPassword] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,15 +44,11 @@ export const AuthPage: React.FC = () => {
     setSearchParams(next);
   };
 
-  const regStrength = evaluatePasswordStrength(regPassword);
-  const regReqs = checkPasswordRequirements(regPassword);
-  const regMatch = regPassword && regConfirmPassword && regPassword === regConfirmPassword;
-
   // Fill quick demo credentials
   const fillDemoAccount = () => {
-    setLoginIdentifier('khachhang@nexuspc.vn');
+    setLoginIdentifier('customer1');
     setLoginPassword('123456');
-    message.info('Đã điền tài khoản mẫu NEXUS PC');
+    message.info('Đã điền tài khoản thử customer1');
   };
 
   // Submit Login
@@ -89,52 +70,6 @@ export const AuthPage: React.FC = () => {
       navigate(redirectTo);
     } catch (err: any) {
       message.error(err?.message || 'Đăng nhập không thành công, vui lòng thử lại.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Submit Register
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!regFullName.trim()) {
-      message.warning('Vui lòng nhập họ và tên của bạn.');
-      return;
-    }
-    if (!regEmail.trim()) {
-      message.warning('Vui lòng nhập email.');
-      return;
-    }
-    if (!regPhone.trim()) {
-      message.warning('Vui lòng nhập số điện thoại.');
-      return;
-    }
-    if (!regPassword || regPassword.length < 6) {
-      message.warning('Mật khẩu phải có tối thiểu 6 ký tự.');
-      return;
-    }
-    if (regPassword !== regConfirmPassword) {
-      message.warning('Mật khẩu xác nhận không khớp.');
-      return;
-    }
-    if (!agreeTerms) {
-      message.warning('Vui lòng đồng ý với điều khoản dịch vụ.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await register({
-        fullName: regFullName.trim(),
-        email: regEmail.trim(),
-        phone: regPhone.trim(),
-        password: regPassword,
-      });
-      message.success('Đăng ký tài khoản thành công!');
-      navigate(redirectTo);
-    } catch (err: any) {
-      message.error(err?.message || 'Đăng ký không thành công.');
     } finally {
       setIsLoading(false);
     }
@@ -177,10 +112,10 @@ export const AuthPage: React.FC = () => {
         {mode === 'login' && (
           <form onSubmit={handleLoginSubmit} style={{ display: 'grid', gap: 14 }}>
             <label style={{ display: 'grid', gap: 6, fontSize: 13, color: 'var(--text-2)' }}>
-              <span>{t('auth.emailPhonePlaceholder', 'Email hoặc số điện thoại')}</span>
+              <span>{t('auth.usernameOrEmail', 'Tên đăng nhập hoặc email')}</span>
               <Input
                 prefix={<UserOutlined style={{ color: 'var(--muted)' }} />}
-                placeholder="Ví dụ: khachhang@nexuspc.vn hoặc 0988888888"
+                placeholder="Ví dụ: customer1 hoặc name@email.com"
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
                 size="large"
@@ -250,119 +185,25 @@ export const AuthPage: React.FC = () => {
           </form>
         )}
 
-        {/* REGISTER FORM */}
+        {/* REGISTER: backend không có API đăng ký, tài khoản tạo trên trang đăng ký của Keycloak */}
         {mode === 'register' && (
-          <form onSubmit={handleRegisterSubmit} style={{ display: 'grid', gap: 12 }}>
-            <label style={{ display: 'grid', gap: 5, fontSize: 13, color: 'var(--text-2)' }}>
-              <span>{t('auth.namePlaceholder', 'Họ và tên của bạn')} *</span>
-              <Input
-                prefix={<UserOutlined style={{ color: 'var(--muted)' }} />}
-                placeholder="Ví dụ: Nguyễn Văn Hưng"
-                value={regFullName}
-                onChange={(e) => setRegFullName(e.target.value)}
-                size="large"
-                autoFocus
-              />
-            </label>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <label style={{ display: 'grid', gap: 5, fontSize: 13, color: 'var(--text-2)' }}>
-                <span>Email *</span>
-                <Input
-                  prefix={<MailOutlined style={{ color: 'var(--muted)' }} />}
-                  placeholder="name@email.com"
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  size="large"
-                />
-              </label>
-
-              <label style={{ display: 'grid', gap: 5, fontSize: 13, color: 'var(--text-2)' }}>
-                <span>Số điện thoại *</span>
-                <Input
-                  prefix={<PhoneOutlined style={{ color: 'var(--muted)' }} />}
-                  placeholder="09xx xxx xxx"
-                  value={regPhone}
-                  onChange={(e) => setRegPhone(e.target.value)}
-                  size="large"
-                />
-              </label>
-            </div>
-
-            <label style={{ display: 'grid', gap: 5, fontSize: 13, color: 'var(--text-2)' }}>
-              <span>{t('auth.passwordPlaceholder', 'Mật khẩu')} *</span>
-              <Input.Password
-                prefix={<LockOutlined style={{ color: 'var(--muted)' }} />}
-                placeholder="Tối thiểu 6 ký tự"
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                size="large"
-              />
-            </label>
-
-            {/* Live Password Strength Meter */}
-            {regPassword && (
-              <div
-                style={{
-                  background: 'var(--panel)',
-                  border: '1px solid var(--line-strong)',
-                  borderRadius: 6,
-                  padding: '8px 10px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span style={{ color: 'var(--muted)' }}>{t('auth.passwordStrength', 'Độ mạnh')}:</span>
-                  <span style={{ color: regStrength.color, fontWeight: 700 }}>{regStrength.label}</span>
-                </div>
-                <Progress percent={regStrength.score} showInfo={false} strokeColor={regStrength.color} size="small" />
-                <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 13 }}>
-                  <span style={{ color: regReqs.minLength ? 'var(--ok)' : 'var(--muted)' }}>
-                    {regReqs.minLength ? '✓' : '○'} ≥ 6 ký tự
-                  </span>
-                  <span style={{ color: regReqs.hasNumber ? 'var(--ok)' : 'var(--muted)' }}>
-                    {regReqs.hasNumber ? '✓' : '○'} Có số
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <label style={{ display: 'grid', gap: 5, fontSize: 13, color: 'var(--text-2)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{t('auth.confirmPasswordPlaceholder', 'Xác nhận mật khẩu')} *</span>
-                {regConfirmPassword && (
-                  <span style={{ fontSize: 13, color: regMatch ? 'var(--ok)' : 'var(--danger)' }}>
-                    {regMatch ? '✓ Khớp' : '✗ Chưa khớp'}
-                  </span>
-                )}
-              </div>
-              <Input.Password
-                prefix={<LockOutlined style={{ color: 'var(--muted)' }} />}
-                placeholder="Nhập lại mật khẩu vừa tạo"
-                value={regConfirmPassword}
-                onChange={(e) => setRegConfirmPassword(e.target.value)}
-                size="large"
-              />
-            </label>
-
-            <Checkbox
-              checked={agreeTerms}
-              onChange={(e) => setAgreeTerms(e.target.checked)}
-              style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}
-            >
-              Tôi đồng ý với Điều khoản dịch vụ và Chính sách của NEXUS PC.
-            </Checkbox>
-
+          <div style={{ display: 'grid', gap: 12 }}>
+            <p style={{ color: 'var(--text-2)', fontSize: 13, margin: 0 }}>
+              {t(
+                'auth.registerKeycloak',
+                'Tài khoản NEXUS được quản lý bởi hệ thống đăng nhập tập trung. Bạn sẽ chuyển sang trang đăng ký, điền thông tin rồi quay lại đây để đăng nhập.'
+              )}
+            </p>
             <Button
               type="primary"
               block
               size="large"
-              htmlType="submit"
-              loading={isLoading}
-              style={{ height: 42, fontSize: 13, fontWeight: 700, marginTop: 4 }}
+              onClick={() => register()}
+              style={{ height: 42, fontSize: 13, fontWeight: 700 }}
             >
               {t('auth.btnRegister', 'Đăng ký tài khoản mới')}
             </Button>
-          </form>
+          </div>
         )}
 
         <p style={{ marginTop: 14 }}>

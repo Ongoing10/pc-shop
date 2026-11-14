@@ -1,12 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
 import { productService } from '../services/api/productService';
+import { MINUTE, useApiQuery } from './BaseHook';
 import { productKeys } from './useProducts';
 
 export function useProductDetail(id: string | undefined) {
-  return useQuery({
-    queryKey: productKeys.detail(id || ''),
-    queryFn: () => (id ? productService.getProductById(id) : Promise.resolve(null)),
+  return useApiQuery(productKeys.detail(id || ''), () => productService.getProductById(id!), {
     enabled: Boolean(id),
-    staleTime: 1000 * 60 * 10,
+    staleTime: 10 * MINUTE,
   });
 }

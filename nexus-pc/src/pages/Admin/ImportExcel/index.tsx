@@ -23,7 +23,16 @@ import {
 import type { TableColumnsType, UploadFile } from 'antd';
 import { DownloadOutlined, InboxOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { fakeLatency, useAdminData } from '../../../context/AdminDataContext';
+import {
+  useAdminCategories,
+  useCommitProductImport,
+  useCommitStockImport,
+  useValidateProductImport,
+  useValidateStockImport,
+} from '../../../hooks/admin/useAdminApi';
+import { adminCatalogService } from '../../../services/api/admin/adminCatalogService';
+import { adminInventoryService } from '../../../services/api/admin/adminInventoryService';
+import { saveDownloadedFile } from '../../../utils/download';
 import { ImportResult, ImportRowError, ImportValidateResult } from '../../../types/admin';
 import { formatCurrency } from '../../../utils/format';
 
@@ -62,11 +71,11 @@ export const ImportExcelPage: React.FC<{ kind: ImportKind }> = ({ kind }) => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const cfg = CONFIG[kind];
-  const {
-    categories: [categories],
-    products: [products],
-    warehouses: [warehouses],
-  } = useAdminData();
+  const { data: categories = [] } = useAdminCategories();
+  const validateProducts = useValidateProductImport();
+  const validateStock = useValidateStockImport();
+  const commitProducts = useCommitProductImport();
+  const commitStock = useCommitStockImport();
   const [form] = Form.useForm<PrepareValues>();
   const [step, setStep] = useState(0);
   const [files, setFiles] = useState<UploadFile[]>([]);
@@ -80,36 +89,6 @@ export const ImportExcelPage: React.FC<{ kind: ImportKind }> = ({ kind }) => {
     setValidation(undefined);
     setResult(undefined);
     setFiles([]);
-  };
-
-  /** Giả lập kết quả kiểm tra; khi ghép API thay bằng POST {api}/validate (multipart) */
-  const mockValidate = (values: PrepareValues): ImportValidateResult<PreviewRow> => {
-    if (kind === 'products') {
-      const pool = products.filter((p) => p.categoryCode === values.category);
-      const preview: PreviewRow[] = pool.slice(0, 5).map((p, i) => ({
-        row: i + 2,
-        action: values.mode === 'UPSERT' ? 'UPDATE' : 'CREATE',
-        sku: values.mode === 'UPSERT' ? p.sku : `${p.sku}-V2`,
-        name: p.name,
-        brand: p.brandCode,
-        price: p.price,
-        status: 'Nháp',
-      }));
-      const errors: ImportRowError[] = [
-        { row: preview.length + 2, messages: ['SKU sai định dạng: chỉ A-Z, 0-9 và dấu gạch ngang'] },
-        { row: preview.length + 3, messages: ['Thiếu giá bán', 'compat.socket: giá trị "LGA9999" không nằm trong danh sách cho phép'] },
-      ];
-      return { import_id: crypto.randomUUID(), mode: values.mode!, total_rows: preview.length + errors.length, valid_rows: preview.length, invalid_rows: errors.length, errors, preview };
-    }
-    const activeWh = warehouses.filter((w) => w.isActive);
-    const preview: PreviewRow[] = products
-      .filter((p) => p.status === 2)
-      .slice(0, 6)
-      .map((p, i) => ({ row: i + 2, warehouse: activeWh[i % activeWh.length]?.code, sku: p.sku, quantity: 5 + i * 2, note: null }));
-    const errors: ImportRowError[] = [
-      { row: preview.length + 2, messages: ['SKU GPU-GIGABYTE-5070-12G đang là Nháp, chưa nhập kho được'] },
-    ];
-    return { import_id: crypto.randomUUID(), mode: 'IMPORT', total_rows: preview.length + errors.length, valid_rows: preview.length, invalid_rows: errors.length, errors, preview };
   };
 
   const handleValidate = async () => {
@@ -130,26 +109,63 @@ export const ImportExcelPage: React.FC<{ kind: ImportKind }> = ({ kind }) => {
     }
     setFileError(undefined);
     setBusy(true);
-    await fakeLatency(700);
-    setBusy(false);
-    setValidation(mockValidate(values));
-    setStep(1);
+    try {
+      // POST {api}/validate (multipart): chỉ kiểm tra, không ghi gì; trả import_id giữ 1 giờ
+      const checked =
+        kind === 'products'
+          ? await validateProducts.mutateAsync({ file, category: values.category!, mode: values.mode ?? 'CREATE_ONLY' })
+          : await validateStock.mutateAsync({ file, referenceCode: values.referenceCode || undefined });
+      setValidation(checked as unknown as ImportValidateResult<PreviewRow>);
+      setStep(1);
+    } catch (e) {
+      // lỗi cả file (sai định dạng, thiếu cột, quá lớn) backend trả 400
+      setFileError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleCommit = async () => {
     if (!validation) return;
     setBusy(true);
-    // TODO ghép API: POST {api} {importId}; 404 = phiên hết hạn hoặc đã import → quay về bước 1
-    await fakeLatency(700);
-    setBusy(false);
-    setResult({
-      total_rows: validation.valid_rows,
-      created: validation.preview.filter((r) => r.action !== 'UPDATE').length,
-      updated: validation.preview.filter((r) => r.action === 'UPDATE').length,
-      failed: 0,
-      errors: [],
-    });
-    setStep(2);
+    try {
+      // POST {api} {importId}; 404 = phiên hết hạn hoặc đã import → quay về bước 1
+      const committed =
+        kind === 'products'
+          ? await commitProducts.mutateAsync(validation.import_id)
+          : await commitStock.mutateAsync(validation.import_id);
+      setResult(committed);
+      setStep(2);
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const downloadTemplate = async (category?: string) => {
+    try {
+      const file =
+        kind === 'products'
+          ? await adminCatalogService.downloadProductTemplate(category!)
+          : await adminInventoryService.downloadStockTemplate();
+      saveDownloadedFile(file, kind === 'products' ? `mau-san-pham-${category}.xlsx` : 'mau-nhap-kho.xlsx');
+    } catch (e) {
+      message.error((e as Error).message);
+    }
+  };
+
+  const downloadResult = async () => {
+    if (!validation) return;
+    try {
+      const file =
+        kind === 'products'
+          ? await adminCatalogService.downloadProductImportResult(validation.import_id)
+          : await adminInventoryService.downloadStockImportResult(validation.import_id);
+      saveDownloadedFile(file, 'ket-qua-import.xlsx');
+    } catch (e) {
+      message.error((e as Error).message);
+    }
   };
 
   const errorColumns: TableColumnsType<ImportRowError> = [
@@ -244,8 +260,7 @@ export const ImportExcelPage: React.FC<{ kind: ImportKind }> = ({ kind }) => {
                     <Button
                       icon={<DownloadOutlined />}
                       disabled={kind === 'products' && !getFieldValue('category')}
-                      // TODO ghép API: GET {api}/template?category= (sản phẩm) hoặc GET /admin/inventory/import/excel/template
-                      onClick={() => message.info('Sẽ tải file mẫu khi ghép API')}
+                      onClick={() => downloadTemplate(getFieldValue('category'))}
                     >
                       Tải file mẫu
                     </Button>
@@ -317,8 +332,7 @@ export const ImportExcelPage: React.FC<{ kind: ImportKind }> = ({ kind }) => {
                   <Button
                     size="small"
                     icon={<DownloadOutlined />}
-                    // TODO ghép API: GET {api}/{importId}/result-file (file gốc thêm cột Lỗi)
-                    onClick={() => message.info('Sẽ tải file kết quả (thêm cột Lỗi) khi ghép API')}
+                    onClick={downloadResult}
                   >
                     Tải file kết quả
                   </Button>

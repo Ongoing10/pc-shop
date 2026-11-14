@@ -4,6 +4,8 @@ export interface UserProfile {
   email: string;
   phone: string;
   birthDate?: string;
+  /** 0 Khác · 1 Nam · 2 Nữ (customer-service) */
+  gender?: 0 | 1 | 2 | null;
   avatar?: string;
   createdAt?: string;
 }

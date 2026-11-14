@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useMemo, useState, ReactNo
 import { BuilderSlotId, Product, RigBuild } from '../types/product';
 import { PcBuild, PcBuildItem } from '../types/pcBuild';
 import { storageService } from '../services/storage/storageService';
-import { initialProducts } from '../services/api/mockData';
 import { CompatibilityLine } from '../services/api/compatibilityService';
 
 /** Cấu hình đã lưu đang được mở để sửa */
@@ -37,8 +36,6 @@ const BuilderContext = createContext<BuilderContextType | undefined>(undefined);
 const BUILDER_KEY = 'nexus_builder_state';
 export const MAX_SLOT_QUANTITY = 8;
 
-const productOf = (id: string) => initialProducts.find((p) => p.id === id);
-
 export const BuilderProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<StoredBuilderState>(() =>
     storageService.get<StoredBuilderState>(BUILDER_KEY, { items: [], editing: null })
@@ -50,10 +47,10 @@ export const BuilderProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const lines = useMemo(
     () =>
-      state.items.flatMap((item) => {
-        const product = productOf(item.productId);
-        return product ? [{ slot: item.slot, product, quantity: item.quantity }] : [];
-      }),
+      // Mỗi dòng mang theo sản phẩm (snapshot lúc chọn); dòng lưu từ phiên bản cũ không có sản phẩm thì bỏ qua
+      state.items.flatMap((item) =>
+        item.product ? [{ slot: item.slot, product: item.product, quantity: item.quantity }] : []
+      ),
     [state.items]
   );
 
@@ -72,7 +69,7 @@ export const BuilderProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...prev,
       items: [
         ...prev.items.filter((i) => i.slot !== slot),
-        { slot, productId: product.id, quantity: 1 },
+        { slot, productId: product.id, quantity: 1, product },
       ],
     }));
   };
@@ -91,7 +88,8 @@ export const BuilderProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const loadBuild = (build: PcBuild, asCopy = false) => {
     setState({
-      items: build.items,
+      // Sản phẩm đã ngừng bán / bị ẩn không còn trong cấu hình
+      items: build.items.filter((i) => i.product),
       editing: asCopy
         ? null
         : { code: build.code, name: build.name, purpose: build.purpose, isPublic: build.isPublic },

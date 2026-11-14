@@ -13,7 +13,8 @@ import { useProducts } from '../../hooks/useProducts';
 import { useAuth } from '../../context/AuthContext';
 import { useBuilder, MAX_SLOT_QUANTITY } from '../../context/BuilderContext';
 import { useCart } from '../../context/CartContext';
-import { checkCompatibility } from '../../services/api/compatibilityService';
+import { EMPTY_COMPATIBILITY, checkCompatibility } from '../../services/api/compatibilityService';
+import { useCompatibility } from '../../hooks/useCompatibility';
 import { BuilderSlotId, Product } from '../../types/product';
 import { formatCurrency } from '../../utils/format';
 import { buildShareUrl, copyToClipboard } from '../../utils/share';
@@ -34,7 +35,10 @@ export const PCBuilderPage: React.FC = () => {
   const total = lines.reduce((sum, l) => sum + l.product.price * l.quantity, 0);
   const selectedCount = lines.length;
   const progressPercent = (selectedCount / BUILDER_SLOTS.length) * 100;
-  const compatibility = useMemo(() => checkCompatibility(lines), [lines]);
+  // Kết quả chính thức từ rule engine của catalog-service; gợi ý trong ngăn chọn bên dưới dùng bản rút gọn tại chỗ
+  const { data: compatibility = EMPTY_COMPATIBILITY } = useCompatibility(
+    lines.map((l) => ({ sku: l.product.id, quantity: l.quantity }))
+  );
   const psuWattage = rig.psu?.compat?.wattage;
 
   const currentSlotConfig = BUILDER_SLOTS.find((s) => s.id === activeSlot);

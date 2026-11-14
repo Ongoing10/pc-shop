@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Alert, App, Button, Card, Input, Modal, Segmented, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { useAdminData } from '../../../context/AdminDataContext';
+import { useAdminRefunds } from '../../../hooks/admin/useAdminApi';
 import { useAdminSession } from '../../../context/AdminSessionContext';
 import { AdminRefund, RefundStatus } from '../../../types/admin';
 import { PAYMENT_METHOD_LABEL, REFUND_STATUS_META } from '../../../utils/adminStatus';
@@ -21,16 +21,13 @@ type Filter = 'all' | RefundStatus;
 export const RefundsPage: React.FC = () => {
   const { message } = App.useApp();
   const { can } = useAdminSession();
-  const {
-    refunds: [refunds],
-  } = useAdminData();
+  const { data: refunds = [], isLoading } = useAdminRefunds();
   const { completeRefund } = useOrderActions();
   const [filter, setFilter] = useState<Filter>(1);
   const [target, setTarget] = useState<AdminRefund | null>(null);
   const [providerRefundId, setProviderRefundId] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // TODO ghép API: GET /admin/refunds?status=
   const data = useMemo(
     () => (filter === 'all' ? refunds : refunds.filter((r) => r.status === filter)).slice().sort((a, b) => b.id - a.id),
     [refunds, filter]
@@ -41,10 +38,15 @@ export const RefundsPage: React.FC = () => {
   const submit = async () => {
     if (!target) return;
     setSaving(true);
-    await completeRefund(target, providerRefundId.trim() || null);
-    setSaving(false);
-    message.success(`Đã ghi nhận hoàn ${formatCurrency(target.amount)} cho đơn ${target.orderCode}`);
-    setTarget(null);
+    try {
+      await completeRefund(target, providerRefundId.trim() || null);
+      message.success(`Đã ghi nhận hoàn ${formatCurrency(target.amount)} cho đơn ${target.orderCode}`);
+      setTarget(null);
+    } catch (e) {
+      message.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const columns: TableColumnsType<AdminRefund> = [
@@ -122,7 +124,7 @@ export const RefundsPage: React.FC = () => {
             { value: 'all', label: 'Tất cả' },
           ]}
         />
-        <Table rowKey="id" columns={columns} dataSource={data} pagination={{ pageSize: 20, hideOnSinglePage: true }} />
+        <Table rowKey="id" columns={columns} dataSource={data} loading={isLoading} pagination={{ pageSize: 20, hideOnSinglePage: true }} />
       </Card>
 
       <Modal
