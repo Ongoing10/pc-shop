@@ -2,7 +2,7 @@ package com.pcshop.ai.chat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pcshop.ai.assistant.ShopAssistant;
-import com.pcshop.ai.model.OllamaModels;
+// import com.pcshop.ai.model.OllamaModels;
 import com.pcshop.contracts.BusinessException;
 import com.pcshop.contracts.ErrorCode;
 import io.smallrye.mutiny.Multi;
@@ -74,15 +74,17 @@ public class ChatService {
     @Inject
     ObjectMapper json;
 
-    @Inject
-    OllamaModels models;
+    // Cũ (Ollama): chặn chat khi đang tải model
+    // @Inject
+    // OllamaModels models;
 
-    @ConfigProperty(name = "quarkus.langchain4j.ollama.chat-model.model-id", defaultValue = "unknown")
+    // Cũ (Ollama): quarkus.langchain4j.ollama.chat-model.model-id
+    @ConfigProperty(name = "quarkus.langchain4j.ai.gemini.chat-model.model-id", defaultValue = "unknown")
     String model;
 
     /** Trả lời một lần (chờ hết câu trả lời). Chạy trên worker thread. */
     public ChatReply chat(String requestedSessionId, String message, UUID userId) {
-        models.requireReady();
+        // models.requireReady();
         String sessionId = start(requestedSessionId, message, userId);
         return answer(sessionId, message, userId, begin(sessionId));
     }
@@ -93,7 +95,7 @@ public class ChatService {
      * Khách đóng kết nối giữa chừng thì câu trả lời vẫn chạy xong và được lưu vào lịch sử phiên.
      */
     public Multi<ChatEvent> stream(String requestedSessionId, String message, UUID userId) {
-        models.requireReady();
+        // models.requireReady();
         String sessionId = start(requestedSessionId, message, userId);
         ChatTracker.Trace trace = begin(sessionId);
         return Multi.createFrom().emitter(emitter -> {

@@ -1,7 +1,7 @@
 package com.pcshop.ai.rag;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pcshop.ai.model.OllamaModels;
+// import com.pcshop.ai.model.OllamaModels;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -38,8 +38,9 @@ public class IngestionService {
     @Inject
     EmbeddingModel embeddingModel;
 
-    @Inject
-    OllamaModels models;
+    // Cũ (Ollama): chặn khi đang tải model
+    // @Inject
+    // OllamaModels models;
 
     @Inject
     ChunkRepository chunks;
@@ -47,7 +48,8 @@ public class IngestionService {
     @Inject
     ObjectMapper json;
 
-    @ConfigProperty(name = "quarkus.langchain4j.ollama.embedding-model.model-id", defaultValue = "unknown")
+    // Cũ (Ollama): quarkus.langchain4j.ollama.embedding-model.model-id
+    @ConfigProperty(name = "quarkus.langchain4j.ai.gemini.embedding-model.model-id", defaultValue = "unknown")
     String embeddingModelName;
 
     public record IngestResult(long documentId, int chunkCount, boolean skipped) {
@@ -58,12 +60,13 @@ public class IngestionService {
      */
     public IngestResult ingest(String title, int sourceType, String sourceRef, String content,
                                Map<String, Object> metadata, boolean splitIntoChunks, UUID createdBy) throws Exception {
-        String hash = sha256(title + "\n" + content + "\n" + metadata);
+        // Có tên model trong hash: đổi model embedding (vd bge-m3 → Gemini) thì lần nạp sau tự embed lại, không giữ vector cũ
+        String hash = sha256(embeddingModelName + "\n" + title + "\n" + content + "\n" + metadata);
         if (sourceRef != null && hash.equals(chunks.findContentHash(sourceType, sourceRef))) {
             return new IngestResult(-1, 0, true);                // nội dung không đổi, khỏi embed lại
         }
 
-        models.requireReady();
+        // models.requireReady();
         List<TextSegment> segments = splitIntoChunks
                 ? SPLITTER.split(Document.from(content))
                 : List.of(TextSegment.from(content));

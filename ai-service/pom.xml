@@ -83,11 +83,18 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-mongodb-client</artifactId>
         </dependency>
-        <!-- LLM + embedding chạy local bằng Ollama. Đổi sang Gemini/OpenAI: thay extension này -->
+        <!-- LLM + embedding qua Gemini API (Google AI Studio, cần GEMINI_API_KEY): máy chạy không phải cài model -->
+        <dependency>
+            <groupId>io.quarkiverse.langchain4j</groupId>
+            <artifactId>quarkus-langchain4j-ai-gemini</artifactId>
+        </dependency>
+        <!-- Cũ: chạy local bằng Ollama (qwen2.5:7b + bge-m3). Quay lại: bỏ comment, comment Gemini ở trên,
+             bỏ comment phần Ollama trong application.properties và model/OllamaModels*.java
         <dependency>
             <groupId>io.quarkiverse.langchain4j</groupId>
             <artifactId>quarkus-langchain4j-ollama</artifactId>
         </dependency>
+        -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>

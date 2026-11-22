@@ -1,7 +1,7 @@
 package com.pcshop.ai.rag;
 
 import com.pcshop.ai.chat.ChatTracker;
-import com.pcshop.ai.model.OllamaModels;
+// import com.pcshop.ai.model.OllamaModels;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
@@ -28,8 +28,9 @@ public class HybridContentRetriever implements ContentRetriever {
     @Inject
     EmbeddingModel embeddingModel;
 
-    @Inject
-    OllamaModels models;
+    // Cũ (Ollama): chặn khi đang tải model
+    // @Inject
+    // OllamaModels models;
 
     @Inject
     ChunkRepository chunks;
@@ -61,7 +62,7 @@ public class HybridContentRetriever implements ContentRetriever {
     }
 
     public List<ChunkRepository.ScoredChunk> search(String text, String category, int k) throws Exception {
-        models.requireReady();
+        // models.requireReady();
         float[] queryVector = embeddingModel.embed(text).content().vector();
         return chunks.search(queryVector, text, category, k);
     }
