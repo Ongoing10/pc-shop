@@ -29,6 +29,7 @@ import { useAdminUser } from '../../../context/AdminSessionContext';
 import { AdminUser, Permission, RealmRole } from '../../../types/admin';
 import { PERMISSION_LABEL, ROLE_LABEL } from '../../../utils/adminStatus';
 import { formatDate } from '../../../utils/orderStatus';
+import { t } from '../../../i18n/t';
 
 const ROLES: RealmRole[] = ['ADMIN', 'STAFF', 'CUSTOMER'];
 const PERMISSIONS = Object.keys(PERMISSION_LABEL) as Permission[];
@@ -81,7 +82,7 @@ export const UsersPage: React.FC = () => {
   const saveRoles = async () => {
     if (!current) return;
     if (current.id === me.id && current.realmRoles.includes('ADMIN') && !roles.includes('ADMIN')) {
-      setRoleError('Không thể tự gỡ quyền ADMIN của chính mình (400).');
+      setRoleError(t('admin.users.youCannotRemoveYourOwn', 'Không thể tự gỡ quyền ADMIN của chính mình (400).'));
       return;
     }
     setSaving(true);
@@ -89,7 +90,7 @@ export const UsersPage: React.FC = () => {
       // danh sách đầy đủ, thay thế (không cộng thêm)
       await setUserRoles.mutateAsync({ id: current.id, body: { realmRoles: roles, permissions: perms } });
       setRoleError(undefined);
-      message.success(`Đã cập nhật quyền của ${current.username}`);
+      message.success(t('admin.users.updatedPermissionsOf', 'Đã cập nhật quyền của {{username}}', { username: current.username }));
     } catch (e) {
       setRoleError((e as Error).message);
     } finally {
@@ -100,15 +101,16 @@ export const UsersPage: React.FC = () => {
   const toggleLock = (u: AdminUser) => {
     const locking = u.active;
     modal.confirm({
-      title: locking ? `Khóa tài khoản ${u.username}?` : `Mở khóa tài khoản ${u.username}?`,
-      content: locking ? 'Người dùng sẽ không đăng nhập được cho đến khi được mở lại.' : undefined,
-      okText: locking ? 'Khóa' : 'Mở khóa',
+      centered: true,
+      title: locking ? t('admin.users.lockAccount', 'Khóa tài khoản {{username}}?', { username: u.username }) : t('admin.users.unlockAccount', 'Mở khóa tài khoản {{username}}?', { username: u.username }),
+      content: locking ? t('admin.users.theUserWillNotBe', 'Người dùng sẽ không đăng nhập được cho đến khi được mở lại.') : undefined,
+      okText: locking ? t('admin.common.key', 'Khóa') : t('admin.users.unlock', 'Mở khóa'),
       okButtonProps: { danger: locking },
-      cancelText: 'Hủy',
+      cancelText: t('admin.common.cancel', 'Hủy'),
       onOk: async () => {
         try {
           await setUserLocked.mutateAsync({ id: u.id, locked: locking });
-          message.success(locking ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản');
+          message.success(locking ? t('admin.users.accountLocked', 'Đã khóa tài khoản') : t('admin.users.accountUnlocked', 'Đã mở khóa tài khoản'));
         } catch (e) {
           message.error((e as Error).message);
         }
@@ -131,7 +133,7 @@ export const UsersPage: React.FC = () => {
         permissions: v.permissions,
       });
       setCreateOpen(false);
-      message.success(`Đã tạo tài khoản ${v.username}`);
+      message.success(t('admin.users.createdAccount', 'Đã tạo tài khoản {{username}}', { username: v.username }));
     } catch (e) {
       const err = e as ApiError;
       // username / email trùng → 409
@@ -144,7 +146,7 @@ export const UsersPage: React.FC = () => {
 
   const columns: TableColumnsType<AdminUser> = [
     {
-      title: 'Tài khoản',
+      title: t('admin.common.account', 'Tài khoản'),
       dataIndex: 'username',
       render: (username: string, u) => (
         <Flex gap={10} align="center">
@@ -157,9 +159,9 @@ export const UsersPage: React.FC = () => {
       ),
     },
     { title: 'Email', dataIndex: 'email', render: (v: string | null) => v ?? '–' },
-    { title: 'SĐT', dataIndex: 'phoneNumber', width: 120, render: (v: string | null) => v ?? '–' },
+    { title: t('admin.users.phone', 'SĐT'), dataIndex: 'phoneNumber', width: 120, render: (v: string | null) => v ?? '–' },
     {
-      title: 'Vai trò',
+      title: t('admin.users.role', 'Vai trò'),
       dataIndex: 'realmRoles',
       width: 190,
       render: (r: RealmRole[]) =>
@@ -172,14 +174,14 @@ export const UsersPage: React.FC = () => {
             ))}
           </Flex>
         ) : (
-          <Typography.Text type="secondary">Khách tự đăng ký</Typography.Text>
+          <Typography.Text type="secondary">{t('admin.users.selfRegisteredCustomer', 'Khách tự đăng ký')}</Typography.Text>
         ),
     },
     {
-      title: 'Trạng thái',
+      title: t('admin.common.status', 'Trạng thái'),
       dataIndex: 'active',
       width: 120,
-      render: (a: boolean) => <Badge status={a ? 'success' : 'error'} text={a ? 'Hoạt động' : 'Đã khóa'} />,
+      render: (a: boolean) => <Badge status={a ? 'success' : 'error'} text={a ? t('admin.common.active', 'Hoạt động') : t('admin.users.locked', 'Đã khóa')} />,
     },
     {
       title: '',
@@ -197,7 +199,7 @@ export const UsersPage: React.FC = () => {
             toggleLock(u);
           }}
         >
-          {u.active ? 'Khóa' : 'Mở khóa'}
+          {u.active ? t('admin.common.key', 'Khóa') : t('admin.users.unlock', 'Mở khóa')}
         </Button>
       ),
     },
@@ -206,8 +208,8 @@ export const UsersPage: React.FC = () => {
   return (
     <>
       <AdminPageHeader
-        title="Người dùng & phân quyền"
-        subtitle="Tài khoản lưu trong Keycloak; bấm một dòng để sửa vai trò và quyền"
+        title={t('admin.common.usersPermissions', 'Người dùng & phân quyền')}
+        subtitle={t('admin.users.accountsLiveInKeycloakClick', 'Tài khoản lưu trong Keycloak; bấm một dòng để sửa vai trò và quyền')}
         extra={
           <Button
             type="primary"
@@ -217,7 +219,7 @@ export const UsersPage: React.FC = () => {
               setCreateOpen(true);
             }}
           >
-            Tạo tài khoản nhân viên
+            {t('admin.users.createStaffAccount', 'Tạo tài khoản nhân viên')}
           </Button>
         }
       />
@@ -226,7 +228,7 @@ export const UsersPage: React.FC = () => {
         <Flex className="admin-filters">
           <Input.Search
             allowClear
-            placeholder="Tên đăng nhập, họ tên hoặc email"
+            placeholder={t('admin.users.usernameFullNameOrEmail', 'Tên đăng nhập, họ tên hoặc email')}
             style={{ width: 320 }}
             onSearch={setKeyword}
             onChange={(e) => !e.target.value && setKeyword('')}
@@ -238,7 +240,7 @@ export const UsersPage: React.FC = () => {
           dataSource={data}
           loading={isLoading}
           onRow={(u) => ({ onClick: () => openUser(u), style: { cursor: 'pointer' } })}
-          pagination={{ pageSize: 20, showTotal: (t) => `${t} tài khoản` }}
+          pagination={{ pageSize: 20, showTotal: (n) => t('admin.users.accounts', '{{count}} tài khoản', { count: n }) }}
         />
       </Card>
 
@@ -249,7 +251,7 @@ export const UsersPage: React.FC = () => {
         onClose={() => setOpenId(undefined)}
         extra={
           <Button type="primary" loading={saving} onClick={saveRoles}>
-            Lưu quyền
+            {t('admin.users.savePermissions', 'Lưu quyền')}
           </Button>
         }
       >
@@ -261,24 +263,24 @@ export const UsersPage: React.FC = () => {
               items={[
                 { key: 'id', label: 'ID (sub)', children: <span className="admin-mono">{current.id}</span> },
                 { key: 'email', label: 'Email', children: current.email ?? '–' },
-                { key: 'phone', label: 'SĐT', children: current.phoneNumber ?? '–' },
-                { key: 'created', label: 'Ngày tạo', children: current.createdTimestamp ? formatDate(new Date(current.createdTimestamp).toISOString()) : '–' },
+                { key: 'phone', label: t('admin.users.phone', 'SĐT'), children: current.phoneNumber ?? '–' },
+                { key: 'created', label: t('admin.users.createdOn', 'Ngày tạo'), children: current.createdTimestamp ? formatDate(new Date(current.createdTimestamp).toISOString()) : '–' },
                 {
                   key: 'active',
-                  label: 'Trạng thái',
-                  children: <Badge status={current.active ? 'success' : 'error'} text={current.active ? 'Hoạt động' : 'Đã khóa'} />,
+                  label: t('admin.common.status', 'Trạng thái'),
+                  children: <Badge status={current.active ? 'success' : 'error'} text={current.active ? t('admin.common.active', 'Hoạt động') : t('admin.users.locked', 'Đã khóa')} />,
                 },
               ]}
             />
 
-            <Divider titlePlacement="start">Vai trò (realm role)</Divider>
+            <Divider titlePlacement="start">{t('admin.users.rolesRealmRole', 'Vai trò (realm role)')}</Divider>
             <Checkbox.Group
               value={roles}
               onChange={(v) => setRoles(v as RealmRole[])}
               options={ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
             />
 
-            <Divider titlePlacement="start">Quyền thao tác (permission)</Divider>
+            <Divider titlePlacement="start">{t('admin.users.permissions', 'Quyền thao tác (permission)')}</Divider>
             <Checkbox.Group value={perms} onChange={(v) => setPerms(v as Permission[])} style={{ width: '100%' }}>
               <Flex vertical gap={10}>
                 {PERMISSIONS.map((p) => (
@@ -297,7 +299,7 @@ export const UsersPage: React.FC = () => {
                 type="warning"
                 showIcon
                 style={{ marginTop: 16 }}
-                title="Tài khoản không có vai trò Nhân viên/Quản trị nên không vào được trang quản trị dù có quyền thao tác."
+                title={t('admin.users.theAccountHasNoStaff', 'Tài khoản không có vai trò Nhân viên/Quản trị nên không vào được trang quản trị dù có quyền thao tác.')}
               />
             )}
             {roleError && <Alert type="error" showIcon style={{ marginTop: 16 }} title={roleError} />}
@@ -306,11 +308,12 @@ export const UsersPage: React.FC = () => {
       </Drawer>
 
       <Modal
+        centered
         open={createOpen}
-        title="Tạo tài khoản nhân viên"
+        title={t('admin.users.createStaffAccount', 'Tạo tài khoản nhân viên')}
         width={640}
-        okText="Tạo tài khoản"
-        cancelText="Hủy"
+        okText={t('admin.users.createAccount', 'Tạo tài khoản')}
+        cancelText={t('admin.common.cancel', 'Hủy')}
         confirmLoading={saving}
         onOk={createStaff}
         onCancel={() => setCreateOpen(false)}
@@ -323,60 +326,60 @@ export const UsersPage: React.FC = () => {
           initialValues={{ temporaryPassword: true, realmRoles: ['STAFF'], permissions: [] }}
         >
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="username"
-                label="Tên đăng nhập"
+                label={t('admin.users.username', 'Tên đăng nhập')}
                 rules={[
-                  { required: true, message: 'Nhập tên đăng nhập' },
-                  { pattern: /^[a-z0-9._-]{3,50}$/, message: '3–50 ký tự thường: a-z, 0-9, . _ -' },
+                  { required: true, message: t('admin.common.enterAUsername', 'Nhập tên đăng nhập') },
+                  { pattern: /^[a-z0-9._-]{3,50}$/, message: t('admin.users.n350LowercaseCharactersA', '3–50 ký tự thường: a-z, 0-9, . _ -') },
                 ]}
               >
                 <Input placeholder="vd staff2" />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Email không hợp lệ' }]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: t('admin.users.invalidEmail', 'Email không hợp lệ') }]}>
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="lastName" label="Họ">
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label={t('admin.users.lastName', 'Họ')}>
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="firstName" label="Tên" rules={[{ required: true, whitespace: true, message: 'Nhập tên' }]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="firstName" label={t('admin.common.name', 'Tên')} rules={[{ required: true, whitespace: true, message: t('admin.common.enterAName', 'Nhập tên') }]}>
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="password"
-                label="Mật khẩu"
+                label={t('admin.common.password', 'Mật khẩu')}
                 rules={[
-                  { required: true, message: 'Nhập mật khẩu' },
-                  { min: 6, max: 100, message: '6–100 ký tự' },
+                  { required: true, message: t('admin.common.enterAPassword', 'Nhập mật khẩu') },
+                  { min: 6, max: 100, message: t('admin.users.n6100Characters', '6–100 ký tự') },
                 ]}
               >
                 <Input.Password />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="temporaryPassword" valuePropName="checked" label=" ">
-                <Checkbox>Bắt đổi mật khẩu khi đăng nhập lần đầu</Checkbox>
+                <Checkbox>{t('admin.users.requireAPasswordChangeOn', 'Bắt đổi mật khẩu khi đăng nhập lần đầu')}</Checkbox>
               </Form.Item>
             </Col>
             <Col span={24}>
               <Form.Item
                 name="realmRoles"
-                label="Vai trò"
+                label={t('admin.users.role', 'Vai trò')}
                 rules={[
                   {
                     validator: (_, v: RealmRole[]) =>
                       v?.includes('STAFF') || v?.includes('ADMIN')
                         ? Promise.resolve()
-                        : Promise.reject(new Error('Tài khoản nhân viên cần vai trò Nhân viên hoặc Quản trị')),
+                        : Promise.reject(new Error(t('admin.users.staffAccountsNeedTheStaff', 'Tài khoản nhân viên cần vai trò Nhân viên hoặc Quản trị'))),
                   },
                 ]}
               >
@@ -384,7 +387,7 @@ export const UsersPage: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={24}>
-              <Form.Item name="permissions" label="Quyền thao tác">
+              <Form.Item name="permissions" label={t('admin.users.permissions2', 'Quyền thao tác')}>
                 <Checkbox.Group options={PERMISSIONS.map((p) => ({ value: p, label: PERMISSION_LABEL[p] }))} />
               </Form.Item>
             </Col>

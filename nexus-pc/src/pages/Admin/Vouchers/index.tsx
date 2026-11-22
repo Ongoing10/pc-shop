@@ -18,6 +18,7 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -25,6 +26,7 @@ import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { BulkDeleteButton, RowDeleteButton } from '../../../components/admin/DeleteActions';
 import {
   useAdminCategories,
   useAdminVouchers,
@@ -37,6 +39,7 @@ import { AdminVoucher, VoucherType } from '../../../types/admin';
 import { VOUCHER_PHASE_META, VOUCHER_TYPE_LABEL, VoucherPhase, voucherPhase } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
 import { formatDate } from '../../../utils/orderStatus';
+import { t } from '../../../i18n/t';
 
 const { RangePicker } = DatePicker;
 
@@ -59,7 +62,7 @@ const moneyParser = (v: string | undefined) => Number((v ?? '').replace(/\./g, '
 const toLocalDateTime = (d?: Dayjs | null) => (d ? d.format('YYYY-MM-DDTHH:mm:ss') : null);
 
 const voucherValueText = (v: AdminVoucher) =>
-  v.type === 1 ? `Giảm ${v.value}%` : v.type === 2 ? `Giảm ${formatCurrency(v.value)}` : 'Miễn phí vận chuyển';
+  v.type === 1 ? t('admin.vouchers.off', 'Giảm {{value}}%', { value: v.value }) : v.type === 2 ? t('admin.vouchers.off2', 'Giảm {{amount}}', { amount: formatCurrency(v.value) }) : t('admin.common.freeShipping', 'Miễn phí vận chuyển');
 
 /** A08: quản lý voucher (chỉ ADMIN) */
 export const VouchersPage: React.FC = () => {
@@ -98,7 +101,21 @@ export const VouchersPage: React.FC = () => {
       {
         onSuccess: () => {
           setSelectedKeys([]);
-          message.success(`Đã ${active ? 'bật' : 'tắt'} ${ids.length} voucher`);
+          message.success(t('admin.vouchers.vouchers', 'Đã {{value}} {{count}} voucher', { value: active ? t('admin.common.enabled', 'bật') : t('admin.common.disabled', 'tắt'), count: ids.length }));
+        },
+        onError: (e) => message.error(e.message),
+      }
+    );
+  };
+
+  /** "Xóa" = tắt voucher (không xóa thật: đơn cũ vẫn tham chiếu mã) */
+  const remove = (ids: number[]) => {
+    setVouchersActive.mutate(
+      { ids, active: false },
+      {
+        onSuccess: () => {
+          setSelectedKeys([]);
+          message.success(t('admin.vouchers.deletedVouchers', 'Đã xóa {{count}} voucher', { count: ids.length }));
         },
         onError: (e) => message.error(e.message),
       }
@@ -123,16 +140,16 @@ export const VouchersPage: React.FC = () => {
     try {
       if (editing === 'new') {
         const created = await createVoucher.mutateAsync({ ...body, code: v.code.trim() });
-        message.success(`Đã tạo voucher ${created.code}`);
+        message.success(t('admin.vouchers.createdVoucher', 'Đã tạo voucher {{code}}', { code: created.code }));
       } else if (editing) {
         // version chống ghi đè: lệch → 409 "Voucher đã bị người khác thay đổi"
         await updateVoucher.mutateAsync({ id: editing.id, body: { ...body, version: editing.version } });
-        message.success('Đã lưu voucher');
+        message.success(t('admin.vouchers.voucherSaved', 'Đã lưu voucher'));
       }
       setEditing(null);
     } catch (e) {
       const err = e as ApiError;
-      if (err.status === 409 && editing === 'new') form.setFields([{ name: 'code', errors: ['Mã voucher đã tồn tại'] }]);
+      if (err.status === 409 && editing === 'new') form.setFields([{ name: 'code', errors: [t('admin.vouchers.voucherCodeAlreadyExists', 'Mã voucher đã tồn tại')] }]);
       else message.error(err.message);
     } finally {
       setSaving(false);
@@ -141,7 +158,7 @@ export const VouchersPage: React.FC = () => {
 
   const columns: TableColumnsType<AdminVoucher> = [
     {
-      title: 'Mã',
+      title: t('admin.common.code', 'Mã'),
       dataIndex: 'code',
       width: 150,
       render: (code: string, v) => (
@@ -156,21 +173,21 @@ export const VouchersPage: React.FC = () => {
       ),
     },
     {
-      title: 'Tên & ưu đãi',
+      title: t('admin.vouchers.nameOffer', 'Tên & ưu đãi'),
       dataIndex: 'name',
       render: (name: string, v) => (
         <div>
           <div className="admin-cell-title">{name}</div>
           <Typography.Text type="secondary">
             {voucherValueText(v)}
-            {v.maxDiscountAmount ? `, tối đa ${formatCurrency(v.maxDiscountAmount)}` : ''}
-            {v.minOrderAmount ? ` · đơn từ ${formatCurrency(v.minOrderAmount)}` : ''}
+            {v.maxDiscountAmount ? t('admin.vouchers.upTo', ', tối đa {{amount}}', { amount: formatCurrency(v.maxDiscountAmount) }) : ''}
+            {v.minOrderAmount ? t('admin.vouchers.ordersFrom', ' · đơn từ {{amount}}', { amount: formatCurrency(v.minOrderAmount) }) : ''}
           </Typography.Text>
         </div>
       ),
     },
     {
-      title: 'Áp dụng',
+      title: t('admin.common.apply', 'Áp dụng'),
       dataIndex: 'applicableCategories',
       width: 170,
       render: (codes: string[]) =>
@@ -183,11 +200,11 @@ export const VouchersPage: React.FC = () => {
             ))}
           </Flex>
         ) : (
-          <Typography.Text type="secondary">Mọi danh mục</Typography.Text>
+          <Typography.Text type="secondary">{t('admin.common.allCategories', 'Mọi danh mục')}</Typography.Text>
         ),
     },
     {
-      title: 'Đã dùng',
+      title: t('admin.vouchers.used', 'Đã dùng'),
       key: 'usage',
       width: 160,
       render: (_, v) =>
@@ -204,11 +221,11 @@ export const VouchersPage: React.FC = () => {
             />
           </div>
         ) : (
-          <Typography.Text>{v.usedCount ?? 0} lượt · không giới hạn</Typography.Text>
+          <Typography.Text>{v.usedCount ?? 0} {t('admin.vouchers.usesUnlimited', 'lượt · không giới hạn')}</Typography.Text>
         ),
     },
     {
-      title: 'Thời gian',
+      title: t('admin.common.time', 'Thời gian'),
       key: 'period',
       width: 190,
       render: (_, v) => {
@@ -219,14 +236,14 @@ export const VouchersPage: React.FC = () => {
             <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 2 }}>
               {v.startAt || v.endAt
                 ? `${v.startAt ? formatDate(v.startAt) : '…'} → ${v.endAt ? formatDate(v.endAt) : '…'}`
-                : 'Không thời hạn'}
+                : t('admin.vouchers.noExpiry', 'Không thời hạn')}
             </Typography.Text>
           </div>
         );
       },
     },
     {
-      title: 'Bật',
+      title: t('admin.common.enable', 'Bật'),
       dataIndex: 'isActive',
       width: 70,
       render: (a: number, v) => <Switch size="small" checked={a === 1} onChange={(c) => setActive([v.id], c)} />,
@@ -234,8 +251,21 @@ export const VouchersPage: React.FC = () => {
     {
       title: '',
       key: 'actions',
-      width: 56,
-      render: (_, v) => <Button type="text" size="small" icon={<EditOutlined />} aria-label="Sửa" onClick={() => openForm(v)} />,
+      width: 80,
+      render: (_, v) => (
+        <Flex gap={4}>
+          <Tooltip title={t('admin.common.edit', 'Sửa')}>
+            <Button type="text" size="small" icon={<EditOutlined />} aria-label={t('admin.common.edit', 'Sửa')} onClick={() => openForm(v)} />
+          </Tooltip>
+          <RowDeleteButton
+            title={t('admin.vouchers.deleteVoucher', 'Xóa voucher {{code}}?', { code: v.code })}
+            description={t('admin.vouchers.disablesTheVoucherPastOrders', 'Tắt voucher, đơn cũ giữ nguyên, có thể bật lại.')}
+            onConfirm={() => remove([v.id])}
+            disabled={!v.isActive}
+            disabledReason={t('admin.common.disabled2', 'Đã tắt')}
+          />
+        </Flex>
+      ),
     },
   ];
 
@@ -243,10 +273,10 @@ export const VouchersPage: React.FC = () => {
     <>
       <AdminPageHeader
         title="Voucher"
-        subtitle="Mã giảm giá áp ở bước thanh toán"
+        subtitle={t('admin.vouchers.discountCodesAppliedAtCheckout', 'Mã giảm giá áp ở bước thanh toán')}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            Tạo voucher
+            {t('admin.vouchers.createVoucher', 'Tạo voucher')}
           </Button>
         }
       />
@@ -257,21 +287,24 @@ export const VouchersPage: React.FC = () => {
             value={phase}
             onChange={setPhase}
             options={[
-              { value: 'all', label: 'Tất cả' },
-              { value: 'running', label: 'Đang chạy' },
-              { value: 'upcoming', label: 'Chưa bắt đầu' },
-              { value: 'expired', label: 'Hết hạn' },
+              { value: 'all', label: t('admin.common.all', 'Tất cả') },
+              { value: 'running', label: t('admin.common.running', 'Đang chạy') },
+              { value: 'upcoming', label: t('admin.common.notStarted', 'Chưa bắt đầu') },
+              { value: 'expired', label: t('admin.common.expired', 'Hết hạn') },
             ]}
           />
         </Flex>
 
         <BulkActionBar count={selectedKeys.length} onClear={() => setSelectedKeys([])}>
           <Button size="small" onClick={() => setActive(selectedKeys as number[], true)}>
-            Bật
+            {t('admin.common.enable', 'Bật')}
           </Button>
-          <Button size="small" danger onClick={() => setActive(selectedKeys as number[], false)}>
-            Tắt
-          </Button>
+          <BulkDeleteButton
+            count={selectedKeys.length}
+            noun="voucher"
+            content={t('admin.vouchers.theVouchersWillBeDisabled', 'Voucher sẽ bị tắt, khách không dùng được nữa; đơn cũ giữ nguyên và có thể bật lại.')}
+            onConfirm={() => remove(selectedKeys as number[])}
+          />
         </BulkActionBar>
 
         <Table
@@ -287,11 +320,12 @@ export const VouchersPage: React.FC = () => {
       </Card>
 
       <Modal
+        centered
         open={editing !== null}
-        title={editing === 'new' ? 'Tạo voucher' : `Sửa voucher ${editing?.code ?? ''}`}
+        title={editing === 'new' ? t('admin.vouchers.createVoucher', 'Tạo voucher') : t('admin.vouchers.editVoucher', 'Sửa voucher {{value}}', { value: editing?.code ?? '' })}
         width={680}
-        okText="Lưu"
-        cancelText="Hủy"
+        okText={t('admin.common.save', 'Lưu')}
+        cancelText={t('admin.common.cancel', 'Hủy')}
         confirmLoading={saving}
         onOk={submit}
         onCancel={() => setEditing(null)}
@@ -300,40 +334,40 @@ export const VouchersPage: React.FC = () => {
       >
         <Form form={form} layout="vertical" initialValues={{ type: 1, minOrderAmount: 0 }}>
           <Row gutter={16}>
-            <Col span={10}>
+            <Col xs={24} sm={10}>
               <Form.Item
                 name="code"
-                label="Mã"
+                label={t('admin.common.code', 'Mã')}
                 normalize={(v: string) => v?.toUpperCase()}
                 rules={[
-                  { required: true, message: 'Nhập mã' },
-                  { pattern: /^[A-Za-z0-9_-]{3,50}$/, message: '3–50 ký tự: chữ, số, _ hoặc -' },
+                  { required: true, message: t('admin.common.enterACode', 'Nhập mã') },
+                  { pattern: /^[A-Za-z0-9_-]{3,50}$/, message: t('admin.vouchers.n350CharactersLettersDigits', '3–50 ký tự: chữ, số, _ hoặc -') },
                 ]}
               >
                 <Input disabled={editing !== 'new'} className="admin-mono" placeholder="vd TET2027" />
               </Form.Item>
             </Col>
-            <Col span={14}>
-              <Form.Item name="name" label="Tên hiển thị" rules={[{ required: true, whitespace: true, message: 'Nhập tên' }]}>
+            <Col xs={24} sm={14}>
+              <Form.Item name="name" label={t('admin.vouchers.displayName', 'Tên hiển thị')} rules={[{ required: true, whitespace: true, message: t('admin.common.enterAName', 'Nhập tên') }]}>
                 <Input />
               </Form.Item>
             </Col>
             <Col span={24}>
-              <Form.Item name="type" label="Loại ưu đãi">
+              <Form.Item name="type" label={t('admin.vouchers.offerType', 'Loại ưu đãi')}>
                 <Radio.Group
                   optionType="button"
-                  options={([1, 2, 3] as VoucherType[]).map((t) => ({ value: t, label: VOUCHER_TYPE_LABEL[t] }))}
+                  options={([1, 2, 3] as VoucherType[]).map((n) => ({ value: n, label: VOUCHER_TYPE_LABEL[n] }))}
                 />
               </Form.Item>
             </Col>
             {type !== 3 && (
-              <Col span={12}>
+              <Col xs={24} sm={12}>
                 <Form.Item
                   name="value"
-                  label={type === 1 ? 'Phần trăm giảm' : 'Số tiền giảm'}
+                  label={type === 1 ? t('admin.vouchers.discountPercentage', 'Phần trăm giảm') : t('admin.vouchers.discountAmount', 'Số tiền giảm')}
                   rules={[
-                    { required: true, message: 'Nhập mức giảm' },
-                    { type: 'number', min: 1, max: type === 1 ? 100 : undefined, message: type === 1 ? '1–100%' : 'Phải lớn hơn 0' },
+                    { required: true, message: t('admin.vouchers.enterTheDiscount', 'Nhập mức giảm') },
+                    { type: 'number', min: 1, max: type === 1 ? 100 : undefined, message: type === 1 ? '1–100%' : t('admin.vouchers.mustBeGreaterThan0', 'Phải lớn hơn 0') },
                   ]}
                 >
                   {type === 1 ? (
@@ -345,34 +379,34 @@ export const VouchersPage: React.FC = () => {
               </Col>
             )}
             {type === 1 && (
-              <Col span={12}>
-                <Form.Item name="maxDiscountAmount" label="Giảm tối đa">
+              <Col xs={24} sm={12}>
+                <Form.Item name="maxDiscountAmount" label={t('admin.vouchers.maximumDiscount', 'Giảm tối đa')}>
                   <InputNumber suffix="₫" step={50000} formatter={moneyFormatter} parser={moneyParser} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
             )}
-            <Col span={12}>
-              <Form.Item name="minOrderAmount" label="Đơn tối thiểu">
+            <Col xs={24} sm={12}>
+              <Form.Item name="minOrderAmount" label={t('admin.vouchers.minimumOrder', 'Đơn tối thiểu')}>
                 <InputNumber suffix="₫" min={0} step={100000} formatter={moneyFormatter} parser={moneyParser} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="applicableCategories" label="Danh mục áp dụng" extra="Để trống = mọi danh mục">
+            <Col xs={24} sm={12}>
+              <Form.Item name="applicableCategories" label={t('admin.vouchers.applicableCategories', 'Danh mục áp dụng')} extra={t('admin.vouchers.emptyAllCategories', 'Để trống = mọi danh mục')}>
                 <Select mode="multiple" allowClear options={categories.map((c) => ({ value: c.code, label: c.name }))} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="usageLimit" label="Tổng lượt dùng" extra="Để trống = không giới hạn">
+            <Col xs={24} sm={12}>
+              <Form.Item name="usageLimit" label={t('admin.vouchers.totalUses', 'Tổng lượt dùng')} extra={t('admin.vouchers.emptyUnlimited', 'Để trống = không giới hạn')}>
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item name="perUserLimit" label="Lượt mỗi khách">
+            <Col xs={24} sm={12}>
+              <Form.Item name="perUserLimit" label={t('admin.vouchers.usesPerCustomer', 'Lượt mỗi khách')}>
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={24}>
-              <Form.Item name="period" label="Thời gian hiệu lực" extra="Giờ Việt Nam. Để trống = không thời hạn">
+              <Form.Item name="period" label={t('admin.vouchers.validityPeriod', 'Thời gian hiệu lực')} extra={t('admin.vouchers.vietnamTimeEmptyNoExpiry', 'Giờ Việt Nam. Để trống = không thời hạn')}>
                 <RangePicker showTime format="DD/MM/YYYY HH:mm" allowEmpty={[true, true]} style={{ width: '100%' }} />
               </Form.Item>
             </Col>

@@ -48,7 +48,7 @@ export const AccountShell: React.FC<AccountShellProps> = ({ title, subtitle, par
       label: (
         <Link to={item.key} className="menu-link">
           {item.label}
-          {item.badge ? <Badge count={item.badge} color="var(--accent)" className="menu-badge" /> : null}
+          {item.badge ? <Badge count={item.badge} color="var(--accent-solid)" className="menu-badge" /> : null}
         </Link>
       ),
     })),

@@ -5,6 +5,7 @@ import { Footer } from './Footer';
 import { CartDrawer } from '../cart/CartDrawer';
 import { CompareFloatBar } from '../compare/CompareFloatBar';
 import { ScrollToTop } from '../common/ScrollToTop';
+import { ChatWidget } from '../chat/ChatWidget';
 
 export const MainLayout: React.FC = () => {
   const { pathname } = useLocation();
@@ -23,6 +24,7 @@ export const MainLayout: React.FC = () => {
       <CartDrawer />
       <CompareFloatBar />
       <ScrollToTop />
+      <ChatWidget />
     </div>
   );
 };

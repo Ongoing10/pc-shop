@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Alert, Button, Flex } from 'antd';
 import type { BulkErrorItem } from './bulk';
+import { t } from '../../i18n/t';
 
 interface BulkActionBarProps {
   count: number;
@@ -19,7 +20,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({ count, onClear, ch
         type="error"
         showIcon
         className="admin-bulk-errors"
-        title={`Không thực hiện được: ${errors.length} dòng lỗi, chưa có thay đổi nào được lưu`}
+        title={t('admin.bulk.nothingWasDoneRowsHave', 'Không thực hiện được: {{count}} dòng lỗi, chưa có thay đổi nào được lưu', { count: errors.length })}
         description={
           <ul>
             {errors.map((e) => (
@@ -39,10 +40,10 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({ count, onClear, ch
         title={
           <Flex align="center" gap={12} wrap>
             <span>
-              Đã chọn <b>{count}</b> dòng
+              {t('admin.bulk.selected', 'Đã chọn')} <b>{count}</b> {t('admin.bulk.rows', 'dòng')}
             </span>
             <Button size="small" type="link" onClick={onClear}>
-              Bỏ chọn
+              {t('admin.bulk.clearSelection', 'Bỏ chọn')}
             </Button>
           </Flex>
         }

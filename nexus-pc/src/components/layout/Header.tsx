@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge, Button, ConfigProvider, Drawer, Dropdown, Form, Input, Menu, MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { MenuOutlined, SearchOutlined, DownOutlined, LogoutOutlined } from '@ant-design/icons';
-import { FiShoppingCart, FiUser, FiTruck, FiHeadphones, FiLock, FiPackage, FiShield, FiInfo, FiFileText, FiHeart, FiMapPin, FiCpu, FiBell } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiTruck, FiHeadphones, FiLock, FiPackage, FiInfo, FiFileText, FiHeart, FiMapPin, FiCpu, FiBell } from 'react-icons/fi';
 import { BsArrowLeftRight, BsCpu, BsGrid } from 'react-icons/bs';
 import { Logo } from '../common/Logo';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
@@ -14,10 +14,12 @@ import { useCompare } from '../../context/CompareContext';
 import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../context/FavoritesContext';
 import { useCategories } from '../../hooks/useCategories';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../context/ThemeContext';
+import { ThemeToggle } from '../common/ThemeToggle';
+import type { ThemeColors } from '../../theme/colors';
 
-/** Menu ngang điều hướng: chữ trắng khi chọn, không nền; gạch chân màu nhấn chỉnh ở CSS (.nav-menu) */
-const navMenuTheme = {
+/** Menu ngang điều hướng: chữ đậm màu khi chọn, không nền; gạch chân màu nhấn chỉnh ở CSS (.nav-menu) */
+const navMenuTheme = (colors: ThemeColors) => ({
   components: {
     Menu: {
       itemColor: colors.textSecondary,
@@ -29,7 +31,7 @@ const navMenuTheme = {
       activeBarHeight: 2,
     },
   },
-};
+});
 
 export const Header: React.FC = () => {
   const { t } = useTranslation();
@@ -41,6 +43,7 @@ export const Header: React.FC = () => {
   const { favoritesCount } = useFavorites();
   const { data: categories = [] } = useCategories();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { colors } = useAppTheme();
 
   const handleSearchSubmit = ({ q }: { q?: string }) => {
     const query = q?.trim() ?? '';
@@ -113,7 +116,7 @@ export const Header: React.FC = () => {
       <NavLink to="/compare">
         <BsArrowLeftRight aria-hidden="true" />
         {t('nav.compare', 'So sánh')}
-        {compareCount > 0 && <Badge count={compareCount} color="var(--accent)" className="count-badge" />}
+        {compareCount > 0 && <Badge count={compareCount} color="var(--accent-solid)" className="count-badge" />}
       </NavLink>
       <Link to="/products?sort=discount">{t('nav.deals', 'Khuyến mãi')}</Link>
     </>
@@ -136,7 +139,7 @@ export const Header: React.FC = () => {
         <span className="nav-tab">
           <BsArrowLeftRight aria-hidden="true" />
           {t('nav.compare', 'So sánh')}
-          {compareCount > 0 && <Badge count={compareCount} color="var(--accent)" className="count-badge" />}
+          {compareCount > 0 && <Badge count={compareCount} color="var(--accent-solid)" className="count-badge" />}
         </span>
       ),
     },
@@ -149,26 +152,6 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <div className="topline">
-        <div className="container">
-          <div className="topline-info">
-            <span>
-              <FiShield aria-hidden="true" />
-              {t('topline.genuine', 'Linh kiện PC chính hãng')}
-            </span>
-            <span>
-              <FiTruck aria-hidden="true" />
-              {t('topline.delivery', 'Giao hàng toàn quốc')}
-            </span>
-            <span>
-              <FiHeadphones aria-hidden="true" />
-              {t('topline.support', 'Hotline 1900 6868 · 8:00–21:30')}
-            </span>
-          </div>
-          <LanguageSwitcher />
-        </div>
-      </div>
-
       <header className="header">
         <div className="container head">
           <button
@@ -204,7 +187,7 @@ export const Header: React.FC = () => {
 
           <div className="head-actions">
             <Link to="/favorites" className="head-fav" aria-label={`${t('favorites.title', 'Sản phẩm yêu thích')} (${favoritesCount})`}>
-              <Badge count={favoritesCount} offset={[2, -2]} overflowCount={99} color="var(--accent)" style={{ color: 'var(--on-accent)', fontWeight: 700 }}>
+              <Badge count={favoritesCount} offset={[2, -2]} overflowCount={99} color="var(--accent-solid)" style={{ color: 'var(--on-accent)', fontWeight: 700 }}>
                 <FiHeart style={{ fontSize: 20, color: 'var(--text)' }} aria-hidden="true" />
               </Badge>
             </Link>
@@ -236,7 +219,7 @@ export const Header: React.FC = () => {
             )}
 
             <button onClick={openDrawer} type="button" aria-label={`${t('nav.cart', 'Giỏ hàng')} (${cartCount})`}>
-              <Badge count={cartCount} offset={[2, -2]} overflowCount={99} color="var(--accent)" style={{ color: 'var(--on-accent)', fontWeight: 700 }}>
+              <Badge count={cartCount} offset={[2, -2]} overflowCount={99} color="var(--accent-solid)" style={{ color: 'var(--on-accent)', fontWeight: 700 }}>
                 <FiShoppingCart style={{ fontSize: 20, color: 'var(--text)' }} aria-hidden="true" />
               </Badge>
               <span className="head-label">{t('nav.cart', 'Giỏ hàng')}</span>
@@ -252,7 +235,7 @@ export const Header: React.FC = () => {
               <DownOutlined style={{ fontSize: 13 }} />
             </button>
           </Dropdown>
-          <ConfigProvider theme={navMenuTheme}>
+          <ConfigProvider theme={navMenuTheme(colors)}>
             <Menu
               mode="horizontal"
               className="nav-menu"
@@ -261,10 +244,18 @@ export const Header: React.FC = () => {
               onClick={({ key }) => navigate(key)}
             />
           </ConfigProvider>
-          <Link className="nav-aside" to="/account/orders">
-            <FiTruck aria-hidden="true" />
-            {t('nav.trackOrder', 'Tra cứu đơn hàng')}
-          </Link>
+          <div className="nav-aside">
+            <a href="tel:19006868" className="nav-hotline">
+              <FiHeadphones aria-hidden="true" />
+              {t('topline.support', 'Hotline 1900 6868 · 8:00–21:30')}
+            </a>
+            <Link to="/account/orders">
+              <FiTruck aria-hidden="true" />
+              {t('nav.trackOrder', 'Tra cứu đơn hàng')}
+            </Link>
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
         </nav>
       </header>
 
@@ -282,7 +273,7 @@ export const Header: React.FC = () => {
           </Link>
           <Link to="/favorites">
             <FiHeart aria-hidden="true" /> {t('favorites.title', 'Sản phẩm yêu thích')}
-            {favoritesCount > 0 && <Badge count={favoritesCount} color="var(--accent)" className="count-badge" />}
+            {favoritesCount > 0 && <Badge count={favoritesCount} color="var(--accent-solid)" className="count-badge" />}
           </Link>
           <Link to="/about">
             <FiInfo aria-hidden="true" /> {t('footer.aboutTitle', 'Về NEXUS PC')}
@@ -297,6 +288,14 @@ export const Header: React.FC = () => {
                 <CategoryIcon id={c.id} /> {c.name}
               </Link>
             ))}
+          </div>
+
+          <div className="group">
+            <a href="tel:19006868">
+              <FiHeadphones aria-hidden="true" /> {t('topline.support', 'Hotline 1900 6868 · 8:00–21:30')}
+            </a>
+            <LanguageSwitcher />
+            <ThemeToggle />
           </div>
 
           <div className="group">

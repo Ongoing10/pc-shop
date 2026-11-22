@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t';
 /** Một dòng lỗi của API hàng loạt (BulkErrors ở shared-contracts) */
 export interface BulkErrorItem {
   id: string;
@@ -16,7 +17,7 @@ export const collectBulkErrors = <T,>(
   getId: (row: T) => string,
   check: (row: T) => string | null
 ): BulkErrorItem[] => {
-  if (rows.length > BULK_LIMIT) return [{ id: '*', reason: `Tối đa ${BULK_LIMIT} dòng mỗi lần` }];
+  if (rows.length > BULK_LIMIT) return [{ id: '*', reason: t('admin.bulk.atMostRowsAtA', 'Tối đa {{bulkLimit}} dòng mỗi lần', { bulkLimit: BULK_LIMIT }) }];
   return rows.flatMap((row) => {
     const reason = check(row);
     return reason ? [{ id: getId(row), reason }] : [];

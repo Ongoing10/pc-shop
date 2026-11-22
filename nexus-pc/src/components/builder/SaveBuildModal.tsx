@@ -55,6 +55,7 @@ export const SaveBuildModal: React.FC<SaveBuildModalProps> = ({ open, asNew = fa
 
   return (
     <Modal
+      centered
       open={open}
       title={editing && !asNew ? t('builder.updateTitle', 'Cập nhật cấu hình') : t('builder.saveTitle', 'Lưu cấu hình')}
       onCancel={onClose}

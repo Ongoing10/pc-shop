@@ -1,5 +1,7 @@
 package com.pcshop.ai.rag;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -9,9 +11,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -23,13 +28,16 @@ import java.util.UUID;
 public class ChunkRepository {
 
     public static final int STATUS_INDEXED = 3;
+    public static final int STATUS_ARCHIVED = 5;
 
     public record NewChunk(int index, String content, String metadataJson, float[] embedding) {
     }
 
-    public record ScoredChunk(long chunkId, long documentId, String title, String content, String metadataJson,
+    public record ScoredChunk(long chunkId, long documentId, String title, String content,
+                              @JsonRawValue @JsonProperty("metadata") String metadataJson,
                               double vectorScore, double textScore) {
 
+        @JsonProperty
         public double score() {
             return 0.7 * vectorScore + 0.3 * textScore;
         }
@@ -157,6 +165,165 @@ public class ChunkRepository {
                 }
             }
             return result;
+        }
+    }
+
+    /**
+     * Gỡ tài liệu khỏi kho tri thức: XÓA THẬT chunk (để chatbot không còn truy xuất được) và chuyển tài liệu sang
+     * ARCHIVED (giữ lại dòng để biết đã từng có). Trả false nếu không có tài liệu đang dùng.
+     */
+    @Transactional(rollbackOn = Exception.class)
+    public boolean archive(long documentId) throws SQLException {
+        try (Connection c = dataSource.getConnection()) {
+            return archive(c, documentId);
+        }
+    }
+
+    /** Như {@link #archive(long)} nhưng tìm theo nguồn (vd sản phẩm theo SKU). */
+    @Transactional(rollbackOn = Exception.class)
+    public boolean archiveBySource(int sourceType, String sourceRef) throws SQLException {
+        try (Connection c = dataSource.getConnection()) {
+            Long id = findDocumentId(c, sourceType, sourceRef);
+            return id != null && archive(c, id);
+        }
+    }
+
+    /** source_ref của mọi tài liệu đang dùng thuộc một loại nguồn (vd SKU đã index). */
+    public List<String> activeSourceRefs(int sourceType) throws SQLException {
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     SELECT source_ref FROM ai.knowledge_documents
+                     WHERE source_type = ? AND status <> ? AND source_ref IS NOT NULL""")) {
+            ps.setInt(1, sourceType);
+            ps.setInt(2, STATUS_ARCHIVED);
+            List<String> refs = new ArrayList<>();
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    refs.add(rs.getString(1));
+                }
+            }
+            return refs;
+        }
+    }
+
+    public record DocumentView(long id, String title, int sourceType, String sourceRef, int status, int chunkCount,
+                               String embeddingModel, String errorMessage, Instant indexedAt, UUID createdBy,
+                               Instant createdAt, Instant updatedAt) {
+    }
+
+    public record ChunkView(long id, int chunkIndex, String content, Integer tokenCount,
+                            @JsonRawValue @JsonProperty("metadata") String metadataJson) {
+    }
+
+    public record DocumentPage(List<DocumentView> items, long total) {
+    }
+
+    /**
+     * Danh sách tài liệu cho trang quản trị, mới cập nhật trước. status null = mọi trạng thái trừ ARCHIVED.
+     * q tìm theo tiêu đề hoặc source_ref (không phân biệt hoa thường).
+     */
+    public DocumentPage listDocuments(Integer sourceType, Integer status, String q, int page, int size)
+            throws SQLException {
+        String where = """
+                WHERE (CAST(? AS integer) IS NULL OR source_type = CAST(? AS integer))
+                  AND (CAST(? AS integer) IS NULL AND status <> %d OR status = CAST(? AS integer))
+                  AND (CAST(? AS text) IS NULL OR title ILIKE CAST(? AS text) OR source_ref ILIKE CAST(? AS text))
+                """.formatted(STATUS_ARCHIVED);
+        String like = q == null || q.isBlank() ? null : "%" + q.trim().replace("%", "\\%").replace("_", "\\_") + "%";
+        try (Connection c = dataSource.getConnection()) {
+            long total;
+            try (PreparedStatement ps = c.prepareStatement("SELECT count(*) FROM ai.knowledge_documents " + where)) {
+                bindFilter(ps, sourceType, status, like);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    total = rs.getLong(1);
+                }
+            }
+            List<DocumentView> items = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement("SELECT " + DOCUMENT_COLUMNS
+                    + " FROM ai.knowledge_documents " + where
+                    + " ORDER BY coalesce(updated_at, created_at) DESC, id DESC LIMIT ? OFFSET ?")) {
+                int next = bindFilter(ps, sourceType, status, like);
+                ps.setInt(next, size);
+                ps.setLong(next + 1, (long) page * size);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        items.add(document(rs));
+                    }
+                }
+            }
+            return new DocumentPage(items, total);
+        }
+    }
+
+    public Optional<DocumentView> findDocument(long id) throws SQLException {
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT " + DOCUMENT_COLUMNS
+                     + " FROM ai.knowledge_documents WHERE id = ?")) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(document(rs)) : Optional.empty();
+            }
+        }
+    }
+
+    public List<ChunkView> listChunks(long documentId) throws SQLException {
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     SELECT id, chunk_index, content, token_count, metadata::text
+                     FROM ai.document_chunks WHERE document_id = ? ORDER BY chunk_index""")) {
+            ps.setLong(1, documentId);
+            List<ChunkView> result = new ArrayList<>();
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new ChunkView(rs.getLong(1), rs.getInt(2), rs.getString(3),
+                            (Integer) rs.getObject(4), rs.getString(5)));
+                }
+            }
+            return result;
+        }
+    }
+
+    private static final String DOCUMENT_COLUMNS = """
+            id, title, source_type, source_ref, status, chunk_count, embedding_model, error_message, indexed_at,
+            created_by, created_at, updated_at""";
+
+    private static DocumentView document(ResultSet rs) throws SQLException {
+        return new DocumentView(rs.getLong("id"), rs.getString("title"), rs.getInt("source_type"),
+                rs.getString("source_ref"), rs.getInt("status"), rs.getInt("chunk_count"),
+                rs.getString("embedding_model"), rs.getString("error_message"), instant(rs, "indexed_at"),
+                rs.getObject("created_by", UUID.class), instant(rs, "created_at"), instant(rs, "updated_at"));
+    }
+
+    private static int bindFilter(PreparedStatement ps, Integer sourceType, Integer status, String like)
+            throws SQLException {
+        ps.setObject(1, sourceType, Types.INTEGER);
+        ps.setObject(2, sourceType, Types.INTEGER);
+        ps.setObject(3, status, Types.INTEGER);
+        ps.setObject(4, status, Types.INTEGER);
+        ps.setString(5, like);
+        ps.setString(6, like);
+        ps.setString(7, like);
+        return 8;
+    }
+
+    private static Instant instant(ResultSet rs, String column) throws SQLException {
+        Timestamp t = rs.getTimestamp(column);
+        return t == null ? null : t.toInstant();
+    }
+
+    private static boolean archive(Connection c, long documentId) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("DELETE FROM ai.document_chunks WHERE document_id = ?")) {
+            ps.setLong(1, documentId);
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = c.prepareStatement("""
+                UPDATE ai.knowledge_documents SET status = ?, chunk_count = 0, updated_at = now()
+                WHERE id = ? AND status <> ?""")) {
+            ps.setInt(1, STATUS_ARCHIVED);
+            ps.setLong(2, documentId);
+            ps.setInt(3, STATUS_ARCHIVED);
+            return ps.executeUpdate() == 1;
         }
     }
 

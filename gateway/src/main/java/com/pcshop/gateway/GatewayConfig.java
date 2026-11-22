@@ -44,7 +44,7 @@ public class GatewayConfig {
                         .uri(urls.inventory()))
                 .route("review", r -> r.path("/api/v1/reviews/**", "/api/v1/admin/reviews/**").uri(urls.review()))
                 // Chat AI trả về dạng stream: gateway chuyển tiếp nguyên, không đệm
-                .route("ai", r -> r.path("/api/v1/ai/**").uri(urls.ai()))
+                .route("ai", r -> r.path("/api/v1/ai/**", "/api/v1/admin/knowledge/**").uri(urls.ai()))
                 .route("media", r -> r.path("/api/v1/media/**").uri(urls.media()))
                 .route("notification", r -> r.path("/api/v1/notifications/**").uri(urls.notification()))
                 .build();

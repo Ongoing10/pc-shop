@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   App,
   Avatar,
   Badge,
   Button,
   Card,
+  Col,
   Descriptions,
   Divider,
   Empty,
@@ -14,6 +14,7 @@ import {
   Input,
   List,
   Modal,
+  Row,
   Switch,
   Table,
   Tag,
@@ -24,6 +25,7 @@ import type { TableColumnsType } from 'antd';
 import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { BulkDeleteButton, RowDeleteButton } from '../../../components/admin/DeleteActions';
 import {
   useAdminBrands,
   useAdminProducts,
@@ -36,6 +38,8 @@ import { AdminBrand } from '../../../types/admin';
 import { PRODUCT_STATUS_META } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
 import { formatDateTime } from '../../../utils/orderStatus';
+import { ProductFormModal } from '../Products/ProductFormModal';
+import { t } from '../../../i18n/t';
 
 interface BrandFormValues {
   code: string;
@@ -44,7 +48,7 @@ interface BrandFormValues {
   logoUrl?: string | null;
 }
 
-/** A10: thương hiệu. Không có xóa, chỉ bật/tắt. */
+/** A10: thương hiệu. "Xóa" = tắt (không xóa thật). */
 export const BrandsPage: React.FC = () => {
   const { message } = App.useApp();
   const { data: brands = [], isLoading } = useAdminBrands();
@@ -56,6 +60,7 @@ export const BrandsPage: React.FC = () => {
   const [viewingCode, setViewingCode] = useState<string>();
   const [editing, setEditing] = useState<AdminBrand | 'new' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [productSku, setProductSku] = useState<string>();
   const [form] = Form.useForm<BrandFormValues>();
 
   const viewing = brands.find((b) => b.code === viewingCode);
@@ -67,7 +72,21 @@ export const BrandsPage: React.FC = () => {
       {
         onSuccess: () => {
           setSelectedKeys([]);
-          message.success(`Đã ${active ? 'bật' : 'tắt'} ${codes.length} thương hiệu`);
+          message.success(t('admin.brands.brands', 'Đã {{value}} {{count}} thương hiệu', { value: active ? t('admin.common.enabled', 'bật') : t('admin.common.disabled', 'tắt'), count: codes.length }));
+        },
+        onError: (e) => message.error(e.message),
+      }
+    );
+  };
+
+  /** "Xóa" = tắt (không xóa thật), bật lại được */
+  const remove = (codes: string[]) => {
+    setBrandsActive.mutate(
+      { codes, active: false },
+      {
+        onSuccess: () => {
+          setSelectedKeys([]);
+          message.success(t('admin.brands.deletedBrands', 'Đã xóa {{count}} thương hiệu', { count: codes.length }));
         },
         onError: (e) => message.error(e.message),
       }
@@ -87,15 +106,15 @@ export const BrandsPage: React.FC = () => {
     try {
       if (editing === 'new') {
         await createBrand.mutateAsync({ code: v.code, name: v.name, slug: v.slug || null, logoUrl: v.logoUrl || null });
-        message.success(`Đã thêm ${v.name}`);
+        message.success(t('admin.brands.added', 'Đã thêm {{name}}', { name: v.name }));
       } else if (editing) {
         await updateBrand.mutateAsync({ code: editing.code, body: { name: v.name, slug: v.slug || null, logoUrl: v.logoUrl || null } });
-        message.success('Đã lưu thương hiệu');
+        message.success(t('admin.brands.brandSaved', 'Đã lưu thương hiệu'));
       }
       setEditing(null);
     } catch (e) {
       const err = e as ApiError;
-      if (err.status === 409) form.setFields([{ name: 'code', errors: ['Mã đã tồn tại (409)'] }]);
+      if (err.status === 409) form.setFields([{ name: 'code', errors: [t('admin.brands.codeAlreadyExists409', 'Mã đã tồn tại (409)')] }]);
       else message.error(err.message);
     } finally {
       setSaving(false);
@@ -104,7 +123,7 @@ export const BrandsPage: React.FC = () => {
 
   const columns: TableColumnsType<AdminBrand> = [
     {
-      title: 'Thương hiệu',
+      title: t('admin.common.brands', 'Thương hiệu'),
       dataIndex: 'name',
       render: (name: string, b) => (
         <Flex gap={10} align="center">
@@ -117,11 +136,11 @@ export const BrandsPage: React.FC = () => {
         </Flex>
       ),
     },
-    { title: 'Mã', dataIndex: 'code', width: 140, render: (v: string) => <span className="admin-mono">{v}</span> },
+    { title: t('admin.common.code', 'Mã'), dataIndex: 'code', width: 140, render: (v: string) => <span className="admin-mono">{v}</span> },
     { title: 'Slug', dataIndex: 'slug', width: 140 },
-    { title: 'Sản phẩm', key: 'products', width: 100, align: 'right', render: (_, b) => productsOf(b.code).length },
+    { title: t('admin.common.products', 'Sản phẩm'), key: 'products', width: 100, align: 'right', render: (_, b) => productsOf(b.code).length },
     {
-      title: 'Hoạt động',
+      title: t('admin.common.active', 'Hoạt động'),
       dataIndex: 'isActive',
       width: 100,
       render: (a: number, b) => <Switch size="small" checked={a === 1} onChange={(v) => setActive([b.code], v)} />,
@@ -129,15 +148,22 @@ export const BrandsPage: React.FC = () => {
     {
       title: '',
       key: 'actions',
-      width: 88,
+      width: 120,
       render: (_, b) => (
         <Flex gap={4}>
-          <Tooltip title="Xem chi tiết">
-            <Button type="text" size="small" icon={<EyeOutlined />} aria-label="Xem chi tiết" onClick={() => setViewingCode(b.code)} />
+          <Tooltip title={t('admin.common.viewDetails', 'Xem chi tiết')}>
+            <Button type="text" size="small" icon={<EyeOutlined />} aria-label={t('admin.common.viewDetails', 'Xem chi tiết')} onClick={() => setViewingCode(b.code)} />
           </Tooltip>
-          <Tooltip title="Sửa">
-            <Button type="text" size="small" icon={<EditOutlined />} aria-label="Sửa" onClick={() => openForm(b)} />
+          <Tooltip title={t('admin.common.edit', 'Sửa')}>
+            <Button type="text" size="small" icon={<EditOutlined />} aria-label={t('admin.common.edit', 'Sửa')} onClick={() => openForm(b)} />
           </Tooltip>
+          <RowDeleteButton
+            title={t('admin.brands.deleteBrand', 'Xóa thương hiệu {{name}}?', { name: b.name })}
+            description={t('admin.brands.disablesTheBrandExistingData', 'Tắt thương hiệu, dữ liệu cũ giữ nguyên, có thể bật lại.')}
+            onConfirm={() => remove([b.code])}
+            disabled={!b.isActive}
+            disabledReason={t('admin.common.disabled2', 'Đã tắt')}
+          />
         </Flex>
       ),
     },
@@ -148,11 +174,11 @@ export const BrandsPage: React.FC = () => {
   return (
     <>
       <AdminPageHeader
-        title="Thương hiệu"
-        subtitle="Thương hiệu đã tắt không hiện ở bộ lọc trang khách"
+        title={t('admin.common.brands', 'Thương hiệu')}
+        subtitle={t('admin.brands.disabledBrandsDoNotAppear', 'Thương hiệu đã tắt không hiện ở bộ lọc trang khách')}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            Thêm thương hiệu
+            {t('admin.brands.addBrand', 'Thêm thương hiệu')}
           </Button>
         }
       />
@@ -160,11 +186,14 @@ export const BrandsPage: React.FC = () => {
       <Card>
         <BulkActionBar count={selectedKeys.length} onClear={() => setSelectedKeys([])}>
           <Button size="small" onClick={() => setActive(selectedKeys as string[], true)}>
-            Bật
+            {t('admin.common.enable', 'Bật')}
           </Button>
-          <Button size="small" danger onClick={() => setActive(selectedKeys as string[], false)}>
-            Tắt
-          </Button>
+          <BulkDeleteButton
+            count={selectedKeys.length}
+            noun={t('admin.brands.brands2', 'thương hiệu')}
+            content={t('admin.brands.theBrandsWillBeDisabled', 'Thương hiệu sẽ bị tắt, dữ liệu cũ giữ nguyên và có thể bật lại.')}
+            onConfirm={() => remove(selectedKeys as string[])}
+          />
         </BulkActionBar>
 
         <Table
@@ -179,6 +208,7 @@ export const BrandsPage: React.FC = () => {
       </Card>
 
       <Modal
+        centered
         open={!!viewing}
         title={
           viewing && (
@@ -186,7 +216,7 @@ export const BrandsPage: React.FC = () => {
               <Avatar shape="square" size={28} src={viewing.logoUrl ?? undefined}>
                 {viewing.name.charAt(0)}
               </Avatar>
-              Thương hiệu {viewing.name}
+              {t('admin.common.brands', 'Thương hiệu')} {viewing.name}
             </Flex>
           )
         }
@@ -194,10 +224,10 @@ export const BrandsPage: React.FC = () => {
         onCancel={() => setViewingCode(undefined)}
         footer={[
           <Button key="close" onClick={() => setViewingCode(undefined)}>
-            Đóng
+            {t('admin.common.close', 'Đóng')}
           </Button>,
           <Button key="edit" type="primary" icon={<EditOutlined />} onClick={() => viewing && openForm(viewing)}>
-            Sửa
+            {t('admin.common.edit', 'Sửa')}
           </Button>,
         ]}
       >
@@ -207,18 +237,18 @@ export const BrandsPage: React.FC = () => {
               size="small"
               column={2}
               items={[
-                { key: 'code', label: 'Mã', children: <span className="admin-mono">{viewing.code}</span> },
+                { key: 'code', label: t('admin.common.code', 'Mã'), children: <span className="admin-mono">{viewing.code}</span> },
                 { key: 'slug', label: 'Slug', children: viewing.slug },
                 {
                   key: 'active',
-                  label: 'Trạng thái',
-                  children: <Badge status={viewing.isActive ? 'success' : 'default'} text={viewing.isActive ? 'Đang hoạt động' : 'Đã tắt'} />,
+                  label: t('admin.common.status', 'Trạng thái'),
+                  children: <Badge status={viewing.isActive ? 'success' : 'default'} text={viewing.isActive ? t('admin.common.active2', 'Đang hoạt động') : t('admin.common.disabled2', 'Đã tắt')} />,
                 },
-                { key: 'updated', label: 'Cập nhật', children: viewing.updatedAt ? formatDateTime(viewing.updatedAt) : '–' },
+                { key: 'updated', label: t('admin.common.update', 'Cập nhật'), children: viewing.updatedAt ? formatDateTime(viewing.updatedAt) : '–' },
                 { key: 'logo', label: 'URL logo', span: 2, children: viewing.logoUrl ?? '–' },
               ]}
             />
-            <Divider titlePlacement="start">Sản phẩm ({viewingProducts.length})</Divider>
+            <Divider titlePlacement="start">{t('admin.brands.products', 'Sản phẩm (')}{viewingProducts.length})</Divider>
             {viewingProducts.length ? (
               <List
                 size="small"
@@ -227,7 +257,7 @@ export const BrandsPage: React.FC = () => {
                   <List.Item extra={<Tag color={PRODUCT_STATUS_META[p.status].color}>{PRODUCT_STATUS_META[p.status].label}</Tag>}>
                     <List.Item.Meta
                       avatar={<Avatar shape="square" size={36} src={p.images?.[0]?.url} />}
-                      title={<Link to={`/admin/products/${p.sku}`}>{p.name}</Link>}
+                      title={<Typography.Link onClick={() => setProductSku(p.sku)}>{p.name}</Typography.Link>}
                       description={
                         <span>
                           <span className="admin-mono">{p.sku}</span> · {formatCurrency(p.price)}
@@ -238,17 +268,18 @@ export const BrandsPage: React.FC = () => {
                 )}
               />
             ) : (
-              <Empty description="Chưa có sản phẩm nào thuộc thương hiệu này" />
+              <Empty description={t('admin.brands.noProductsBelongToThis', 'Chưa có sản phẩm nào thuộc thương hiệu này')} />
             )}
           </>
         )}
       </Modal>
 
       <Modal
+        centered
         open={editing !== null}
-        title={editing === 'new' ? 'Thêm thương hiệu' : 'Sửa thương hiệu'}
-        okText="Lưu"
-        cancelText="Hủy"
+        title={editing === 'new' ? t('admin.brands.addBrand', 'Thêm thương hiệu') : t('admin.brands.editBrand', 'Sửa thương hiệu')}
+        okText={t('admin.common.save', 'Lưu')}
+        cancelText={t('admin.common.cancel', 'Hủy')}
         confirmLoading={saving}
         onOk={submit}
         onCancel={() => setEditing(null)}
@@ -256,32 +287,44 @@ export const BrandsPage: React.FC = () => {
         forceRender
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="code"
-            label="Mã"
-            normalize={(v: string) => v?.toUpperCase()}
-            rules={[
-              { required: true, message: 'Nhập mã' },
-              { pattern: /^[A-Z0-9_]+$/, message: 'Chỉ A-Z, 0-9 và _' },
-            ]}
-          >
-            <Input disabled={editing !== 'new'} className="admin-mono" />
-          </Form.Item>
-          <Form.Item name="name" label="Tên" rules={[{ required: true, whitespace: true, message: 'Nhập tên' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="slug"
-            label="Slug"
-            rules={[{ required: true, pattern: /^[a-z0-9-]+$/, message: 'Chữ thường, số và dấu gạch ngang' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item name="logoUrl" label="URL logo">
-            <Input placeholder="https://..." />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="code"
+                label={t('admin.common.code', 'Mã')}
+                normalize={(v: string) => v?.toUpperCase()}
+                rules={[
+                  { required: true, message: t('admin.common.enterACode', 'Nhập mã') },
+                  { pattern: /^[A-Z0-9_]+$/, message: t('admin.common.onlyAZ09', 'Chỉ A-Z, 0-9 và _') },
+                ]}
+              >
+                <Input disabled={editing !== 'new'} className="admin-mono" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="name" label={t('admin.common.name', 'Tên')} rules={[{ required: true, whitespace: true, message: t('admin.common.enterAName', 'Nhập tên') }]}>
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="slug"
+                label="Slug"
+                rules={[{ required: true, pattern: /^[a-z0-9-]+$/, message: t('admin.common.lowercaseLettersDigitsAndHyphens', 'Chữ thường, số và dấu gạch ngang') }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="logoUrl" label="URL logo">
+                <Input placeholder="https://..." />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
+
+      <ProductFormModal open={!!productSku} sku={productSku ?? null} onClose={() => setProductSku(undefined)} />
     </>
   );
 };

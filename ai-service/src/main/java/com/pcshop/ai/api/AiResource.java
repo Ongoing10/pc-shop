@@ -1,140 +1,117 @@
 package com.pcshop.ai.api;
 
-import com.pcshop.ai.assistant.ShopAssistant;
-import com.pcshop.ai.client.ShopClients.CatalogClient;
-import com.pcshop.ai.client.ShopClients.ProductView;
-import com.pcshop.ai.rag.ChunkRepository.ScoredChunk;
-import com.pcshop.ai.rag.HybridContentRetriever;
-import com.pcshop.ai.rag.IngestionService;
-import com.pcshop.ai.rag.IngestionService.IngestResult;
+import com.pcshop.ai.chat.ChatService;
+import com.pcshop.ai.chat.ChatService.ChatEvent;
+import com.pcshop.ai.chat.ChatService.ChatReply;
+import com.pcshop.ai.chat.ChatSessionStore;
+import com.pcshop.ai.chat.ChatSessionStore.SessionDetail;
+import com.pcshop.ai.chat.ChatSessionStore.SessionSummary;
 import com.pcshop.common.quarkus.CurrentUser;
 import com.pcshop.contracts.AuthUser;
 import com.pcshop.contracts.ResponseData;
 import io.quarkus.security.Authenticated;
 import io.smallrye.common.annotation.Blocking;
+import io.smallrye.mutiny.Multi;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
+import jakarta.ws.rs.core.MediaType;
+import org.jboss.resteasy.reactive.RestStreamElementType;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
- * API của ai-service. Mọi method đều chặn (gọi LLM, JDBC) nên chạy trên worker thread (@Blocking).
+ * Chatbot tư vấn, mở cho cả khách vãng lai. Quản trị kho tri thức: {@link AdminKnowledgeResource}.
+ * Mọi method đều chặn (gọi LLM, JDBC, Mongo) nên chạy trên worker thread (@Blocking).
  */
 @Path("/api/v1/ai")
 @Blocking
 public class AiResource {
 
-    public record ChatRequest(String sessionId, @NotBlank String message) {
+    public record ChatRequest(@Size(max = 64) String sessionId, @NotBlank @Size(max = 1000) String message) {
     }
 
-    public record ChatResponse(String sessionId, String answer) {
-    }
-
-    public record KnowledgeRequest(@NotBlank String title, @Min(2) @Max(4) int sourceType, String sourceRef,
-                                   @NotBlank String content, Map<String, Object> metadata) {
-    }
-
-    public record SyncResult(int total, int indexed, int skipped) {
+    /** value: 1 hữu ích, -1 không hữu ích. requestId lấy từ câu trả lời (ChatReply / sự kiện "done"). */
+    public record FeedbackRequest(@NotBlank String sessionId, @NotNull Long requestId, int value) {
     }
 
     @Inject
-    ShopAssistant assistant;
+    ChatService chat;
 
     @Inject
-    IngestionService ingestion;
-
-    @Inject
-    HybridContentRetriever retriever;
+    ChatSessionStore sessions;
 
     @Inject
     CurrentUser currentUser;
 
-    @Inject
-    @RestClient
-    CatalogClient catalog;
-
-    /** Chatbot tư vấn, mở cho cả khách vãng lai. Không gửi sessionId thì tạo phiên mới. */
+    /** Trả lời một lần. Không gửi sessionId thì tạo phiên mới (sessionId trả về để hỏi tiếp). */
     @POST
     @Path("/chat")
     @PermitAll
-    public ResponseData<ChatResponse> chat(@Valid ChatRequest request) {
-        String sessionId = request.sessionId() == null || request.sessionId().isBlank()
-                ? UUID.randomUUID().toString()
-                : request.sessionId();
-        return ResponseData.success(new ChatResponse(sessionId, assistant.chat(sessionId, request.message())));
-    }
-
-    /** Tìm kiếm ngữ nghĩa / xem retriever trả về gì (hữu ích khi chỉnh RAG). */
-    @GET
-    @Path("/search")
-    @PermitAll
-    public ResponseData<List<ScoredChunk>> search(@QueryParam("q") String q,
-                                                  @QueryParam("category") String category,
-                                                  @QueryParam("k") @DefaultValue("5") int k) throws Exception {
-        return ResponseData.success(retriever.search(q, category, Math.min(Math.max(k, 1), 20)));
-    }
-
-    /** Admin thêm tài liệu tri thức (hướng dẫn build PC, chính sách, FAQ). Cần permission knowledge:write. */
-    @POST
-    @Path("/knowledge")
-    @Authenticated
-    public ResponseData<IngestResult> addKnowledge(@Valid KnowledgeRequest request) throws Exception {
-        AuthUser user = currentUser.requirePermission("knowledge:write");
-        return ResponseData.success(ingestion.ingest(request.title(), request.sourceType(), request.sourceRef(),
-                request.content(), request.metadata(), true, user.id()));
+    public ResponseData<ChatReply> chat(@Valid ChatRequest request) {
+        return ResponseData.success(chat.chat(request.sessionId(), request.message(), userId()));
     }
 
     /**
-     * Đồng bộ toàn bộ sản phẩm ACTIVE từ catalog vào kho tri thức (mỗi sản phẩm một chunk).
-     * Dùng để nạp dữ liệu ban đầu; về sau thay bằng consumer Kafka product.updated / product.hidden.
-     * KHÔNG đưa giá vào nội dung: giá luôn lấy realtime qua tool getPrice.
+     * Trả lời dạng stream (SSE), mỗi sự kiện là một JSON {@link ChatEvent}: "session" → nhiều "token" → "done"
+     * (hoặc "error"). Lỗi trước khi bắt đầu (sessionId sai, phiên của người khác...) vẫn trả envelope như API thường.
      */
     @POST
-    @Path("/knowledge/sync-products")
-    @Authenticated
-    public ResponseData<SyncResult> syncProducts() throws Exception {
-        AuthUser user = currentUser.requirePermission("knowledge:write");
-        List<ProductView> products = catalog.page(0, 100).data().content();
-        int indexed = 0;
-        int skipped = 0;
-        for (ProductView p : products) {
-            Map<String, Object> metadata = new HashMap<>();
-            metadata.put("sku", p.sku());
-            metadata.put("category", p.categoryCode());
-            metadata.put("brand", p.brandCode());
-            IngestResult r = ingestion.ingest(p.name(), IngestionService.SOURCE_PRODUCT, p.sku(),
-                    productText(p), metadata, false, user.id());
-            if (r.skipped()) {
-                skipped++;
-            } else {
-                indexed++;
-            }
-        }
-        return ResponseData.success(new SyncResult(products.size(), indexed, skipped));
+    @Path("/chat/stream")
+    @PermitAll
+    @Produces(MediaType.SERVER_SENT_EVENTS)
+    @RestStreamElementType(MediaType.APPLICATION_JSON)
+    public Multi<ChatEvent> stream(@Valid ChatRequest request) {
+        return chat.stream(request.sessionId(), request.message(), userId());
     }
 
-    private static String productText(ProductView p) {
-        return """
-                Sản phẩm: %s
-                Mã SKU: %s
-                Danh mục: %s. Thương hiệu: %s
-                Mô tả: %s
-                Thông số: %s
-                Thông số tương thích: %s
-                """.formatted(p.name(), p.sku(), p.categoryCode(), p.brandCode(),
-                p.shortDescription() == null ? "" : p.shortDescription(), p.specs(), p.compat());
+    /** Các cuộc trò chuyện gần đây của user đang đăng nhập (phiên vãng lai không có ở đây). */
+    @GET
+    @Path("/chat/sessions")
+    @Authenticated
+    public ResponseData<List<SessionSummary>> mySessions(@QueryParam("limit") @DefaultValue("20") int limit) {
+        AuthUser user = currentUser.require();
+        return ResponseData.success(sessions.listByUser(user.id(), Math.min(Math.max(limit, 1), 50)));
+    }
+
+    /** Lịch sử một phiên: phiên vãng lai thì ai có sessionId cũng xem được, phiên đã gán user thì chỉ chủ phiên. */
+    @GET
+    @Path("/chat/sessions/{sessionId}")
+    @PermitAll
+    public ResponseData<SessionDetail> session(@PathParam("sessionId") String sessionId) {
+        return ResponseData.success(sessions.detail(sessionId, userId()));
+    }
+
+    @DELETE
+    @Path("/chat/sessions/{sessionId}")
+    @PermitAll
+    public ResponseData<Void> deleteSession(@PathParam("sessionId") String sessionId) {
+        sessions.delete(sessionId, userId());
+        return ResponseData.success(null);
+    }
+
+    @POST
+    @Path("/chat/feedback")
+    @PermitAll
+    public ResponseData<Void> feedback(@Valid FeedbackRequest request) {
+        sessions.detail(request.sessionId(), userId());     // 404/403 nếu không có quyền với phiên này
+        chat.feedback(request.sessionId(), request.requestId(), request.value());
+        return ResponseData.success(null);
+    }
+
+    private UUID userId() {
+        return currentUser.get().map(AuthUser::id).orElse(null);
     }
 }

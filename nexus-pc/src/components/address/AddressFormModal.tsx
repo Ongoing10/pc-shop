@@ -83,6 +83,7 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({ open, addres
 
   return (
     <Modal
+      centered
       open={open}
       title={address ? t('address.editTitle', 'Sửa địa chỉ') : t('address.addTitle', 'Thêm địa chỉ mới')}
       onCancel={onClose}

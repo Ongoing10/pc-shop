@@ -474,7 +474,7 @@ Bảng dày (hàng 40px), header bảng dính, chọn nhiều dòng → thanh th
   + lý do), import Excel (A04), xuất Excel (`GET /admin/products/export?category=&status=`, `category` bắt buộc).
 - **Trạng thái:** bình thường · đang chọn nhiều · lỗi hàng loạt 400 (tô dòng) · rỗng theo bộ lọc · 403 (thiếu `product:write`).
 
-### A03. Form sản phẩm (`/admin/products/new`, `/admin/products/:sku`)
+### A03. Form sản phẩm (modal trên trang `/admin/products`, không có route riêng)
 - **Dữ liệu:** `GET /admin/products/{sku}` (thấy cả Nháp/Ẩn); `GET /admin/categories`, `GET /admin/brands` cho dropdown;
   `GET /categories/{code}` → `specSchema` sinh ô thông số; upload ảnh `POST /media/upload` (bucket `products`);
   lịch sử giá `GET /products/{sku}/price-history` (chỉ ACTIVE; sản phẩm chưa bán trả 404 → ẩn khung).
@@ -483,7 +483,7 @@ Bảng dày (hàng 40px), header bảng dính, chọn nhiều dòng → thanh th
 - **Trạng thái:** tạo CPU (ô socket, memory_types, tdp_w...) · sửa GPU · lỗi kiểm tra (SKU sai định dạng, giá ≤ 0, slug trùng 409) ·
   danh mục chưa có `specSchema` (thông báo, chỉ còn trường chung + nhập thông số dạng key/value).
 
-### A04. Import Excel 3 bước (`/admin/products/import`, `/admin/inventory/import`)
+### A04. Import Excel 3 bước (modal trên `/admin/products` và tab Tồn kho của `/admin/inventory`)
 - **Dữ liệu và luồng:** mục g "Import Excel". Sản phẩm: `.../admin/products/import/...`; phiếu nhập kho: `.../admin/inventory/import/excel/...`.
 - **Trạng thái:** bước 1 · bước 2 có lỗi theo dòng · bước 2 hợp lệ hết · lỗi cả file 400 · bước 3 thành công · phiên hết hạn (404).
 
@@ -529,8 +529,9 @@ Bảng dày (hàng 40px), header bảng dính, chọn nhiều dòng → thanh th
 - Chưa có API sửa `specSchema` của danh mục: chỉ hiển thị (bảng chỉ đọc).
 
 ### A11. Kho tri thức AI (`/admin/knowledge`, tùy chọn)
-- **Dữ liệu/hành động:** thêm tài liệu `POST /ai/knowledge {title, sourceType 2|3|4, sourceRef, content}`; đồng bộ sản phẩm
-  `POST /ai/knowledge/sync-products`; thử truy vấn `GET /ai/search?q=&category=&k=`. Chưa có API liệt kê/xóa tài liệu.
+- **Dữ liệu:** `GET /admin/knowledge?sourceType=&status=&q=` (bảng tài liệu), `GET /admin/knowledge/{id}` (chunk của tài liệu).
+- **Hành động:** thêm tài liệu `POST /admin/knowledge {title, sourceType 2|3|4, sourceRef, content}`; gỡ `DELETE /admin/knowledge/{id}`;
+  đồng bộ sản phẩm `POST /admin/knowledge/sync-products`; thử truy vấn `GET /admin/knowledge/search?q=&category=&k=`.
 
 ---
 
@@ -2309,17 +2310,37 @@ Thông báo tự sinh (`channel` IN_APP):
 | Method | Path | Quyền | Query/Body | → |
 |---|---|---|---|---|
 | POST | `/ai/chat` | public | `{sessionId?, message}` | `ChatResponse` |
-| GET | `/ai/search` | public | `q`, `category`, `k` (1–20) | `ScoredChunk[]` |
-| POST | `/ai/knowledge` | perm:knowledge:write | `KnowledgeRequest` | `IngestResult` |
-| POST | `/ai/knowledge/sync-products` | perm:knowledge:write | | `SyncResult` |
+| POST | `/ai/chat/stream` | public | `{sessionId?, message}` | SSE, mỗi `data:` một `ChatStreamEvent` |
+| GET | `/ai/chat/sessions` | user | `limit` (≤ 50) | `ChatSessionSummary[]` |
+| GET / DELETE | `/ai/chat/sessions/{sessionId}` | public (phiên đã gắn user: chủ phiên) | | `ChatSessionDetail` / null |
+| POST | `/ai/chat/feedback` | public (như trên) | `{sessionId, requestId, value: 1|-1}` | null |
+| GET | `/admin/knowledge` | perm:knowledge:write | `sourceType`, `status`, `q`, `page`, `size` | `PageResponse<KnowledgeDocument>` |
+| GET | `/admin/knowledge/{id}` | perm:knowledge:write | | `KnowledgeDocumentDetail` |
+| POST | `/admin/knowledge` | perm:knowledge:write | `KnowledgeRequest` | `IngestResult` |
+| DELETE | `/admin/knowledge/{id}` | perm:knowledge:write | | null |
+| POST | `/admin/knowledge/sync-products` | perm:knowledge:write | | `SyncResult` |
+| GET | `/admin/knowledge/search` | perm:knowledge:write | `q`, `category`, `k` (1–20) | `ScoredChunk[]` |
 
-**Chưa lấy được response thành công thật** của `/ai/chat` và `/ai/search` khi soạn tài liệu (Ollama trên máy dừng giữa chừng,
-API trả 500 với body rỗng). Dạng thành công theo code (`ChatResponse`):
+Response thật (2026-11-21, gọi thẳng ai-service, model chạy CPU nên mất khoảng 1 phút):
 
 ```json
 { "error_status": 1, "error_message": null, "error_code": null,
-  "data": { "sessionId": "<uuid do server sinh ở câu đầu>", "answer": "<văn bản tiếng Việt, có mã SKU khi gợi ý sản phẩm>" } }
+  "data": { "sessionId": "0cdda6ae-fd67-4558-9e2a-7e5c243bdddf", "requestId": 6,
+            "answer": "Xin lỗi, CPU AMD Ryzen 5 7600X (SKU: CPU-R5-7600X) và mainboard MSI PRO B760-P DDR4 (SKU: MB-MSI-B760-D4) không tương thích vì CPU dùng socket AM5 trong khi mainboard dùng socket LGA1700. ..." } }
 ```
+
+Stream SSE thật của cùng câu hỏi:
+
+```
+data:{"type":"session","text":null,"sessionId":"0cdda6ae-...","requestId":null}
+data:{"type":"status","text":"Đang tra cứu kho tri thức","sessionId":null,"requestId":null}
+data:{"type":"status","text":"Đang kiểm tra độ tương thích của cấu hình","sessionId":null,"requestId":null}
+data:{"type":"token","text":"Xin lỗi, CPU AMD Ryzen 5 7600X ...","sessionId":null,"requestId":null}
+data:{"type":"done","text":null,"sessionId":"0cdda6ae-...","requestId":6}
+```
+
+Model lỗi giữa chừng (Ollama sập) thì sự kiện cuối là `{"type":"error","text":"Trợ lý AI đang bận hoặc chưa sẵn sàng, vui lòng thử lại sau."}`;
+API `/ai/chat` trả HTTP 502 `EXTERNAL_SERVICE_ERROR` cùng thông báo.
 
 Lỗi kiểm tra (thật):
 

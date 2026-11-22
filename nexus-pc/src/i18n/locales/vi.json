@@ -28,7 +28,9 @@
     "loginToAddToCart": "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng",
     "cancel": "Hủy",
     "edit": "Sửa",
-    "addedManyToCart": "Đã thêm {{count}} sản phẩm vào giỏ hàng"
+    "addedManyToCart": "Đã thêm {{count}} sản phẩm vào giỏ hàng",
+    "switchToLight": "Chuyển sang giao diện sáng",
+    "switchToDark": "Chuyển sang giao diện tối"
   },
   "nav": {
     "products": "Sản phẩm",

@@ -169,10 +169,7 @@ export const PCBuilderPage: React.FC = () => {
                     />
                   )}
                   {product && <em>{formatCurrency(product.price * qty)}</em>}
-                  <Button
-                    onClick={() => setActiveSlot(slot.id)}
-                    type={product ? 'default' : 'primary'}
-                  >
+                  <Button onClick={() => setActiveSlot(slot.id)}>
                     {product ? t('builder.changeComponent', 'Thay đổi') : t('builder.selectComponent', 'Chọn linh kiện')}
                   </Button>
                   {product && (

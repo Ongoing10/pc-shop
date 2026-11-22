@@ -1,84 +1,145 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BsArrowRight } from 'react-icons/bs';
-import { IMAGES, COPY } from './heroConfig';
-import { useHeroAnimation } from './useHeroAnimation';
+import { BsArrowRight, BsPauseFill, BsPlayFill } from 'react-icons/bs';
+import rigImage from '../../assets/images/hero_custom_pc_rig_1793798677183.jpg';
+import partsImage from '../../assets/images/builder_showcase_1793798677194.jpg';
+import boardImage from '../../assets/images/category_hardware_1793798677156.jpg';
 import './hero.css';
 
 export interface HeroProps {
   className?: string;
 }
 
-const AUTO_SWITCH_MS = 12000;
+interface Slide {
+  title: string;
+  lead: string;
+  image: string;
+  alt: string;
+  position: string;
+  primary: { to: string; label: string };
+  secondary: { to: string; label: string };
+}
+
+const SLIDES: Slide[] = [
+  {
+    title: 'Linh kiện PC chính hãng cho người tự build máy',
+    lead: 'CPU, VGA, RAM, mainboard có bảo hành hãng. PC Builder kiểm tra tương thích và cộng tổng tiền sau mỗi lựa chọn.',
+    image: rigImage,
+    alt: 'Bộ PC tản nhiệt nước trên bàn làm việc cùng màn hình cong',
+    position: '70% 50%',
+    primary: { to: '/builder', label: 'Mở PC Builder' },
+    secondary: { to: '/products', label: 'Xem linh kiện' },
+  },
+  {
+    title: 'Lọc theo hãng, giá, thông số',
+    lead: 'Lọc linh kiện theo nhu cầu rồi thêm vào bảng so sánh để thấy khác biệt trước khi mua.',
+    image: partsImage,
+    alt: 'Card đồ họa, CPU và RAM đặt trên mặt bàn tối',
+    position: '60% 50%',
+    primary: { to: '/products', label: 'Xem linh kiện' },
+    secondary: { to: '/compare', label: 'Mở bảng so sánh' },
+  },
+  {
+    title: 'Mainboard và VGA cho bộ máy gaming',
+    lead: 'Chọn bản hợp ngân sách, hoặc xem những sản phẩm đang có khuyến mãi.',
+    image: boardImage,
+    alt: 'Mainboard Z790 và card đồ họa RTX 4080 đặt cạnh nhau',
+    position: '50% 50%',
+    primary: { to: '/products?sort=discount', label: 'Xem khuyến mãi' },
+    secondary: { to: '/builder', label: 'Mở PC Builder' },
+  },
+];
+
+const INTERVAL_MS = 7000;
 
 export default function Hero({ className = '' }: HeroProps) {
-  const heroRef = useRef<HTMLElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [shownSet, setShownSet] = useState<0 | 1>(1); // 0 = Văn phòng, 1 = Gaming
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [hovering, setHovering] = useState(false);
 
-  const { select } = useHeroAnimation(heroRef, canvasRef, setShownSet);
+  const go = useCallback((i: number) => setIndex((i + SLIDES.length) % SLIDES.length), []);
 
-  // Tự đổi qua lại giữa cảnh Văn phòng và Gaming
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    let mode: 0 | 1 = 1;
-    const interval = setInterval(() => {
-      mode = mode === 0 ? 1 : 0;
-      select(mode);
-    }, AUTO_SWITCH_MS);
-
-    return () => clearInterval(interval);
-  }, [select]);
-
-  const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.style.display = 'none';
-  };
+    if (paused || hovering) return;
+    const timer = setTimeout(() => go(index + 1), INTERVAL_MS);
+    return () => clearTimeout(timer);
+  }, [index, paused, hovering, go]);
 
   return (
-    <section className={`hero ${className}`} ref={heroRef} aria-label="Build PC theo nhu cầu">
-      {/* Layer 1: Sky backdrop */}
-      <div className="sky" aria-hidden="true">
-        <img src={IMAGES.bgOffice} alt="" decoding="async" onError={hideOnError} />
-        <img className="bg-gaming" src={IMAGES.bgGaming} alt="" decoding="async" onError={hideOnError} />
-      </div>
+    <section
+      className={`hero ${className}`}
+      aria-roledescription="carousel"
+      aria-label="Nổi bật"
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      onFocus={() => setHovering(true)}
+      onBlur={() => setHovering(false)}
+    >
+      <div className="container hero-grid">
+        <div className="hero-text">
+          <div className="hero-stack">
+            {SLIDES.map((s, i) => {
+              const Title = i === 0 ? 'h1' : 'h2';
+              const active = i === index;
+              return (
+                <div
+                  key={s.title}
+                  className={`hero-slide${active ? ' is-on' : ''}`}
+                  role="group"
+                  aria-roledescription="slide"
+                  aria-label={`${i + 1} / ${SLIDES.length}`}
+                  aria-hidden={!active}
+                  inert={!active}
+                >
+                  <Title className="hero-title">{s.title}</Title>
+                  <p className="hero-lead">{s.lead}</p>
+                  <div className="hero-ctas">
+                    <Link to={s.primary.to} className="btn btn-primary">
+                      {s.primary.label} <BsArrowRight aria-hidden="true" />
+                    </Link>
+                    <Link to={s.secondary.to} className="btn btn-ghost">
+                      {s.secondary.label}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-      {/* Layer 2: Moving desk & PC sets */}
-      <div className="home" aria-hidden="true">
-        <div className={`set ${shownSet === 0 ? 'is-on' : ''}`}>
-          <img className="ground" src={IMAGES.deskOffice} alt="" decoding="async" onError={hideOnError} />
-          <img className="pc-cutout" src={IMAGES.pcOffice} alt="" decoding="async" onError={hideOnError} />
+          <div className="hero-controls">
+            <div className="hero-dots">
+              {SLIDES.map((s, i) => (
+                <button
+                  key={s.title}
+                  type="button"
+                  className={i === index ? 'is-on' : ''}
+                  aria-label={`Chuyển tới slide ${i + 1}`}
+                  aria-current={i === index}
+                  onClick={() => go(i)}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="hero-pause"
+              aria-label={paused ? 'Tiếp tục tự chuyển slide' : 'Dừng tự chuyển slide'}
+              onClick={() => setPaused((p) => !p)}
+            >
+              {paused ? <BsPlayFill aria-hidden="true" /> : <BsPauseFill aria-hidden="true" />}
+            </button>
+          </div>
         </div>
-        <div className={`set ${shownSet === 1 ? 'is-on' : ''}`}>
-          <img className="ground" src={IMAGES.deskGaming} alt="" decoding="async" onError={hideOnError} />
-          <img className="pc-cutout" src={IMAGES.pcGaming} alt="" decoding="async" onError={hideOnError} />
-        </div>
-      </div>
 
-      {/* Layer 3: Tilt / depth blur */}
-      <div className="tilt" aria-hidden="true" />
-
-      {/* Layer 4: Mist canvas */}
-      <canvas className="fog" ref={canvasRef} aria-hidden="true" />
-
-      {/* Layer 5: UI Content */}
-      <div className="ui">
-        <h1>
-          <span className="line-1">{COPY.headline1}</span>
-          <i>{COPY.headline2Pre}</i> <span>{COPY.headline2Highlight}</span>
-        </h1>
-
-        <div className="hero-ctas">
-          <Link to="/builder" className="hero-btn primary">
-            {COPY.ctaBuilder} <BsArrowRight aria-hidden="true" />
-          </Link>
-          <Link to="/products" className="hero-btn ghost">
-            {COPY.ctaBrowse}
-          </Link>
-        </div>
-
-        <div className="dock">
-          <p className="caption">{COPY.caption}</p>
+        <div className="hero-media">
+          {SLIDES.map((s, i) => (
+            <img
+              key={s.image}
+              className={`hero-photo${i === index ? ' is-on' : ''}`}
+              src={s.image}
+              alt={i === index ? s.alt : ''}
+              style={{ objectPosition: s.position }}
+            />
+          ))}
         </div>
       </div>
     </section>

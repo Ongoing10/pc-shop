@@ -13,25 +13,26 @@ import {
   VoucherType,
   AdminVoucher,
 } from '../types/admin';
+import { t } from '../i18n/t';
 
 type Meta = { label: string; color: string };
 
 export const PRODUCT_STATUS_META: Record<ProductStatus, Meta> = {
-  1: { label: 'Nháp', color: 'default' },
-  2: { label: 'Đang bán', color: 'green' },
-  3: { label: 'Đã ẩn', color: 'orange' },
-  4: { label: 'Ngừng bán', color: 'red' },
+  1: { get label() { return t('admin.common.draft', 'Nháp'); }, color: 'default' },
+  2: { get label() { return t('admin.common.onSale', 'Đang bán'); }, color: 'green' },
+  3: { get label() { return t('admin.status.hidden', 'Đã ẩn'); }, color: 'orange' },
+  4: { get label() { return t('admin.status.discontinued', 'Ngừng bán'); }, color: 'red' },
 };
 
 export const ORDER_STATUS_META: Record<OrderStatus, Meta> = {
-  1: { label: 'Đang giữ hàng', color: 'gold' },
-  2: { label: 'Chờ thanh toán', color: 'orange' },
-  3: { label: 'Đã thanh toán', color: 'lime' },
-  4: { label: 'Đã xác nhận', color: 'blue' },
-  5: { label: 'Đang giao', color: 'cyan' },
-  6: { label: 'Hoàn tất', color: 'green' },
-  7: { label: 'Đã hủy', color: 'red' },
-  8: { label: 'Trả hàng', color: 'magenta' },
+  1: { get label() { return t('admin.status.reservingStock', 'Đang giữ hàng'); }, color: 'gold' },
+  2: { get label() { return t('admin.status.awaitingPayment', 'Chờ thanh toán'); }, color: 'orange' },
+  3: { get label() { return t('admin.status.paid', 'Đã thanh toán'); }, color: 'lime' },
+  4: { get label() { return t('admin.status.confirmed', 'Đã xác nhận'); }, color: 'blue' },
+  5: { get label() { return t('admin.status.shipping', 'Đang giao'); }, color: 'cyan' },
+  6: { get label() { return t('admin.common.done', 'Hoàn tất'); }, color: 'green' },
+  7: { get label() { return t('admin.status.cancelled', 'Đã hủy'); }, color: 'red' },
+  8: { get label() { return t('admin.status.returned', 'Trả hàng'); }, color: 'magenta' },
 };
 
 /**
@@ -58,68 +59,76 @@ export const ORDER_MAIN_FLOW: OrderStatus[] = [1, 4, 5, 6];
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = { 1: 'COD', 2: 'VNPay', 3: 'MoMo' };
 
 export const PAYMENT_STATUS_META: Record<PaymentStatus, Meta> = {
-  1: { label: 'Chưa thanh toán', color: 'default' },
-  2: { label: 'Đã thanh toán', color: 'green' },
-  3: { label: 'Đã hoàn tiền', color: 'purple' },
+  1: { get label() { return t('admin.status.unpaid', 'Chưa thanh toán'); }, color: 'default' },
+  2: { get label() { return t('admin.status.paid', 'Đã thanh toán'); }, color: 'green' },
+  3: { get label() { return t('admin.status.refunded', 'Đã hoàn tiền'); }, color: 'purple' },
 };
 
 export const PAYMENT_RECORD_STATUS_META: Record<PaymentRecordStatus, Meta> = {
-  1: { label: 'Đang chờ', color: 'gold' },
-  2: { label: 'Thành công', color: 'green' },
-  3: { label: 'Thất bại', color: 'red' },
-  4: { label: 'Hết hạn', color: 'default' },
-  5: { label: 'Đã hoàn tiền', color: 'purple' },
+  1: { get label() { return t('admin.status.pending', 'Đang chờ'); }, color: 'gold' },
+  2: { get label() { return t('admin.status.succeeded', 'Thành công'); }, color: 'green' },
+  3: { get label() { return t('admin.status.failed', 'Thất bại'); }, color: 'red' },
+  4: { get label() { return t('admin.common.expired', 'Hết hạn'); }, color: 'default' },
+  5: { get label() { return t('admin.status.refunded', 'Đã hoàn tiền'); }, color: 'purple' },
 };
 
 export const REFUND_STATUS_META: Record<RefundStatus, Meta> = {
-  1: { label: 'Chờ hoàn', color: 'orange' },
-  2: { label: 'Đã hoàn', color: 'green' },
+  1: { get label() { return t('admin.status.awaitingRefund', 'Chờ hoàn'); }, color: 'orange' },
+  2: { get label() { return t('admin.common.refunded', 'Đã hoàn'); }, color: 'green' },
 };
 
 export const REVIEW_STATUS_META: Record<ReviewStatus, Meta> = {
-  1: { label: 'Chờ duyệt', color: 'gold' },
-  2: { label: 'Đã duyệt', color: 'green' },
-  3: { label: 'Từ chối', color: 'red' },
-  4: { label: 'Người viết đã gỡ', color: 'default' },
+  1: { get label() { return t('admin.status.pendingReview', 'Chờ duyệt'); }, color: 'gold' },
+  2: { get label() { return t('admin.common.approved', 'Đã duyệt'); }, color: 'green' },
+  3: { get label() { return t('admin.common.rejected', 'Từ chối'); }, color: 'red' },
+  4: { get label() { return t('admin.status.removedByAuthor', 'Người viết đã gỡ'); }, color: 'default' },
 };
 
 export const VOUCHER_TYPE_LABEL: Record<VoucherType, string> = {
-  1: 'Giảm theo %',
-  2: 'Giảm số tiền',
-  3: 'Miễn phí vận chuyển',
+  get 1() { return t('admin.common.percentageOff', 'Giảm theo %'); },
+  get 2() { return t('admin.common.amountOff', 'Giảm số tiền'); },
+  get 3() { return t('admin.common.freeShipping', 'Miễn phí vận chuyển'); },
 };
 
 export const MOVEMENT_TYPE_META: Record<StockMovementType, Meta> = {
-  1: { label: 'Nhập kho', color: 'green' },
-  2: { label: 'Xuất bán', color: 'blue' },
-  3: { label: 'Hoàn trả', color: 'purple' },
-  4: { label: 'Điều chỉnh', color: 'orange' },
+  1: { get label() { return t('admin.common.stockIn', 'Nhập kho'); }, color: 'green' },
+  2: { get label() { return t('admin.status.sale', 'Xuất bán'); }, color: 'blue' },
+  3: { get label() { return t('admin.status.return', 'Hoàn trả'); }, color: 'purple' },
+  4: { get label() { return t('admin.status.adjustment', 'Điều chỉnh'); }, color: 'orange' },
 };
 
 export const SEVERITY_META: Record<CompatSeverity, Meta> = {
-  1: { label: 'Lỗi', color: 'red' },
-  2: { label: 'Cảnh báo', color: 'gold' },
+  1: { get label() { return t('admin.common.error', 'Lỗi'); }, color: 'red' },
+  2: { get label() { return t('admin.common.warning', 'Cảnh báo'); }, color: 'gold' },
 };
 
 export const ROLE_LABEL: Record<RealmRole, string> = {
-  CUSTOMER: 'Khách hàng',
-  STAFF: 'Nhân viên',
-  ADMIN: 'Quản trị',
+  get CUSTOMER() { return t('admin.common.customer', 'Khách hàng'); },
+  get STAFF() { return t('admin.status.staff', 'Nhân viên'); },
+  get ADMIN() { return t('admin.common.admin', 'Quản trị'); },
 };
 
 export const PERMISSION_LABEL: Record<Permission, string> = {
-  'product:write': 'Quản lý sản phẩm, danh mục, luật tương thích',
-  'order:update-status': 'Đổi trạng thái đơn hàng',
-  'inventory:write': 'Nhập kho, điều chỉnh tồn',
-  'knowledge:write': 'Kho tri thức AI',
+  get 'product:write'() {
+    return t('admin.status.manageProductsCategoriesCompatibilityRules', 'Quản lý sản phẩm, danh mục, luật tương thích');
+  },
+  get 'order:update-status'() {
+    return t('admin.status.changeOrderStatus', 'Đổi trạng thái đơn hàng');
+  },
+  get 'inventory:write'() {
+    return t('admin.status.receiveStockAdjustInventory', 'Nhập kho, điều chỉnh tồn');
+  },
+  get 'knowledge:write'() {
+    return t('admin.common.aiKnowledgeBase', 'Kho tri thức AI');
+  },
 };
 
 export type VoucherPhase = 'upcoming' | 'running' | 'expired';
 
 export const VOUCHER_PHASE_META: Record<VoucherPhase, Meta> = {
-  upcoming: { label: 'Chưa bắt đầu', color: 'blue' },
-  running: { label: 'Đang chạy', color: 'green' },
-  expired: { label: 'Hết hạn', color: 'default' },
+  upcoming: { get label() { return t('admin.common.notStarted', 'Chưa bắt đầu'); }, color: 'blue' },
+  running: { get label() { return t('admin.common.running', 'Đang chạy'); }, color: 'green' },
+  expired: { get label() { return t('admin.common.expired', 'Hết hạn'); }, color: 'default' },
 };
 
 /** Nhãn thời gian của voucher tính từ startAt/endAt */

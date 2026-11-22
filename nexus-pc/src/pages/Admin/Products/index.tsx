@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import {
   App,
   Avatar,
@@ -23,10 +22,13 @@ import { DownloadOutlined, EditOutlined, PlusOutlined, UploadOutlined, DownOutli
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { BulkActionBar } from '../../../components/admin/BulkActionBar';
 import { BulkErrorItem, bulkErrorsOf } from '../../../components/admin/bulk';
+import { BulkDeleteButton, RowDeleteButton } from '../../../components/admin/DeleteActions';
+import { ImportExcelModal } from '../../../components/admin/ImportExcelModal';
 import {
   useAdminBrands,
   useAdminCategories,
   useAdminProducts,
+  useSetProductStatus,
   useSetProductsPrice,
   useSetProductsStatus,
 } from '../../../hooks/admin/useAdminApi';
@@ -36,8 +38,13 @@ import { AdminProduct, ProductStatus } from '../../../types/admin';
 import { PRODUCT_STATUS_META } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
 import { formatDateTime } from '../../../utils/orderStatus';
+import { ProductFormModal } from './ProductFormModal';
+import { t } from '../../../i18n/t';
 
 const STATUSES = Object.keys(PRODUCT_STATUS_META).map(Number) as ProductStatus[];
+/** "Xóa" sản phẩm = chuyển Ngừng bán (không xóa thật: đơn hàng cũ vẫn tham chiếu SKU) */
+const DELETED_STATUS: ProductStatus = 4;
+const deleteNote = () => t('admin.products.theProductMovesToDiscontinued', 'Sản phẩm chuyển sang "Ngừng bán": biến mất khỏi trang khách và bị gỡ khỏi dữ liệu tư vấn AI. Đơn hàng cũ vẫn giữ nguyên.');
 
 interface BulkPriceForm {
   mode: 'percent' | 'amount';
@@ -46,15 +53,18 @@ interface BulkPriceForm {
   reason?: string;
 }
 
-/** A02: danh sách sản phẩm (mọi trạng thái), chọn nhiều → đổi trạng thái / đổi giá */
+/** A02: danh sách sản phẩm (mọi trạng thái), chọn nhiều → đổi trạng thái / đổi giá / xóa. Thêm, sửa, import mở modal. */
 export const AdminProductsPage: React.FC = () => {
-  const navigate = useNavigate();
   const { message, modal } = App.useApp();
   const { data: products = [], isLoading } = useAdminProducts();
   const { data: categories = [] } = useAdminCategories();
   const { data: brands = [] } = useAdminBrands();
   const setProductsStatus = useSetProductsStatus();
   const setProductsPrice = useSetProductsPrice();
+  const setProductStatus = useSetProductStatus();
+  /** undefined = đóng, null = thêm mới, chuỗi = SKU đang sửa */
+  const [formSku, setFormSku] = useState<string | null>();
+  const [importOpen, setImportOpen] = useState(false);
 
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<string>();
@@ -80,19 +90,20 @@ export const AdminProductsPage: React.FC = () => {
 
   const applyBulkStatus = (next: ProductStatus) => {
     modal.confirm({
-      title: `Chuyển ${selected.length} sản phẩm sang "${PRODUCT_STATUS_META[next].label}"?`,
+      centered: true,
+      title: t('admin.products.moveProductsTo', 'Chuyển {{count}} sản phẩm sang "{{value}}"?', { count: selected.length, value: PRODUCT_STATUS_META[next].label }),
       content:
         next === 3 || next === 4
-          ? 'Sản phẩm sẽ biến mất khỏi trang khách và bị gỡ khỏi dữ liệu tư vấn AI.'
+          ? t('admin.products.theProductsWillDisappearFrom', 'Sản phẩm sẽ biến mất khỏi trang khách và bị gỡ khỏi dữ liệu tư vấn AI.')
           : undefined,
-      okText: 'Đồng ý',
-      cancelText: 'Hủy',
+      okText: t('admin.products.confirm', 'Đồng ý'),
+      cancelText: t('admin.common.cancel', 'Hủy'),
       onOk: async () => {
         try {
           await setProductsStatus.mutateAsync({ skus: selected.map((p) => p.sku), status: next });
           setBulkErrors([]);
           setSelectedKeys([]);
-          message.success(`Đã cập nhật ${selected.length} sản phẩm`);
+          message.success(t('admin.products.updatedProducts', 'Đã cập nhật {{count}} sản phẩm', { count: selected.length }));
         } catch (e) {
           const errors = bulkErrorsOf(e);
           if (errors) setBulkErrors(errors);
@@ -121,7 +132,7 @@ export const AdminProductsPage: React.FC = () => {
       setBulkErrors([]);
       setSelectedKeys([]);
       setPriceOpen(false);
-      message.success(`Đã đổi giá ${priced.length} sản phẩm`);
+      message.success(t('admin.products.repricedProducts', 'Đã đổi giá {{count}} sản phẩm', { count: priced.length }));
     } catch (e) {
       const errors = bulkErrorsOf(e);
       if (errors) {
@@ -135,6 +146,27 @@ export const AdminProductsPage: React.FC = () => {
     }
   };
 
+  const deletable = selected.filter((p) => p.status !== DELETED_STATUS);
+
+  const deleteOne = (p: AdminProduct) =>
+    setProductStatus.mutateAsync({ sku: p.sku, status: DELETED_STATUS }).then(
+      () => message.success(t('admin.products.deleted', 'Đã xóa {{name}}', { name: p.name })),
+      (e: Error) => message.error(e.message)
+    );
+
+  const deleteSelected = async () => {
+    try {
+      await setProductsStatus.mutateAsync({ skus: deletable.map((p) => p.sku), status: DELETED_STATUS });
+      setBulkErrors([]);
+      setSelectedKeys([]);
+      message.success(t('admin.products.deletedProducts', 'Đã xóa {{count}} sản phẩm', { count: deletable.length }));
+    } catch (e) {
+      const errors = bulkErrorsOf(e);
+      if (errors) setBulkErrors(errors);
+      else message.error((e as Error).message);
+    }
+  };
+
   const handleExport = async () => {
     try {
       saveDownloadedFile(await adminCatalogService.exportProducts({ category, status }), `san-pham-${category}.xlsx`);
@@ -145,16 +177,16 @@ export const AdminProductsPage: React.FC = () => {
 
   const columns: TableColumnsType<AdminProduct> = [
     {
-      title: 'Sản phẩm',
+      title: t('admin.common.products', 'Sản phẩm'),
       dataIndex: 'name',
       fixed: 'left',
       render: (name: string, p) => (
         <Flex gap={12} align="center">
           <Avatar shape="square" size={40} src={p.images?.[0]?.url} />
           <div>
-            <Link to={`/admin/products/${p.sku}`} className="admin-cell-title">
+            <Typography.Link className="admin-cell-title" onClick={() => setFormSku(p.sku)}>
               {name}
-            </Link>
+            </Typography.Link>
             <Typography.Text type="secondary" className="admin-mono" style={{ display: 'block' }}>
               {p.sku}
             </Typography.Text>
@@ -162,10 +194,10 @@ export const AdminProductsPage: React.FC = () => {
         </Flex>
       ),
     },
-    { title: 'Danh mục', dataIndex: 'categoryCode', width: 130, render: (c: string) => categoryName(c) },
-    { title: 'Thương hiệu', dataIndex: 'brandCode', width: 110, render: brandName },
+    { title: t('admin.common.category', 'Danh mục'), dataIndex: 'categoryCode', width: 130, render: (c: string) => categoryName(c) },
+    { title: t('admin.common.brands', 'Thương hiệu'), dataIndex: 'brandCode', width: 110, render: brandName },
     {
-      title: 'Giá bán',
+      title: t('admin.common.sellingPrice', 'Giá bán'),
       dataIndex: 'price',
       width: 140,
       align: 'right',
@@ -182,14 +214,14 @@ export const AdminProductsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Trạng thái',
+      title: t('admin.common.status', 'Trạng thái'),
       dataIndex: 'status',
       width: 110,
       render: (s: ProductStatus) => <Tag color={PRODUCT_STATUS_META[s].color}>{PRODUCT_STATUS_META[s].label}</Tag>,
     },
-    { title: 'Đã bán', dataIndex: 'soldCount', width: 80, align: 'right', render: (v: number | null) => v ?? 0 },
+    { title: t('admin.common.sold', 'Đã bán'), dataIndex: 'soldCount', width: 80, align: 'right', render: (v: number | null) => v ?? 0 },
     {
-      title: 'Cập nhật',
+      title: t('admin.common.update', 'Cập nhật'),
       dataIndex: 'updatedAt',
       width: 150,
       render: (v: string | null) => (v ? formatDateTime(v) : '–'),
@@ -197,18 +229,21 @@ export const AdminProductsPage: React.FC = () => {
     {
       title: '',
       key: 'actions',
-      width: 56,
+      width: 80,
       fixed: 'right',
       render: (_, p) => (
-        <Tooltip title="Sửa">
-          <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined />}
-            aria-label="Sửa"
-            onClick={() => navigate(`/admin/products/${p.sku}`)}
+        <Flex gap={4}>
+          <Tooltip title={t('admin.common.edit', 'Sửa')}>
+            <Button type="text" size="small" icon={<EditOutlined />} aria-label={t('admin.common.edit', 'Sửa')} onClick={() => setFormSku(p.sku)} />
+          </Tooltip>
+          <RowDeleteButton
+            title={t('admin.products.delete', 'Xóa {{name}}?', { name: p.name })}
+            description={<div style={{ maxWidth: 280 }}>{deleteNote()}</div>}
+            onConfirm={() => deleteOne(p)}
+            disabled={p.status === DELETED_STATUS}
+            disabledReason={t('admin.products.alreadyDiscontinued', 'Đã ngừng bán')}
           />
-        </Tooltip>
+        </Flex>
       ),
     },
   ];
@@ -216,20 +251,20 @@ export const AdminProductsPage: React.FC = () => {
   return (
     <>
       <AdminPageHeader
-        title="Sản phẩm"
-        subtitle="Thấy cả sản phẩm nháp, đã ẩn và ngừng bán"
+        title={t('admin.common.products', 'Sản phẩm')}
+        subtitle={t('admin.products.includesDraftHiddenAndDiscontinued', 'Thấy cả sản phẩm nháp, đã ẩn và ngừng bán')}
         extra={
           <>
-            <Tooltip title={category ? undefined : 'Chọn danh mục trước khi xuất (mỗi danh mục một bộ cột thông số)'}>
+            <Tooltip title={category ? undefined : t('admin.products.chooseACategoryBeforeExporting', 'Chọn danh mục trước khi xuất (mỗi danh mục một bộ cột thông số)')}>
               <Button icon={<DownloadOutlined />} disabled={!category} onClick={handleExport}>
-                Xuất Excel
+                {t('admin.common.exportExcel', 'Xuất Excel')}
               </Button>
             </Tooltip>
-            <Button icon={<UploadOutlined />} onClick={() => navigate('/admin/products/import')}>
+            <Button icon={<UploadOutlined />} onClick={() => setImportOpen(true)}>
               Import Excel
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/products/new')}>
-              Thêm sản phẩm
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormSku(null)}>
+              {t('admin.common.addProduct', 'Thêm sản phẩm')}
             </Button>
           </>
         }
@@ -239,14 +274,14 @@ export const AdminProductsPage: React.FC = () => {
         <Flex gap={12} wrap className="admin-filters">
           <Input.Search
             allowClear
-            placeholder="Tên hoặc SKU"
+            placeholder={t('admin.products.nameOrSku', 'Tên hoặc SKU')}
             style={{ width: 280 }}
             onSearch={setQ}
             onChange={(e) => !e.target.value && setQ('')}
           />
           <Select
             allowClear
-            placeholder="Danh mục"
+            placeholder={t('admin.common.category', 'Danh mục')}
             style={{ width: 180 }}
             value={category}
             onChange={setCategory}
@@ -254,7 +289,7 @@ export const AdminProductsPage: React.FC = () => {
           />
           <Select
             allowClear
-            placeholder="Trạng thái"
+            placeholder={t('admin.common.status', 'Trạng thái')}
             style={{ width: 160 }}
             value={status}
             onChange={setStatus}
@@ -276,7 +311,7 @@ export const AdminProductsPage: React.FC = () => {
             }}
           >
             <Button size="small">
-              Đổi trạng thái <DownOutlined />
+              {t('admin.common.changeStatus', 'Đổi trạng thái')} <DownOutlined />
             </Button>
           </Dropdown>
           <Button
@@ -288,8 +323,19 @@ export const AdminProductsPage: React.FC = () => {
               setPriceOpen(true);
             }}
           >
-            Đổi giá
+            {t('admin.common.changePrice', 'Đổi giá')}
           </Button>
+          <BulkDeleteButton
+            count={deletable.length}
+            noun={t('admin.products.products', 'sản phẩm')}
+            content={
+              <>
+                {deleteNote()}
+                {deletable.length < selected.length && <div>{t('admin.common.skipping', 'Bỏ qua')} {selected.length - deletable.length} {t('admin.products.alreadyDiscontinuedProducts', 'sản phẩm đã ngừng bán.')}</div>}
+              </>
+            }
+            onConfirm={deleteSelected}
+          />
         </BulkActionBar>
 
         <Table
@@ -301,27 +347,28 @@ export const AdminProductsPage: React.FC = () => {
           loading={isLoading}
           rowClassName={(p) => (errorIds.has(p.sku) ? 'admin-row-error' : '')}
           rowSelection={{ selectedRowKeys: selectedKeys, onChange: setSelectedKeys }}
-          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `${t} sản phẩm` }}
+          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (n) => t('admin.products.products2', '{{count}} sản phẩm', { count: n }) }}
         />
       </Card>
 
       <Modal
+        centered
         open={priceOpen}
-        title={`Đổi giá ${selected.length} sản phẩm`}
-        okText="Áp dụng"
-        cancelText="Hủy"
+        title={t('admin.products.changePriceOfProducts', 'Đổi giá {{count}} sản phẩm', { count: selected.length })}
+        okText={t('admin.common.apply', 'Áp dụng')}
+        cancelText={t('admin.common.cancel', 'Hủy')}
         confirmLoading={saving}
         onOk={applyBulkPrice}
         onCancel={() => setPriceOpen(false)}
         destroyOnHidden
       >
         <Form form={priceForm} layout="vertical" initialValues={{ mode: 'percent', keepOriginal: true }}>
-          <Form.Item name="mode" label="Cách tính">
+          <Form.Item name="mode" label={t('admin.products.calculation', 'Cách tính')}>
             <Radio.Group
               optionType="button"
               options={[
-                { value: 'percent', label: 'Giảm theo %' },
-                { value: 'amount', label: 'Giảm số tiền' },
+                { value: 'percent', label: t('admin.common.percentageOff', 'Giảm theo %') },
+                { value: 'amount', label: t('admin.common.amountOff', 'Giảm số tiền') },
               ]}
             />
           </Form.Item>
@@ -329,9 +376,9 @@ export const AdminProductsPage: React.FC = () => {
             {({ getFieldValue }) => (
               <Form.Item
                 name="value"
-                label={getFieldValue('mode') === 'percent' ? 'Giảm bao nhiêu %' : 'Giảm bao nhiêu tiền'}
-                rules={[{ required: true, message: 'Nhập mức giảm (số âm để tăng giá)' }]}
-                extra="Nhập số âm để tăng giá. Giá mới được làm tròn đến nghìn đồng."
+                label={getFieldValue('mode') === 'percent' ? t('admin.products.discount', 'Giảm bao nhiêu %') : t('admin.products.discountAmount', 'Giảm bao nhiêu tiền')}
+                rules={[{ required: true, message: t('admin.products.enterTheDiscountNegativeTo', 'Nhập mức giảm (số âm để tăng giá)') }]}
+                extra={t('admin.products.enterANegativeNumberTo', 'Nhập số âm để tăng giá. Giá mới được làm tròn đến nghìn đồng.')}
               >
                 {getFieldValue('mode') === 'percent' ? (
                   <InputNumber min={-100} max={99} suffix="%" style={{ width: '100%' }} />
@@ -347,19 +394,22 @@ export const AdminProductsPage: React.FC = () => {
               </Form.Item>
             )}
           </Form.Item>
-          <Form.Item name="keepOriginal" label="Giá gốc (gạch ngang)">
+          <Form.Item name="keepOriginal" label={t('admin.common.originalPriceStruckThrough', 'Giá gốc (gạch ngang)')}>
             <Radio.Group
               options={[
-                { value: true, label: 'Giữ giá cũ làm giá gốc' },
-                { value: false, label: 'Bỏ giá gốc' },
+                { value: true, label: t('admin.products.keepTheOldPriceAs', 'Giữ giá cũ làm giá gốc') },
+                { value: false, label: t('admin.products.removeTheOriginalPrice', 'Bỏ giá gốc') },
               ]}
             />
           </Form.Item>
-          <Form.Item name="reason" label="Lý do" extra="Ghi vào lịch sử giá, mặc định BULK">
-            <Input placeholder="vd: Khuyến mãi Black Friday" maxLength={100} />
+          <Form.Item name="reason" label={t('admin.common.reason', 'Lý do')} extra={t('admin.products.savedToPriceHistoryBulk', 'Ghi vào lịch sử giá, mặc định BULK')}>
+            <Input placeholder={t('admin.products.eGBlackFridaySale', 'vd: Khuyến mãi Black Friday')} maxLength={100} />
           </Form.Item>
         </Form>
       </Modal>
+
+      <ProductFormModal open={formSku !== undefined} sku={formSku ?? null} onClose={() => setFormSku(undefined)} />
+      <ImportExcelModal kind="products" open={importOpen} onClose={() => setImportOpen(false)} />
     </>
   );
 };

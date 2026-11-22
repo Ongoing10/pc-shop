@@ -12,30 +12,34 @@ import {
 } from 'recharts';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../context/ThemeContext';
 import { formatCurrency } from '../../utils/format';
 import type { OrderStatus } from '../../types/admin';
 import type { DailyStat } from '../../utils/adminStats';
+import { t } from '../../i18n/t';
 
 /**
- * Màu biểu đồ lấy từ token có sẵn. Mọi biểu đồ ở đây chỉ có MỘT chuỗi dữ liệu nên dùng một màu.
- * Chuỗi dùng primaryActive (#e85b0d) thay cho primary: đã kiểm tra bằng validate_palette (dataviz) trên nền card
- * #19191c, nằm trong dải sáng cho nền tối và đủ tương phản 3:1; #ff6b1a sáng quá dải.
+ * Màu biểu đồ lấy từ token của chế độ đang chọn. Mọi biểu đồ ở đây chỉ có MỘT chuỗi dữ liệu nên dùng một màu.
+ * Chuỗi dùng primaryActive thay cho primary: trên nền card tối #19191c, #e85b0d nằm trong dải sáng và đủ tương phản 3:1
+ * (#ff6b1a sáng quá); trên nền trắng, #c94e0a đủ 3:1 còn #ea5f12 hơi nhạt.
  */
-const CHART = {
-  series: colors.primaryActive,
-  grid: colors.border,
-  axis: colors.textMuted,
-  cursor: colors.backgroundInput,
-  crosshair: colors.borderLight,
-} as const;
-
-const AXIS_TICK = { fill: CHART.axis, fontSize: 12 };
+const useChartColors = () => {
+  const { colors } = useAppTheme();
+  return {
+    series: colors.primaryActive,
+    grid: colors.border,
+    axis: colors.textMuted,
+    axisStrong: colors.textSecondary,
+    cursor: colors.backgroundInput,
+    crosshair: colors.borderLight,
+    dotRing: colors.backgroundElevated,
+  };
+};
 
 /** Tiền rút gọn cho trục: 1,2 tỷ · 35 tr · 900 k */
 export const formatMoneyShort = (v: number) => {
-  if (Math.abs(v) >= 1e9) return `${(v / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tỷ`;
-  if (Math.abs(v) >= 1e6) return `${(v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`;
+  if (Math.abs(v) >= 1e9) return t('admin.dashboard.billionShort', '{{value}} tỷ', { value: (v / 1e9).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) });
+  if (Math.abs(v) >= 1e6) return t('admin.dashboard.millionShort', '{{value}} tr', { value: (v / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) });
   if (Math.abs(v) >= 1e3) return `${Math.round(v / 1e3)} k`;
   return String(v);
 };
@@ -58,8 +62,10 @@ export const DailyTrendChart: React.FC<{ data: DailyStat[]; metric: TrendMetric;
   metric,
   height = 280,
 }) => {
+  const CHART = useChartColors();
+  const AXIS_TICK = { fill: CHART.axis, fontSize: 12 };
   const isRevenue = metric === 'revenue';
-  const valueText = (v: number) => (isRevenue ? formatCurrency(v) : `${v} đơn`);
+  const valueText = (v: number) => (isRevenue ? formatCurrency(v) : t('admin.dashboard.orders', '{{v}} đơn', { v }));
   const total = data.reduce((s, d) => s + d[metric], 0);
   // Khoảng dài thì thưa nhãn ngày cho khỏi chồng chữ
   const tickGap = data.length > 45 ? 48 : 24;
@@ -103,7 +109,7 @@ export const DailyTrendChart: React.FC<{ data: DailyStat[]; metric: TrendMetric;
     <div
       className="admin-chart"
       role="img"
-      aria-label={`${isRevenue ? 'Doanh thu' : 'Số đơn'} theo ngày, tổng ${valueText(total)}`}
+      aria-label={t('admin.dashboard.byDayTotal', '{{value}} theo ngày, tổng {{value2}}', { value: isRevenue ? t('admin.common.revenue', 'Doanh thu') : t('admin.dashboard.orders2', 'Số đơn'), value2: valueText(total) })}
     >
       <ResponsiveContainer width="100%" height={height}>
         {isRevenue ? (
@@ -124,7 +130,7 @@ export const DailyTrendChart: React.FC<{ data: DailyStat[]; metric: TrendMetric;
               stroke={CHART.series}
               strokeWidth={2}
               fill="url(#admin-trend-fill)"
-              activeDot={{ r: 5, stroke: colors.backgroundElevated, strokeWidth: 2, fill: CHART.series }}
+              activeDot={{ r: 5, stroke: CHART.dotRing, strokeWidth: 2, fill: CHART.series }}
               isAnimationActive={false}
             />
           </AreaChart>
@@ -159,7 +165,10 @@ const HorizontalBarChart: React.FC<{
   onSelect?: (key: string) => void;
   ariaLabel: string;
   labelWidth?: number;
-}> = ({ data, valueText, tickText, onSelect, ariaLabel, labelWidth = 116 }) => (
+}> = ({ data, valueText, tickText, onSelect, ariaLabel, labelWidth = 116 }) => {
+  const CHART = useChartColors();
+  const AXIS_TICK = { fill: CHART.axis, fontSize: 12 };
+  return (
   <div className="admin-chart" role="img" aria-label={ariaLabel}>
     <ResponsiveContainer width="100%" height={Math.max(160, data.length * 34 + 32)}>
       <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }} barCategoryGap={8}>
@@ -176,7 +185,7 @@ const HorizontalBarChart: React.FC<{
           type="category"
           dataKey="label"
           width={labelWidth}
-          tick={{ ...AXIS_TICK, fill: colors.textSecondary }}
+          tick={{ ...AXIS_TICK, fill: CHART.axisStrong }}
           tickLine={false}
           axisLine={{ stroke: CHART.grid }}
         />
@@ -203,7 +212,8 @@ const HorizontalBarChart: React.FC<{
       </BarChart>
     </ResponsiveContainer>
   </div>
-);
+  );
+};
 
 export const OrderStatusChart: React.FC<{
   data: Array<{ status: OrderStatus; label: string; count: number }>;
@@ -211,9 +221,9 @@ export const OrderStatusChart: React.FC<{
 }> = ({ data, onSelect }) => (
   <HorizontalBarChart
     data={data.map((d) => ({ key: String(d.status), label: d.label, value: d.count }))}
-    valueText={(v) => `${v} đơn`}
+    valueText={(v) => t('admin.dashboard.orders', '{{v}} đơn', { v })}
     onSelect={(key) => onSelect(Number(key) as OrderStatus)}
-    ariaLabel={`Số đơn theo trạng thái: ${data.map((d) => `${d.label} ${d.count}`).join(', ')}`}
+    ariaLabel={t('admin.dashboard.ordersByStatus', 'Số đơn theo trạng thái: {{value}}', { value: data.map((d) => `${d.label} ${d.count}`).join(', ') })}
   />
 );
 
@@ -224,7 +234,7 @@ export const CategoryRevenueChart: React.FC<{ data: Array<{ code: string; label:
     data={data.map((d) => ({ key: d.code, label: d.label, value: d.revenue }))}
     valueText={formatCurrency}
     tickText={formatMoneyShort}
-    ariaLabel={`Doanh thu theo danh mục: ${data.map((d) => `${d.label} ${formatCurrency(d.revenue)}`).join(', ')}`}
+    ariaLabel={t('admin.dashboard.revenueByCategory', 'Doanh thu theo danh mục: {{amount}}', { amount: data.map((d) => `${d.label} ${formatCurrency(d.revenue)}`).join(', ') })}
     labelWidth={104}
   />
 );

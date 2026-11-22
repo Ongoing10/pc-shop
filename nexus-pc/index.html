@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#121214" />
+    <script>
+      // gắn chế độ sáng/tối trước khi vẽ để không nháy màu (cùng khóa với ThemeContext)
+      (function () {
+        var m;
+        try { m = localStorage.getItem("nexus_theme"); } catch (e) {}
+        if (m !== "light" && m !== "dark") m = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = m;
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>NEXUS PC · Linh kiện máy tính chính hãng & PC Builder</title>
     <meta name="description" content="Mua CPU, VGA, mainboard, RAM, SSD, nguồn và vỏ case chính hãng. Tự chọn cấu hình với PC Builder, so sánh thông số, giao hàng toàn quốc." />

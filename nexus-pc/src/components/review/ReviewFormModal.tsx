@@ -53,6 +53,7 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({ open, product,
 
   return (
     <Modal
+      centered
       open={open}
       title={t('review.writeTitle', 'Viết đánh giá')}
       onCancel={onClose}

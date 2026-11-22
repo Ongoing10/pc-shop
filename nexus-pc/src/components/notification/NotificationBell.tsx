@@ -51,7 +51,7 @@ export const NotificationBell: React.FC = () => {
         type="button"
         aria-label={t('notifications.bellLabel', { count: unread, defaultValue: `Thông báo (${unread} chưa đọc)` })}
       >
-        <Badge count={unread} offset={[2, -2]} overflowCount={9} color="var(--accent)" style={{ color: 'var(--on-accent)', fontWeight: 700 }}>
+        <Badge count={unread} offset={[2, -2]} overflowCount={9} color="var(--accent-solid)" style={{ color: 'var(--on-accent)', fontWeight: 700 }}>
           <FiBell style={{ fontSize: 20, color: 'var(--text)' }} aria-hidden="true" />
         </Badge>
       </button>

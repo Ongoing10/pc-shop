@@ -1,13 +1,13 @@
 import type { ThemeConfig } from 'antd';
 import { theme } from 'antd';
-import { colors } from './colors';
+import { ThemeColors, ThemeMode } from './colors';
 
 /**
- * Ant Design Theme Configuration
- * Injected into Ant Design's ConfigProvider.
+ * Theme antd chung cho cả trang khách và admin, dựng từ bảng màu của chế độ đang chọn.
+ * Gắn vào ConfigProvider gốc (AppProviders).
  */
-export const antdDarkTheme: ThemeConfig = {
-  algorithm: theme.darkAlgorithm,
+export const createAntdTheme = (mode: ThemeMode, colors: ThemeColors): ThemeConfig => ({
+  algorithm: mode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
   token: {
     colorPrimary: colors.primary,
     colorInfo: colors.primary,
@@ -30,9 +30,10 @@ export const antdDarkTheme: ThemeConfig = {
   },
   components: {
     Button: {
-      colorPrimary: colors.primary,
-      colorPrimaryHover: colors.primaryHover,
-      colorPrimaryActive: colors.primaryActive,
+      // nền nút primary dùng cam đậm để chữ trắng đọc được
+      colorPrimary: colors.primarySolid,
+      colorPrimaryHover: colors.primarySolidHover,
+      colorPrimaryActive: colors.primarySolidActive,
       primaryColor: colors.onPrimary,
       primaryShadow: 'none',
       defaultShadow: 'none',
@@ -125,13 +126,13 @@ export const antdDarkTheme: ThemeConfig = {
       borderRadiusSM: 6,
     },
   },
-};
+});
 
 /**
- * Lớp chỉnh thêm cho khu quản trị (/admin), lồng trong ConfigProvider gốc nên kế thừa màu của antdDarkTheme.
+ * Lớp chỉnh thêm cho khu quản trị (/admin), lồng trong ConfigProvider gốc nên kế thừa màu của theme chung.
  * Admin dùng trên desktop, làm việc lâu: control thấp hơn, bảng dày (hàng ~40px), hover dòng rõ.
  */
-export const antdAdminTheme: ThemeConfig = {
+export const createAdminTheme = (colors: ThemeColors): ThemeConfig => ({
   token: {
     controlHeight: 34,
     fontSize: 14,
@@ -159,7 +160,7 @@ export const antdAdminTheme: ThemeConfig = {
       colorBgContainer: colors.backgroundElevated,
       rowHoverBg: colors.backgroundInput,
       rowSelectedBg: colors.primaryLight,
-      rowSelectedHoverBg: 'rgba(255, 107, 26, 0.18)',
+      rowSelectedHoverBg: colors.primaryLightHover,
       cellPaddingBlock: 8,
       cellPaddingInline: 12,
       cellPaddingBlockSM: 6,
@@ -173,4 +174,4 @@ export const antdAdminTheme: ThemeConfig = {
       contentFontSize: 26,
     },
   },
-};
+});

@@ -26,6 +26,9 @@ import { useAdminProducts, useAdminReviews, useModerateReviews, useReplyReview }
 import { AdminReview, ReviewStatus } from '../../../types/admin';
 import { REVIEW_STATUS_META } from '../../../utils/adminStatus';
 import { formatDateTime } from '../../../utils/orderStatus';
+import { useAdminSession } from '../../../context/AdminSessionContext';
+import { ProductFormModal } from '../Products/ProductFormModal';
+import { t } from '../../../i18n/t';
 
 type StatusFilter = ReviewStatus | 'all';
 
@@ -40,6 +43,8 @@ export const ReviewsPage: React.FC = () => {
   const { data: products = [] } = useAdminProducts();
   const moderateReviews = useModerateReviews();
   const replyReview = useReplyReview();
+  const { can } = useAdminSession();
+  const [productSku, setProductSku] = useState<string>();
 
   const [status, setStatus] = useState<StatusFilter>(1);
   const [sku, setSku] = useState<string>();
@@ -76,7 +81,7 @@ export const ReviewsPage: React.FC = () => {
       await moderateReviews.mutateAsync({ ids: targets.map((r) => r.id), approve: next === 2 });
       setSelectedKeys([]);
       setBulkErrors([]);
-      message.success(`Đã ${next === 2 ? 'duyệt' : 'từ chối'} ${targets.length} đánh giá`);
+      message.success(t('admin.reviews.reviews', 'Đã {{value}} {{count}} đánh giá', { value: next === 2 ? t('admin.reviews.approved', 'duyệt') : t('admin.reviews.rejected', 'từ chối'), count: targets.length }));
     } catch (e) {
       const errors = bulkErrorsOf(e);
       if (errors) setBulkErrors(errors);
@@ -92,7 +97,7 @@ export const ReviewsPage: React.FC = () => {
     try {
       // ghi đè câu trả lời cũ; backend gửi thông báo cho người viết
       await replyReview.mutateAsync({ id: active.id, content: reply.trim() });
-      message.success('Đã gửi trả lời');
+      message.success(t('admin.reviews.replySent', 'Đã gửi trả lời'));
     } catch (e) {
       message.error((e as Error).message);
     } finally {
@@ -103,14 +108,14 @@ export const ReviewsPage: React.FC = () => {
   const columns: TableColumnsType<AdminReview> = [
     {
       // Cột co giãn: bảng dùng tableLayout fixed nên chữ dài được cắt "..." theo bề rộng còn lại
-      title: 'Đánh giá',
+      title: t('admin.reviews.review', 'Đánh giá'),
       key: 'review',
       render: (_, r) => (
         <div>
           <Flex gap={8} align="center" style={{ minWidth: 0 }}>
             <Rate disabled value={r.rating} className="admin-rate" />
             <Typography.Text strong ellipsis={{ tooltip: r.title }} className="admin-cell-title" style={{ minWidth: 0 }}>
-              {r.title ?? '(không tiêu đề)'}
+              {r.title ?? t('admin.reviews.noTitle', '(không tiêu đề)')}
             </Typography.Text>
           </Flex>
           <Typography.Text type="secondary" ellipsis style={{ display: 'block' }}>
@@ -120,7 +125,7 @@ export const ReviewsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Sản phẩm',
+      title: t('admin.common.products', 'Sản phẩm'),
       dataIndex: 'sku',
       width: 170,
       ellipsis: { showTitle: false },
@@ -129,7 +134,7 @@ export const ReviewsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Người viết',
+      title: t('admin.reviews.author', 'Người viết'),
       dataIndex: 'userDisplayName',
       width: 140,
       // màn < 1600px bảng nằm cạnh khung chi tiết nên hẹp; người viết đã có trong khung chi tiết
@@ -144,7 +149,7 @@ export const ReviewsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Trạng thái',
+      title: t('admin.common.status', 'Trạng thái'),
       dataIndex: 'status',
       width: 110,
       render: (s: ReviewStatus) => <Tag color={REVIEW_STATUS_META[s].color}>{REVIEW_STATUS_META[s].label}</Tag>,
@@ -153,7 +158,7 @@ export const ReviewsPage: React.FC = () => {
 
   return (
     <>
-      <AdminPageHeader title="Duyệt đánh giá" subtitle="Đánh giá chỉ hiện trên trang sản phẩm sau khi được duyệt" />
+      <AdminPageHeader title={t('admin.common.reviewModeration', 'Duyệt đánh giá')} subtitle={t('admin.reviews.reviewsAppearOnTheProduct', 'Đánh giá chỉ hiện trên trang sản phẩm sau khi được duyệt')} />
 
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={16} xxl={15}>
@@ -166,16 +171,16 @@ export const ReviewsPage: React.FC = () => {
                   setSelectedKeys([]);
                 }}
                 options={[
-                  { value: 1, label: `Chờ duyệt (${counts(1)})` },
-                  { value: 2, label: 'Đã duyệt' },
-                  { value: 3, label: 'Từ chối' },
-                  { value: 'all', label: 'Tất cả' },
+                  { value: 1, label: t('admin.reviews.pending', 'Chờ duyệt ({{value}})', { value: counts(1) }) },
+                  { value: 2, label: t('admin.common.approved', 'Đã duyệt') },
+                  { value: 3, label: t('admin.common.rejected', 'Từ chối') },
+                  { value: 'all', label: t('admin.common.all', 'Tất cả') },
                 ]}
               />
               <Select
                 allowClear
                 showSearch
-                placeholder="Lọc theo sản phẩm"
+                placeholder={t('admin.reviews.filterByProduct', 'Lọc theo sản phẩm')}
                 optionFilterProp="label"
                 style={{ width: 260 }}
                 value={sku}
@@ -197,7 +202,7 @@ export const ReviewsPage: React.FC = () => {
                 loading={busy}
                 onClick={() => moderate(reviews.filter((r) => selectedKeys.includes(r.id)), 2)}
               >
-                Duyệt
+                {t('admin.reviews.approve', 'Duyệt')}
               </Button>
               <Button
                 size="small"
@@ -206,7 +211,7 @@ export const ReviewsPage: React.FC = () => {
                 loading={busy}
                 onClick={() => moderate(reviews.filter((r) => selectedKeys.includes(r.id)), 3)}
               >
-                Từ chối
+                {t('admin.common.rejected', 'Từ chối')}
               </Button>
             </BulkActionBar>
 
@@ -224,7 +229,7 @@ export const ReviewsPage: React.FC = () => {
               pagination={{ pageSize: 20 }}
               locale={{
                 emptyText: (
-                  <Empty description={status === 1 ? 'Không còn đánh giá chờ duyệt' : 'Không có đánh giá nào'} />
+                  <Empty description={status === 1 ? t('admin.reviews.noReviewsWaitingForApproval', 'Không còn đánh giá chờ duyệt') : t('admin.reviews.noReviews', 'Không có đánh giá nào')} />
                 ),
               }}
             />
@@ -232,15 +237,15 @@ export const ReviewsPage: React.FC = () => {
         </Col>
 
         <Col xs={24} xl={8} xxl={9}>
-          <Card title="Chi tiết đánh giá" className="admin-sticky-card">
+          <Card title={t('admin.reviews.reviewDetails', 'Chi tiết đánh giá')} className="admin-sticky-card">
             {!active ? (
-              <Empty description="Chọn một đánh giá để xem và trả lời" />
+              <Empty description={t('admin.reviews.selectAReviewToRead', 'Chọn một đánh giá để xem và trả lời')} />
             ) : (
               <Flex vertical gap={16}>
                 <div>
                   <Rate disabled value={active.rating} />
                   <Typography.Title level={5} style={{ margin: '8px 0 4px' }}>
-                    {active.title ?? '(không tiêu đề)'}
+                    {active.title ?? t('admin.reviews.noTitle', '(không tiêu đề)')}
                   </Typography.Title>
                   <Typography.Paragraph style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{active.content}</Typography.Paragraph>
                 </div>
@@ -249,20 +254,24 @@ export const ReviewsPage: React.FC = () => {
                   size="small"
                   column={1}
                   items={[
-                    { key: 'status', label: 'Trạng thái', children: <Tag color={REVIEW_STATUS_META[active.status].color}>{REVIEW_STATUS_META[active.status].label}</Tag> },
+                    { key: 'status', label: t('admin.common.status', 'Trạng thái'), children: <Tag color={REVIEW_STATUS_META[active.status].color}>{REVIEW_STATUS_META[active.status].label}</Tag> },
                     {
                       key: 'product',
-                      label: 'Sản phẩm',
-                      children: <Link to={`/admin/products/${active.sku}`}>{productName(active.sku)}</Link>,
+                      label: t('admin.common.products', 'Sản phẩm'),
+                      children: can('product:write') ? (
+                        <Typography.Link onClick={() => setProductSku(active.sku)}>{productName(active.sku)}</Typography.Link>
+                      ) : (
+                        productName(active.sku)
+                      ),
                     },
-                    { key: 'user', label: 'Người viết', children: active.userDisplayName },
+                    { key: 'user', label: t('admin.reviews.author', 'Người viết'), children: active.userDisplayName },
                     {
                       key: 'order',
-                      label: 'Đơn hàng',
+                      label: t('admin.common.orders', 'Đơn hàng'),
                       children: active.orderCode ? <Link to={`/admin/orders/${active.orderCode}`}>{active.orderCode}</Link> : '–',
                     },
-                    { key: 'helpful', label: 'Lượt hữu ích', children: active.helpfulCount },
-                    { key: 'date', label: 'Ngày viết', children: formatDateTime(active.createdAt) },
+                    { key: 'helpful', label: t('admin.reviews.helpfulVotes', 'Lượt hữu ích'), children: active.helpfulCount },
+                    { key: 'date', label: t('admin.reviews.writtenOn', 'Ngày viết'), children: formatDateTime(active.createdAt) },
                   ]}
                 />
 
@@ -274,7 +283,7 @@ export const ReviewsPage: React.FC = () => {
                     loading={busy}
                     onClick={() => moderate([active], 2)}
                   >
-                    Duyệt
+                    {t('admin.reviews.approve', 'Duyệt')}
                   </Button>
                   <Button
                     danger
@@ -283,15 +292,15 @@ export const ReviewsPage: React.FC = () => {
                     loading={busy}
                     onClick={() => moderate([active], 3)}
                   >
-                    Từ chối
+                    {t('admin.common.rejected', 'Từ chối')}
                   </Button>
                 </Flex>
 
                 <div>
-                  <Typography.Text strong>Trả lời của cửa hàng</Typography.Text>
+                  <Typography.Text strong>{t('admin.reviews.storeReply', 'Trả lời của cửa hàng')}</Typography.Text>
                   {active.adminReply && (
                     <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: '2px 0 8px' }}>
-                      Đã trả lời lúc {formatDateTime(active.adminReply.repliedAt)}. Gửi lại sẽ ghi đè câu cũ.
+                      {t('admin.reviews.repliedAt', 'Đã trả lời lúc')} {formatDateTime(active.adminReply.repliedAt)}{t('admin.reviews.sendingAgainReplacesThePrevious', '. Gửi lại sẽ ghi đè câu cũ.')}
                     </Typography.Paragraph>
                   )}
                   <Input.TextArea
@@ -300,7 +309,7 @@ export const ReviewsPage: React.FC = () => {
                     showCount
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
-                    placeholder="Cảm ơn bạn đã đánh giá..."
+                    placeholder={t('admin.reviews.thankYouForYourReview', 'Cảm ơn bạn đã đánh giá...')}
                     style={{ marginTop: 8 }}
                   />
                   <Button
@@ -310,7 +319,7 @@ export const ReviewsPage: React.FC = () => {
                     onClick={sendReply}
                     style={{ marginTop: 12 }}
                   >
-                    Gửi trả lời
+                    {t('admin.reviews.sendReply', 'Gửi trả lời')}
                   </Button>
                 </div>
               </Flex>
@@ -318,6 +327,7 @@ export const ReviewsPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
+      <ProductFormModal open={!!productSku} sku={productSku ?? null} onClose={() => setProductSku(undefined)} />
     </>
   );
 };

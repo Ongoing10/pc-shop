@@ -5,6 +5,7 @@ import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
 import { StockTab } from './StockTab';
 import { MovementsTab } from './MovementsTab';
 import { WarehousesTab } from './WarehousesTab';
+import { t } from '../../../i18n/t';
 
 type InventoryTab = 'stock' | 'movements' | 'warehouses';
 
@@ -19,16 +20,16 @@ export const InventoryPage: React.FC = () => {
 
   return (
     <>
-      <AdminPageHeader title="Tồn kho" subtitle="Số lượng theo từng kho, phiếu nhập và điều chỉnh" />
+      <AdminPageHeader title={t('admin.common.inventory', 'Tồn kho')} subtitle={t('admin.inventory.quantityPerWarehouseStockReceipts', 'Số lượng theo từng kho, phiếu nhập và điều chỉnh')} />
       <Card>
         <Tabs
           activeKey={tab}
           onChange={(k) => openTab(k as InventoryTab)}
           destroyOnHidden
           items={[
-            { key: 'stock', label: 'Tồn kho', children: <StockTab onShowHistory={(sku) => openTab('movements', { sku })} /> },
-            { key: 'movements', label: 'Biến động kho', children: <MovementsTab /> },
-            { key: 'warehouses', label: 'Kho hàng', children: <WarehousesTab /> },
+            { key: 'stock', label: t('admin.common.inventory', 'Tồn kho'), children: <StockTab onShowHistory={(sku) => openTab('movements', { sku })} /> },
+            { key: 'movements', label: t('admin.inventory.stockMovements', 'Biến động kho'), children: <MovementsTab /> },
+            { key: 'warehouses', label: t('admin.inventory.warehouses', 'Kho hàng'), children: <WarehousesTab /> },
           ]}
         />
       </Card>

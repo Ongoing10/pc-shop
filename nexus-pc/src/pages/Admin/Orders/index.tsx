@@ -16,6 +16,7 @@ import { ORDER_STATUS_META, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_META } from '..
 import { formatCurrency } from '../../../utils/format';
 import { formatDateTime } from '../../../utils/orderStatus';
 import { useOrderActions } from './useOrderActions';
+import { t } from '../../../i18n/t';
 
 const { RangePicker } = DatePicker;
 const STATUSES = Object.keys(ORDER_STATUS_META).map(Number) as OrderStatus[];
@@ -69,7 +70,7 @@ export const AdminOrdersPage: React.FC = () => {
 
   const columns: TableColumnsType<AdminOrder> = [
     {
-      title: 'Mã đơn',
+      title: t('admin.orders.orderCode', 'Mã đơn'),
       dataIndex: 'code',
       width: 180,
       fixed: 'left',
@@ -80,14 +81,14 @@ export const AdminOrdersPage: React.FC = () => {
       ),
     },
     {
-      title: 'Ngày đặt',
+      title: t('admin.orders.orderDate', 'Ngày đặt'),
       dataIndex: 'createdAt',
       width: 150,
       sorter: (a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''),
       render: (v: string) => formatDateTime(v),
     },
     {
-      title: 'Người nhận',
+      title: t('admin.orders.recipient', 'Người nhận'),
       dataIndex: 'receiverName',
       render: (name: string, o) => (
         <div>
@@ -97,7 +98,7 @@ export const AdminOrdersPage: React.FC = () => {
       ),
     },
     {
-      title: 'Tổng tiền',
+      title: t('admin.orders.total', 'Tổng tiền'),
       dataIndex: 'totalAmount',
       width: 140,
       align: 'right',
@@ -105,7 +106,7 @@ export const AdminOrdersPage: React.FC = () => {
       render: (v: number) => <b>{formatCurrency(v)}</b>,
     },
     {
-      title: 'Thanh toán',
+      title: t('admin.orders.payment', 'Thanh toán'),
       key: 'payment',
       width: 200,
       render: (_, o) => (
@@ -118,7 +119,7 @@ export const AdminOrdersPage: React.FC = () => {
       ),
     },
     {
-      title: 'Trạng thái',
+      title: t('admin.common.status', 'Trạng thái'),
       dataIndex: 'status',
       width: 140,
       render: (s: OrderStatus) => <Tag color={ORDER_STATUS_META[s].color}>{ORDER_STATUS_META[s].label}</Tag>,
@@ -130,18 +131,18 @@ export const AdminOrdersPage: React.FC = () => {
       fixed: 'right',
       render: (_, o) => (
         <Flex gap={4}>
-          <Tooltip title="Xem chi tiết">
+          <Tooltip title={t('admin.common.viewDetails', 'Xem chi tiết')}>
             <Link to={`/admin/orders/${o.code}`}>
-              <Button type="text" size="small" icon={<EyeOutlined />} aria-label="Xem chi tiết" />
+              <Button type="text" size="small" icon={<EyeOutlined />} aria-label={t('admin.common.viewDetails', 'Xem chi tiết')} />
             </Link>
           </Tooltip>
           {canUpdate && (
-            <Tooltip title="Đổi trạng thái">
+            <Tooltip title={t('admin.common.changeStatus', 'Đổi trạng thái')}>
               <Button
                 type="text"
                 size="small"
                 icon={<SwapOutlined />}
-                aria-label="Đổi trạng thái"
+                aria-label={t('admin.common.changeStatus', 'Đổi trạng thái')}
                 onClick={() => setModalOrders([o])}
               />
             </Tooltip>
@@ -168,11 +169,11 @@ export const AdminOrdersPage: React.FC = () => {
   return (
     <>
       <AdminPageHeader
-        title="Đơn hàng"
-        subtitle="Theo dõi và xử lý đơn của khách"
+        title={t('admin.common.orders', 'Đơn hàng')}
+        subtitle={t('admin.orders.trackAndProcessCustomerOrders', 'Theo dõi và xử lý đơn của khách')}
         extra={
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
-            Xuất Excel
+            {t('admin.common.exportExcel', 'Xuất Excel')}
           </Button>
         }
       />
@@ -182,7 +183,7 @@ export const AdminOrdersPage: React.FC = () => {
           activeKey={activeStatus ? String(activeStatus) : 'all'}
           onChange={setStatusTab}
           items={[
-            { key: 'all', label: <TabLabel text="Tất cả" count={countBy()} /> },
+            { key: 'all', label: <TabLabel text={t('admin.common.all', 'Tất cả')} count={countBy()} /> },
             ...STATUSES.map((s) => ({
               key: String(s),
               label: <TabLabel text={ORDER_STATUS_META[s].label} count={countBy(s)} />,
@@ -193,7 +194,7 @@ export const AdminOrdersPage: React.FC = () => {
         <Flex gap={12} wrap className="admin-filters">
           <Input.Search
             allowClear
-            placeholder="Mã đơn, SĐT hoặc tên người nhận"
+            placeholder={t('admin.orders.orderCodePhoneOrRecipient', 'Mã đơn, SĐT hoặc tên người nhận')}
             style={{ width: 320 }}
             onSearch={setQ}
             onChange={(e) => !e.target.value && setQ('')}
@@ -204,7 +205,7 @@ export const AdminOrdersPage: React.FC = () => {
         {canUpdate && (
           <BulkActionBar count={selectedKeys.length} onClear={() => setSelectedKeys([])}>
             <Button size="small" type="primary" icon={<SwapOutlined />} onClick={() => setModalOrders(selectedOrders)}>
-              Đổi trạng thái
+              {t('admin.common.changeStatus', 'Đổi trạng thái')}
             </Button>
           </BulkActionBar>
         )}
@@ -218,7 +219,7 @@ export const AdminOrdersPage: React.FC = () => {
           dataSource={data}
           loading={isLoading}
           rowSelection={canUpdate ? { selectedRowKeys: selectedKeys, onChange: setSelectedKeys } : undefined}
-          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `${t} đơn` }}
+          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (n) => t('admin.orders.orders', '{{count}} đơn', { count: n }) }}
         />
       </Card>
 
@@ -229,7 +230,7 @@ export const AdminOrdersPage: React.FC = () => {
         onSubmit={async (status, reason) => {
           const errors = await changeStatus(modalOrders, status, reason);
           if (!errors.length) {
-            message.success(`Đã cập nhật ${modalOrders.length} đơn sang "${ORDER_STATUS_META[status].label}"`);
+            message.success(t('admin.orders.movedOrdersTo', 'Đã cập nhật {{count}} đơn sang "{{value}}"', { count: modalOrders.length, value: ORDER_STATUS_META[status].label }));
             setModalOrders([]);
             setSelectedKeys([]);
           }

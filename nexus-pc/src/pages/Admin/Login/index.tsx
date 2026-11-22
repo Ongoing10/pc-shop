@@ -4,6 +4,7 @@ import { Alert, App, Button, Card, Checkbox, Flex, Form, Input, Typography } fro
 import { ArrowLeftOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LogoMark } from '../../../components/common/LogoMark';
 import { useAdminSession } from '../../../context/AdminSessionContext';
+import { t } from '../../../i18n/t';
 
 interface LoginFormValues {
   username: string;
@@ -26,7 +27,7 @@ export const AdminLoginPage: React.FC = () => {
   const redirect = safeRedirect(params.get('redirect'));
 
   useEffect(() => {
-    document.title = 'Đăng nhập · Quản trị NEXUS PC';
+    document.title = t('admin.login.signInNexusPcAdmin', 'Đăng nhập · Quản trị NEXUS PC');
   }, []);
 
   // Đã đăng nhập (vd mở lại tab) thì vào thẳng trang cần tới
@@ -37,10 +38,10 @@ export const AdminLoginPage: React.FC = () => {
     setError(undefined);
     try {
       const session = await login(values.username, values.password, values.remember);
-      message.success(`Xin chào ${session.fullName}`);
+      message.success(t('admin.login.hello', 'Xin chào {{fullName}}', { fullName: session.fullName }));
       navigate(redirect, { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không đăng nhập được, thử lại sau');
+      setError(e instanceof Error ? e.message : t('admin.login.couldNotSignInTry', 'Không đăng nhập được, thử lại sau'));
     } finally {
       setSubmitting(false);
     }
@@ -55,15 +56,15 @@ export const AdminLoginPage: React.FC = () => {
             <b>
               NEXUS<span>PC</span>
             </b>
-            <small>Trang quản trị</small>
+            <small>{t('admin.login.adminArea', 'Trang quản trị')}</small>
           </div>
         </Flex>
 
         <Card>
           <Typography.Title level={4} style={{ marginTop: 0 }}>
-            Đăng nhập
+            {t('admin.login.signIn', 'Đăng nhập')}
           </Typography.Title>
-          <Typography.Paragraph type="secondary">Dành cho nhân viên và quản trị viên cửa hàng.</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">{t('admin.login.forStoreStaffAndAdministrators', 'Dành cho nhân viên và quản trị viên cửa hàng.')}</Typography.Paragraph>
 
           {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 16 }} />}
 
@@ -76,19 +77,19 @@ export const AdminLoginPage: React.FC = () => {
           >
             <Form.Item
               name="username"
-              label="Tên đăng nhập hoặc email"
-              rules={[{ required: true, whitespace: true, message: 'Nhập tên đăng nhập' }]}
+              label={t('admin.login.usernameOrEmail', 'Tên đăng nhập hoặc email')}
+              rules={[{ required: true, whitespace: true, message: t('admin.common.enterAUsername', 'Nhập tên đăng nhập') }]}
             >
               <Input prefix={<UserOutlined />} autoComplete="username" autoFocus size="large" />
             </Form.Item>
-            <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, message: 'Nhập mật khẩu' }]}>
+            <Form.Item name="password" label={t('admin.common.password', 'Mật khẩu')} rules={[{ required: true, message: t('admin.common.enterAPassword', 'Nhập mật khẩu') }]}>
               <Input.Password prefix={<LockOutlined />} autoComplete="current-password" size="large" />
             </Form.Item>
             <Form.Item name="remember" valuePropName="checked">
-              <Checkbox>Ghi nhớ đăng nhập trên máy này</Checkbox>
+              <Checkbox>{t('admin.login.rememberMeOnThisDevice', 'Ghi nhớ đăng nhập trên máy này')}</Checkbox>
             </Form.Item>
             <Button type="primary" htmlType="submit" block size="large" loading={submitting}>
-              Đăng nhập
+              {t('admin.login.signIn', 'Đăng nhập')}
             </Button>
           </Form>
         </Card>
@@ -96,12 +97,12 @@ export const AdminLoginPage: React.FC = () => {
         <Alert
           type="info"
           showIcon
-          title="Đang dùng dữ liệu giả"
-          description="Đăng nhập bằng admin1 (quản trị) hoặc staff1 (nhân viên), mật khẩu bất kỳ từ 6 ký tự. Tài khoản khách hàng sẽ bị từ chối."
+          title={t('admin.login.usingMockData', 'Đang dùng dữ liệu giả')}
+          description={t('admin.login.signInAsAdmin1Admin', 'Đăng nhập bằng admin1 (quản trị) hoặc staff1 (nhân viên), mật khẩu bất kỳ từ 6 ký tự. Tài khoản khách hàng sẽ bị từ chối.')}
         />
 
         <Link to="/" className="admin-login-back">
-          <ArrowLeftOutlined /> Về trang khách hàng
+          <ArrowLeftOutlined /> {t('admin.common.backToStorefront', 'Về trang khách hàng')}
         </Link>
       </Flex>
     </Flex>

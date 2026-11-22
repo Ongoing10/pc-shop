@@ -43,7 +43,7 @@ export const ProductCardSkeleton: React.FC<SkeletonProps> = ({
         </Skeleton.Node>
 
         {/* Wishlist button placeholder */}
-        <div className="absolute top-2.5 right-2.5 w-[30px] h-[30px] rounded-full bg-[rgb(12 12 14 / 0.5)] border border-[var(--line-strong)] flex items-center justify-center">
+        <div className="absolute top-2.5 right-2.5 w-[30px] h-[30px] rounded-full bg-[color-mix(in_srgb,var(--bg-sunken)_50%,transparent)] border border-[var(--line-strong)] flex items-center justify-center">
           <div className="w-3.5 h-3.5 rounded-full bg-[var(--line-strong)]" />
         </div>
       </div>
@@ -68,7 +68,7 @@ export const ProductCardSkeleton: React.FC<SkeletonProps> = ({
 
         {/* Rating Placeholder */}
         <div className="flex items-center gap-1.5 my-1">
-          <div className="w-3 h-3 rounded-full bg-[rgb(245 184 61 / 0.18)]" />
+          <div className="w-3 h-3 rounded-full bg-[color-mix(in_srgb,var(--warn)_18%,transparent)]" />
           <div className="w-8 h-2.5 rounded bg-[var(--line)]" />
           <div className="w-16 h-2 rounded bg-[var(--panel-2)]" />
         </div>
@@ -81,7 +81,7 @@ export const ProductCardSkeleton: React.FC<SkeletonProps> = ({
 
         {/* Footer: Stock & Add to Cart button */}
         <div className="pfoot flex justify-between items-center pt-2.5 mt-2 border-t border-[var(--line-strong)]">
-          <div className="w-20 h-2.5 rounded bg-[rgb(62 207 142 / 0.15)] animate-pulse" />
+          <div className="w-20 h-2.5 rounded bg-[color-mix(in_srgb,var(--ok)_15%,transparent)] animate-pulse" />
           <Skeleton.Button
             active={active}
             size="small"

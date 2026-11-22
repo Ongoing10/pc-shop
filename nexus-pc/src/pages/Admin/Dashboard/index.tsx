@@ -22,6 +22,7 @@ import { buildDailyStats } from '../../../utils/adminStats';
 import { ORDER_STATUS_META, availableQty } from '../../../utils/adminStatus';
 import { formatCurrency } from '../../../utils/format';
 import { Inventory, OrderStatus, StatsOverview, TopProduct } from '../../../types/admin';
+import { t } from '../../../i18n/t';
 
 const { RangePicker } = DatePicker;
 
@@ -66,12 +67,12 @@ export const DashboardPage: React.FC = () => {
     .sort((a, b) => a.available - b.available);
 
   const hasOrders = overview.totalOrders > 0;
-  const emptyRange = <Empty description="Không có đơn nào trong khoảng ngày này" />;
+  const emptyRange = <Empty description={t('admin.dashboard.noOrdersInThisDate', 'Không có đơn nào trong khoảng ngày này')} />;
 
   const topColumns: TableColumnsType<TopProduct> = [
     { title: '#', key: 'rank', width: 44, render: (_, __, i) => <Typography.Text type="secondary">{i + 1}</Typography.Text> },
     {
-      title: 'Sản phẩm',
+      title: t('admin.common.products', 'Sản phẩm'),
       dataIndex: 'productName',
       render: (name: string, row) => (
         <div>
@@ -82,13 +83,13 @@ export const DashboardPage: React.FC = () => {
         </div>
       ),
     },
-    { title: 'Đã bán', dataIndex: 'quantity', width: 80, align: 'right' },
-    { title: 'Doanh thu', dataIndex: 'revenue', width: 140, align: 'right', render: (v: number) => formatCurrency(v) },
+    { title: t('admin.common.sold', 'Đã bán'), dataIndex: 'quantity', width: 80, align: 'right' },
+    { title: t('admin.common.revenue', 'Doanh thu'), dataIndex: 'revenue', width: 140, align: 'right', render: (v: number) => formatCurrency(v) },
   ];
 
   const lowColumns: TableColumnsType<LowStockRow> = [
     {
-      title: 'Sản phẩm',
+      title: t('admin.common.products', 'Sản phẩm'),
       dataIndex: 'productName',
       // cột hẹp: gộp kho vào dòng phụ thay vì cột riêng
       render: (name: string, row) => (
@@ -101,13 +102,13 @@ export const DashboardPage: React.FC = () => {
       ),
     },
     {
-      title: 'Có thể bán',
+      title: t('admin.common.available', 'Có thể bán'),
       dataIndex: 'available',
       width: 150,
       align: 'right',
       render: (v: number, row) => (
         <Tag color={v <= 0 ? 'red' : 'gold'} style={{ marginInlineEnd: 0 }}>
-          {v <= 0 ? 'Hết hàng' : `Còn ${v}`} · tối thiểu {row.minQuantity}
+          {v <= 0 ? t('admin.dashboard.outOfStock', 'Hết hàng') : t('admin.dashboard.left', 'Còn {{v}}', { v })} {t('admin.dashboard.min', '· tối thiểu')} {row.minQuantity}
         </Tag>
       ),
     },
@@ -116,8 +117,8 @@ export const DashboardPage: React.FC = () => {
   return (
     <>
       <AdminPageHeader
-        title="Tổng quan"
-        subtitle={`Số liệu từ ${range[0].format('DD/MM/YYYY')} đến ${range[1].format('DD/MM/YYYY')}`}
+        title={t('admin.common.overview', 'Tổng quan')}
+        subtitle={t('admin.dashboard.dataFromTo', 'Số liệu từ {{date}} đến {{date2}}', { date: range[0].format('DD/MM/YYYY'), date2: range[1].format('DD/MM/YYYY') })}
         extra={
           <RangePicker
             value={range}
@@ -129,10 +130,10 @@ export const DashboardPage: React.FC = () => {
               d.isAfter(dayjs(), 'day') || (start ? Math.abs(d.diff(start, 'day')) > 365 : false)
             }
             presets={[
-              { label: '7 ngày', value: [dayjs().subtract(6, 'day'), dayjs()] },
-              { label: '30 ngày', value: [dayjs().subtract(29, 'day'), dayjs()] },
-              { label: 'Tháng này', value: [dayjs().startOf('month'), dayjs()] },
-              { label: '90 ngày', value: [dayjs().subtract(89, 'day'), dayjs()] },
+              { label: t('admin.dashboard.n7Days', '7 ngày'), value: [dayjs().subtract(6, 'day'), dayjs()] },
+              { label: t('admin.dashboard.n30Days', '30 ngày'), value: [dayjs().subtract(29, 'day'), dayjs()] },
+              { label: t('admin.dashboard.thisMonth', 'Tháng này'), value: [dayjs().startOf('month'), dayjs()] },
+              { label: t('admin.dashboard.n90Days', '90 ngày'), value: [dayjs().subtract(89, 'day'), dayjs()] },
             ]}
           />
         }
@@ -141,13 +142,13 @@ export const DashboardPage: React.FC = () => {
       <Row gutter={[16, 16]}>
         <Col xs={12} xl={6}>
           <Card>
-            <Statistic title="Tổng số đơn" value={overview.totalOrders} prefix={<ShoppingCartOutlined />} />
+            <Statistic title={t('admin.dashboard.totalOrders', 'Tổng số đơn')} value={overview.totalOrders} prefix={<ShoppingCartOutlined />} />
           </Card>
         </Col>
         <Col xs={12} xl={6}>
           <Card>
             <Statistic
-              title="Doanh thu (đơn hoàn tất)"
+              title={t('admin.dashboard.revenueCompletedOrders', 'Doanh thu (đơn hoàn tất)')}
               value={overview.revenue}
               formatter={(v) => formatCurrency(Number(v))}
               prefix={<DollarOutlined />}
@@ -157,7 +158,7 @@ export const DashboardPage: React.FC = () => {
         <Col xs={12} xl={6}>
           <Card>
             <Statistic
-              title="Doanh thu gộp (trừ hủy, trả)"
+              title={t('admin.dashboard.grossRevenueExclCancelledReturned', 'Doanh thu gộp (trừ hủy, trả)')}
               value={overview.grossRevenue}
               formatter={(v) => formatCurrency(Number(v))}
               prefix={<RiseOutlined />}
@@ -167,7 +168,7 @@ export const DashboardPage: React.FC = () => {
         <Col xs={12} xl={6}>
           <Card hoverable onClick={() => navigate('/admin/inventory?lowStock=1')}>
             <Statistic
-              title="Dòng tồn kho sắp hết"
+              title={t('admin.dashboard.lowStockLines', 'Dòng tồn kho sắp hết')}
               value={lowStock.length}
               prefix={<WarningOutlined />}
               styles={{ content: { color: lowStock.length ? 'var(--warn)' : undefined } }}
@@ -177,15 +178,15 @@ export const DashboardPage: React.FC = () => {
 
         <Col xs={24} xl={16}>
           <Card
-            title={metric === 'revenue' ? 'Doanh thu gộp theo ngày' : 'Số đơn theo ngày'}
+            title={metric === 'revenue' ? t('admin.dashboard.grossRevenueByDay', 'Doanh thu gộp theo ngày') : t('admin.dashboard.ordersByDay', 'Số đơn theo ngày')}
             extra={
               <Segmented<TrendMetric>
                 size="small"
                 value={metric}
                 onChange={setMetric}
                 options={[
-                  { value: 'revenue', label: 'Doanh thu' },
-                  { value: 'orders', label: 'Số đơn' },
+                  { value: 'revenue', label: t('admin.common.revenue', 'Doanh thu') },
+                  { value: 'orders', label: t('admin.dashboard.orders2', 'Số đơn') },
                 ]}
               />
             }
@@ -197,15 +198,15 @@ export const DashboardPage: React.FC = () => {
 
         <Col xs={24} xl={8}>
           <Card
-            title="Đơn theo trạng thái"
-            extra={<Link to="/admin/orders">Xem tất cả</Link>}
+            title={t('admin.dashboard.ordersByStatus2', 'Đơn theo trạng thái')}
+            extra={<Link to="/admin/orders">{t('admin.dashboard.viewAll', 'Xem tất cả')}</Link>}
             style={{ height: '100%' }}
           >
             {hasOrders ? (
               <>
                 <OrderStatusChart data={statusData} onSelect={(s) => navigate(`/admin/orders?status=${s}`)} />
                 <Typography.Text type="secondary" className="admin-chart-hint">
-                  Bấm vào một cột để mở danh sách đơn ở trạng thái đó.
+                  {t('admin.dashboard.clickABarToOpen', 'Bấm vào một cột để mở danh sách đơn ở trạng thái đó.')}
                 </Typography.Text>
               </>
             ) : (
@@ -217,7 +218,7 @@ export const DashboardPage: React.FC = () => {
         <Col xs={24} xl={10}>
           <Flex vertical gap={16}>
 
-            <Card title="Sắp hết hàng" extra={<Link to="/admin/inventory?lowStock=1">Mở trang tồn kho</Link>}>
+            <Card title={t('admin.dashboard.lowStock', 'Sắp hết hàng')} extra={<Link to="/admin/inventory?lowStock=1">{t('admin.dashboard.openInventory', 'Mở trang tồn kho')}</Link>}>
               <Table
                 size="small"
                 rowKey="id"
@@ -228,21 +229,21 @@ export const DashboardPage: React.FC = () => {
                   onClick: () => navigate(`/admin/inventory?lowStock=1&sku=${row.sku}`),
                   style: { cursor: 'pointer' },
                 })}
-                locale={{ emptyText: <Empty description="Không có mặt hàng nào dưới ngưỡng" /> }}
+                locale={{ emptyText: <Empty description={t('admin.dashboard.noItemsBelowTheThreshold', 'Không có mặt hàng nào dưới ngưỡng')} /> }}
               />
             </Card>
           </Flex>
         </Col>
 
         <Col xs={24} xl={14}>
-          <Card title="Sản phẩm bán chạy" style={{ height: '100%' }}>
+          <Card title={t('admin.dashboard.bestSellers', 'Sản phẩm bán chạy')} style={{ height: '100%' }}>
             <Table
               size="small"
               rowKey="sku"
               columns={topColumns}
               dataSource={topProducts}
               pagination={false}
-              locale={{ emptyText: <Empty description="Chưa bán được sản phẩm nào" /> }}
+              locale={{ emptyText: <Empty description={t('admin.dashboard.noProductsSoldYet', 'Chưa bán được sản phẩm nào')} /> }}
             />
           </Card>
         </Col>

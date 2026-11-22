@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Breadcrumb, Flex, Typography } from 'antd';
+import { t } from '../../i18n/t';
 
 interface AdminPageHeaderProps {
   title: ReactNode;
@@ -16,7 +17,7 @@ export const AdminPageHeader: React.FC<AdminPageHeaderProps> = ({ title, subtitl
     {crumbs && crumbs.length > 0 && (
       <Breadcrumb
         items={[
-          { title: <Link to="/admin">Quản trị</Link> },
+          { title: <Link to="/admin">{t('admin.common.admin', 'Quản trị')}</Link> },
           ...crumbs.map((c) => ({ title: <Link to={c.link}>{c.label}</Link> })),
           { title: typeof title === 'string' ? title : undefined },
         ]}

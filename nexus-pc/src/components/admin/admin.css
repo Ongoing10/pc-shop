@@ -1,6 +1,6 @@
 /* ==========================================================================
    Khu quản trị (/admin). Mọi class bắt đầu bằng admin- để không lẫn với trang khách.
-   Màu/bo góc/chiều cao chỉnh ở antdAdminTheme (src/theme/themeConfig.ts); file này chỉ lo bố cục và khoảng cách.
+   Màu/bo góc/chiều cao chỉnh ở createAdminTheme (src/theme/themeConfig.ts); file này chỉ lo bố cục và khoảng cách.
    ========================================================================== */
 
 /* Nền gốc trùng màu sidebar để dải bên trái liền mạch khi trang dài hơn màn hình */
@@ -17,7 +17,22 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: auto;
+}
+/* logo trên cùng, menu cuộn ở giữa, tài khoản dính đáy */
+.admin-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+.admin-sider .admin-menu.ant-menu {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.admin-sider-user {
+  flex: none;
+  padding: 8px;
+  border-top: 1px solid var(--line);
 }
 
 .admin-brand {
@@ -66,15 +81,20 @@
 
 .admin-user.ant-btn {
   height: auto;
-  padding: 4px 8px;
-  display: inline-flex;
+  padding: 6px 8px;
+  display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
 }
+.admin-user.is-collapsed.ant-btn {
+  justify-content: center;
+}
 .admin-user > span:last-child {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .admin-user .ant-tag {
   margin-inline-end: 0;
@@ -112,7 +132,7 @@ a.admin-cell-title:hover {
 
 /* Dòng bảng: lỗi hàng loạt, đang xem, đã tắt */
 .ant-table-wrapper .admin-row-error > td {
-  background: rgb(240 82 82 / 0.1);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 .ant-table-wrapper .admin-row-active > td {
   background: var(--accent-soft);

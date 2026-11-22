@@ -128,9 +128,12 @@ bảng có `status` → chuyển trạng thái; đơn hàng/thanh toán → khô
 - [x] Review → `rating_avg`/`rating_count` (event `review.stats-changed`); "đã mua hàng" cho review (`GET /orders/purchased`);
       notification sinh thông báo từ `order.status-changed`, `review.replied` (2026-11-08)
 - [x] Thông báo realtime (SSE `/notifications/stream`) và email theo trạng thái đơn (Mailpit khi chạy local) (2026-11-08)
-- [ ] Event `product.updated` / `product.hidden` (AI)
+- [x] Event `product.updated` / `product.hidden` (AI) (2026-11-21: catalog gửi thẳng, không outbox; bù bằng `sync-products`)
 - [ ] Rate limit `/ai/**` ở gateway
 
-## Ngoài phạm vi đợt này
+## ai-service (2026-11-21)
 
-- Toàn bộ API của ai-service.
+- [x] **AI-1** Chat: `POST /ai/chat` · SSE `POST /ai/chat/stream` (session → status → token → done) · lịch sử `GET /ai/chat/sessions`, `GET|DELETE /ai/chat/sessions/{id}` (Mongo `ai.chat_sessions`, TTL 30 ngày) · phản hồi `POST /ai/chat/feedback`.
+- [x] **AI-2** Kho tri thức (perm knowledge:write): `GET /admin/knowledge` · `GET /admin/knowledge/{id}` · `POST /admin/knowledge` · `DELETE /admin/knowledge/{id}` · `POST /admin/knowledge/sync-products` · `GET /admin/knowledge/search`.
+- [x] **AI-3** Tool `checkCompatibility` gọi rule engine catalog, tool `findProducts` (danh mục + khoảng giá + từ khóa); nhật ký `ai_request_logs`.
+- [ ] Stream từng token (lỗi quarkus-langchain4j-ollama 1.0.2 khi stream kèm tool) · nạp tài liệu từ file `knowledge-docs` · đánh giá RAG (`eval_cases`) · gợi ý cấu hình PC bằng AI.

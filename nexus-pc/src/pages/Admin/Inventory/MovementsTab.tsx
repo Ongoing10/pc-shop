@@ -7,6 +7,7 @@ import { useAdminMovements, useAdminProducts, useAdminWarehouses } from '../../.
 import { StockMovement, StockMovementType } from '../../../types/admin';
 import { MOVEMENT_TYPE_META } from '../../../utils/adminStatus';
 import { formatDateTime } from '../../../utils/orderStatus';
+import { t } from '../../../i18n/t';
 
 const { RangePicker } = DatePicker;
 
@@ -32,7 +33,7 @@ export const MovementsTab: React.FC = () => {
   );
 
   const columns: TableColumnsType<StockMovement> = [
-    { title: 'Thời gian', dataIndex: 'createdAt', width: 150, render: (v: string) => formatDateTime(v) },
+    { title: t('admin.common.time', 'Thời gian'), dataIndex: 'createdAt', width: 150, render: (v: string) => formatDateTime(v) },
     {
       title: 'SKU',
       dataIndex: 'sku',
@@ -45,15 +46,15 @@ export const MovementsTab: React.FC = () => {
         </div>
       ),
     },
-    { title: 'Kho', dataIndex: 'warehouseId', width: 140, render: (id: number) => warehouses.find((w) => w.id === id)?.name ?? id },
+    { title: t('admin.common.warehouse', 'Kho'), dataIndex: 'warehouseId', width: 140, render: (id: number) => warehouses.find((w) => w.id === id)?.name ?? id },
     {
-      title: 'Loại',
+      title: t('admin.common.type', 'Loại'),
       dataIndex: 'type',
       width: 110,
-      render: (t: StockMovementType) => <Tag color={MOVEMENT_TYPE_META[t].color}>{MOVEMENT_TYPE_META[t].label}</Tag>,
+      render: (n: StockMovementType) => <Tag color={MOVEMENT_TYPE_META[n].color}>{MOVEMENT_TYPE_META[n].label}</Tag>,
     },
     {
-      title: 'Số lượng',
+      title: t('admin.common.quantity', 'Số lượng'),
       dataIndex: 'quantity',
       width: 90,
       align: 'right',
@@ -63,10 +64,10 @@ export const MovementsTab: React.FC = () => {
         </Typography.Text>
       ),
     },
-    { title: 'Tồn sau', dataIndex: 'quantityAfter', width: 80, align: 'right', render: (v: number | null) => v ?? '–' },
-    { title: 'Chứng từ', dataIndex: 'referenceCode', width: 170, render: (v: string | null) => (v ? <span className="admin-mono">{v}</span> : '–') },
-    { title: 'Ghi chú', dataIndex: 'note', render: (v: string | null) => v ?? '–' },
-    { title: 'Người tạo', dataIndex: 'createdBy', width: 100, render: (v: string | null) => v ?? 'Hệ thống' },
+    { title: t('admin.inventory.stockAfter', 'Tồn sau'), dataIndex: 'quantityAfter', width: 80, align: 'right', render: (v: number | null) => v ?? '–' },
+    { title: t('admin.inventory.reference', 'Chứng từ'), dataIndex: 'referenceCode', width: 170, render: (v: string | null) => (v ? <span className="admin-mono">{v}</span> : '–') },
+    { title: t('admin.common.note', 'Ghi chú'), dataIndex: 'note', render: (v: string | null) => v ?? '–' },
+    { title: t('admin.inventory.createdBy', 'Người tạo'), dataIndex: 'createdBy', width: 100, render: (v: string | null) => v ?? t('admin.common.system', 'Hệ thống') },
   ];
 
   return (
@@ -75,7 +76,7 @@ export const MovementsTab: React.FC = () => {
         <Select
           allowClear
           showSearch
-          placeholder="Lọc theo SKU"
+          placeholder={t('admin.inventory.filterBySku', 'Lọc theo SKU')}
           style={{ width: 320 }}
           value={sku}
           onChange={setSku}
@@ -91,7 +92,7 @@ export const MovementsTab: React.FC = () => {
         scroll={{ x: 1100 }}
         columns={columns}
         dataSource={data}
-        pagination={{ pageSize: 50, showTotal: (t) => `${t} biến động` }}
+        pagination={{ pageSize: 50, showTotal: (n) => t('admin.inventory.movements', '{{count}} biến động', { count: n }) }}
       />
     </>
   );

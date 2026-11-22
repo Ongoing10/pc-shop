@@ -61,9 +61,9 @@ pc-shop/
 # 1. Hạ tầng (lần đầu Keycloak mất khoảng 30-60 giây để import realm)
 docker compose up -d
 
-# 2. Model cho ai-service (một lần; bỏ qua nếu chưa làm phần AI)
-ollama pull qwen2.5:7b
-ollama pull bge-m3
+# 2. ai-service chỉ cần Ollama đã cài và đang chạy: thiếu qwen2.5:7b / bge-m3 thì ai-service tự tải khi khởi động
+#    (~6 GB lần đầu, chạy nền; log ghi tiến độ, GET http://localhost:8087/q/health/ready xem trạng thái).
+#    Muốn tải trước cho nhanh: ollama pull qwen2.5:7b && ollama pull bge-m3
 ```
 
 3. Mở thư mục `pc-shop` bằng IntelliJ (*File → Open*), đợi Maven import xong.
@@ -140,9 +140,11 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/me
 | Xem file (blob) | `GET /api/v1/media/files/{id}/view` | Bucket `knowledge-docs` cần token ADMIN |
 | Quản lý user | admin1 gọi `GET /api/v1/admin/users?keyword=customer` | customer-service gọi Keycloak Admin API |
 | Swagger | `http://localhost:808x/swagger-ui.html` (Spring) · `http://localhost:808x/q/swagger-ui` (Quarkus) | Gọi thẳng cổng service, không qua gateway |
-| Nạp sản phẩm vào RAG | admin1 gọi `POST /api/v1/ai/knowledge/sync-products` | Cần Ollama đang chạy |
-| Xem retriever trả gì | `GET /api/v1/ai/search?q=card chơi game 2K` | Công khai |
-| Chatbot | `POST /api/v1/ai/chat` `{"message":"Tư vấn card chơi game 2K"}` | Công khai; gửi lại `sessionId` để giữ ngữ cảnh |
+| Nạp sản phẩm vào RAG | admin1 gọi `POST /api/v1/admin/knowledge/sync-products` | Lần đầu; sau đó catalog tự báo qua Kafka `product.updated` / `product.hidden` |
+| Kho tri thức | admin1: `GET /api/v1/admin/knowledge` · `GET /admin/knowledge/{id}` (xem chunk) · `POST /admin/knowledge` · `DELETE /admin/knowledge/{id}` | Perm `knowledge:write` |
+| Xem retriever trả gì | admin1: `GET /api/v1/admin/knowledge/search?q=card chơi game 2K` | |
+| Chatbot | `POST /api/v1/ai/chat` `{"message":"Tư vấn card chơi game 2K"}` · SSE: `POST /api/v1/ai/chat/stream` | Công khai; gửi lại `sessionId` để giữ ngữ cảnh (lưu Mongo `ai.chat_sessions`, 30 ngày) |
+| Lịch sử chat, phản hồi | `GET /api/v1/ai/chat/sessions` (token) · `GET /ai/chat/sessions/{id}` · `POST /ai/chat/feedback` `{"sessionId","requestId","value":1}` | Nhật ký mỗi câu trả lời ở `ai.ai_request_logs` (chunk đã dùng, tool đã gọi, độ trễ) |
 
 ### Chạy toàn bộ collection bằng newman
 
@@ -170,7 +172,8 @@ $body = [Text.Encoding]::UTF8.GetBytes('{"message":"Tư vấn card chơi game 2K
 Invoke-RestMethod -Method Post http://localhost:8000/api/v1/ai/chat -ContentType 'application/json; charset=utf-8' -Body $body
 ```
 
-Log của ai-service in ra toàn bộ prompt (có đoạn tri thức RAG được chèn vào) và lời gọi tool `getPrice` / `checkStock`, tiện để giải thích cơ chế khi bảo vệ.
+Log của ai-service in ra toàn bộ prompt (có đoạn tri thức RAG được chèn vào) và lời gọi tool `getPrice` / `checkStock` /
+`findProducts` / `checkCompatibility`, tiện để giải thích cơ chế khi bảo vệ. Cùng thông tin đó (không có prompt) nằm ở `ai.ai_request_logs`.
 
 ## 7. Profile `dev` (Supabase + MongoDB Atlas dùng chung)
 
@@ -195,13 +198,12 @@ Quy tắc khi dùng DB chung (plan mục 7.4):
 - Kiểm tra JWT ở mọi service; `CurrentUser`; envelope `ResponseData` thống nhất giữa Spring và Quarkus.
 - Migration V1 cho mọi schema Postgres (theo DBML, ID user là UUID); changelog Liquibase cho MongoDB catalog; seed: 8 danh mục, 7 thương hiệu, 4 luật tương thích, 5 sản phẩm, tồn kho, 2 voucher, 2 đơn hàng.
 - Ví dụ ở từng service: kiểm tra quyền sở hữu (ordering), kiểm tra permission (inventory, ai), tự tạo hồ sơ khi gọi lần đầu (customer), gọi Keycloak Admin API (customer), upload file qua service (media).
-- **ai-service:** ingest (chia chunk, embedding bằng bge-m3, lưu pgvector), hybrid retrieval (vector + full-text + lọc metadata), AI service có RAG + tool calling (`getPrice`, `checkStock` gọi realtime sang catalog/inventory) + bộ nhớ hội thoại theo `sessionId`.
+- **ai-service:** ingest (chia chunk, embedding bằng bge-m3, lưu pgvector), hybrid retrieval (vector + full-text + lọc metadata), AI service có RAG + tool calling (`getPrice`, `checkStock`, `findProducts` gọi realtime sang catalog/inventory; `checkCompatibility` gọi rule engine của catalog) + bộ nhớ hội thoại theo `sessionId` (MongoDB), consumer `product.updated` / `product.hidden`, chat SSE có tiến trình, nhật ký `ai_request_logs` + phản hồi của khách.
 
 **TODO chính (theo plan):**
 - MoMo thật (đang dùng trang thanh toán giả lập), gọi API hoàn tiền của cổng (nhân viên hoàn tay rồi đánh dấu).
-- Rule engine tương thích + PC Builder (catalog), tool `checkCompatibility` gọi rule engine.
-- Consumer `product.updated` / `product.hidden` ở ai-service (thay cho API `sync-products`).
-- Chat trả lời dạng stream (SSE), lưu lịch sử chat vào MongoDB.
+- Chat stream từng token (chờ quarkus-langchain4j-ollama sửa lỗi đọc `tool_calls` khi stream, xem `ShopAssistant`).
+- Rate limit `/ai/**` ở gateway; nạp tài liệu từ file (bucket `knowledge-docs`).
 - `SupabaseFileStorage` cho profile `dev` (ghi chú cấu hình AWS SDK nằm trong `FileStorage.java`).
 - Notification (Kafka, email, WebSocket), review summary, đánh giá RAG (`eval_cases`).
 - Frontend (Next.js + `keycloak-js`), CI GitHub Actions.
@@ -219,6 +221,8 @@ Quy tắc khi dùng DB chung (plan mục 7.4):
 | Sửa `realm-pcshop.json` mà không thấy thay đổi | Realm đã có trong DB thì Keycloak bỏ qua file. Muốn import lại: `docker compose down -v` (**xóa sạch dữ liệu local**) rồi `up -d` |
 | Người tự đăng ký không có role `CUSTOMER` | Realm import trước ngày 2026-11-07. Không cần xóa dữ liệu, chạy: `docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8180 --realm master --user admin --password admin` rồi `docker compose exec keycloak /opt/keycloak/bin/kcadm.sh add-roles -r pcshop --rname default-roles-pcshop --rolename CUSTOMER` (Git Bash: thêm `MSYS_NO_PATHCONV=1` trước lệnh) |
 | `POST /admin/users` hoặc `PUT /admin/users/{id}/roles` báo 403 từ Keycloak | Realm import trước ngày 2026-10-25 thiếu quyền. Admin Console → realm `pcshop` → Users → `service-account-pcshop-backend` → Role mapping → gán thêm `view-realm`, `view-clients` (client `realm-management`) |
-| ai-service: `Connection refused` tới 11434 | Ollama chưa chạy hoặc chưa `ollama pull` model |
+| ai-service: `Connection refused` tới 11434, log "Chưa kết nối được Ollama" | Ollama chưa cài/chưa chạy. Bật Ollama lên là được: ai-service tự thử lại mỗi 30 giây rồi tải model còn thiếu |
+| ai-service: chat trả "Trợ lý AI đang tải model ...%" | Lần đầu chạy, ai-service đang tự tải model (log `Đang tải ...: N%`). Đợi tải xong; tắt tính năng bằng `pcshop.ai.models.auto-pull=false` |
 | ai-service: lỗi số chiều vector | Model embedding không phải 1024 chiều; dùng `bge-m3` hoặc viết migration đổi `vector(1024)` |
+| ai-service: chat trả "Trợ lý AI đang bận", log có `llama-server process has terminated: exit status 0xe06d7363` | Ollama sập khi nạp model (gặp với Ollama 0.40 trên GPU 4 GB qua Vulkan, hoặc khi RAM còn ít vì chạy nhiều service). Thử chạy model bằng CPU: chạy ai-service với `-Dquarkus.langchain4j.ollama.chat-model.model-id=pcshop-qwen -Dquarkus.langchain4j.ollama.timeout=300s`; ai-service tự tạo `pcshop-qwen` (= `qwen2.5:7b` + `num_gpu 0`, `num_ctx 8192`, cấu hình `pcshop.ai.models.custom.*`) nếu Ollama chưa có. Chạy bằng CPU mỗi câu trả lời mất khoảng 1–3 phút |
 | Postgres: `type "vector" does not exist` | Volume Postgres được tạo từ image cũ không có pgvector: `docker compose down -v` rồi `up -d` |

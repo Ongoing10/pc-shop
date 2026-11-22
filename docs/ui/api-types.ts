@@ -1379,52 +1379,150 @@ export interface UpdatedCount {
 }
 
 // =====================================================================================================
-// 12. ai-service
+// 12. ai-service (chat công khai /ai/**, quản trị kho tri thức /admin/knowledge/**)
 // =====================================================================================================
 
-/** POST /ai/chat (body, public) → ChatResponse */
+/** POST /ai/chat và POST /ai/chat/stream (body, public; có token thì phiên gắn với user) */
 export interface ChatRequest {
-  /** bỏ trống ở câu đầu → server tạo phiên mới; gửi lại để giữ ngữ cảnh (bộ nhớ trong RAM, mất khi restart) */
+  /** bỏ trống ở câu đầu → server tạo phiên mới; gửi lại để giữ ngữ cảnh. 8–64 ký tự [A-Za-z0-9-] */
   sessionId?: string | null;
-  /** không được rỗng */
+  /** 1–1000 ký tự */
   message: string;
 }
+/** POST /ai/chat → ChatResponse (chờ hết câu trả lời; model chạy local có thể mất vài chục giây đến vài phút) */
 export interface ChatResponse {
   sessionId: string;
   /** văn bản thuần (có thể có markdown nhẹ), luôn kèm mã SKU khi gợi ý sản phẩm */
   answer: string;
+  /** id nhật ký để gửi phản hồi; null nếu server không ghi được nhật ký */
+  requestId: number | null;
 }
+/**
+ * POST /ai/chat/stream (Accept: text/event-stream) → mỗi sự kiện SSE `data:` là một ChatStreamEvent (JSON), theo thứ tự:
+ * session → status* → token+ → done; lỗi giữa chừng: error thay cho token/done. Nối các token lại thành câu trả lời
+ * (hiện server gửi cả câu trong một token). Lỗi trước khi bắt đầu (sessionId sai, phiên của người khác, phiên đang
+ * trả lời câu khác → 409) trả envelope ResponseData như API thường, không phải SSE.
+ */
+export type ChatStreamEvent =
+  | { type: 'session'; sessionId: string; text: null; requestId: null }
+  /** việc trợ lý đang làm, vd "Đang tra giá GPU-MSI-4070S-12G" */
+  | { type: 'status'; text: string; sessionId: null; requestId: null }
+  | { type: 'token'; text: string; sessionId: null; requestId: null }
+  | { type: 'done'; sessionId: string; requestId: number | null; text: null }
+  /** text: thông báo cho khách */
+  | { type: 'error'; text: string; sessionId: null; requestId: null };
 
-/** GET /ai/search?q=&category=&k= → ScoredChunk[] (công cụ debug RAG, k 1–20) */
-export interface ScoredChunk {
-  chunkId: number;
-  documentId: number;
+/** GET /ai/chat/sessions?limit= (token, tối đa 50) → ChatSessionSummary[] mới nhất trước. Phiên vãng lai không có ở đây */
+export interface ChatSessionSummary {
+  sessionId: string;
+  /** câu hỏi đầu tiên, cắt 60 ký tự */
   title: string;
-  content: string;
-  /** chuỗi JSON, vd {"sku":"...","category":"GPU","brand":"MSI"} */
-  metadataJson: string;
-  vectorScore: number;
-  textScore: number;
+  createdAt: IsoInstant;
+  updatedAt: IsoInstant;
+}
+/**
+ * GET /ai/chat/sessions/{sessionId} → ChatSessionDetail · DELETE cùng đường dẫn → null (xóa thật).
+ * Phiên vãng lai: ai có sessionId cũng xem được; phiên đã gắn user: chỉ chủ phiên (khác → 403).
+ * Phiên không dùng 30 ngày tự xóa.
+ */
+export interface ChatSessionDetail extends ChatSessionSummary {
+  turns: ChatTurn[];
+}
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  text: string;
+  /** chỉ có ở lượt assistant */
+  requestId: number | null;
+  at: IsoInstant;
+}
+/** POST /ai/chat/feedback (body) → null. value 1 hữu ích, -1 không hữu ích; gửi lại thì ghi đè */
+export interface ChatFeedbackRequest {
+  sessionId: string;
+  requestId: number;
+  value: 1 | -1;
 }
 
-/** POST /ai/knowledge (body, perm knowledge:write) → IngestResult */
+/** 1 Chờ index · 2 Đang index · 3 Đã index · 4 Lỗi · 5 Đã gỡ */
+export type KnowledgeStatus = 1 | 2 | 3 | 4 | 5;
+
+/** GET /admin/knowledge?sourceType=&status=&q=&page=&size= (perm knowledge:write) → PageResponse<KnowledgeDocument> */
+export interface KnowledgeDocumentQuery {
+  sourceType?: KnowledgeSourceType;
+  /** bỏ trống = mọi trạng thái trừ 5 (đã gỡ) */
+  status?: KnowledgeStatus;
+  /** tìm theo tiêu đề hoặc sourceRef */
+  q?: string;
+}
+export interface KnowledgeDocument {
+  id: number;
+  title: string;
+  sourceType: KnowledgeSourceType;
+  /** SKU (sản phẩm) hoặc mã/URL tài liệu */
+  sourceRef: string | null;
+  status: KnowledgeStatus;
+  chunkCount: number;
+  embeddingModel: string | null;
+  errorMessage: string | null;
+  indexedAt: IsoInstant | null;
+  createdBy: UUID | null;
+  createdAt: IsoInstant | null;
+  updatedAt: IsoInstant | null;
+}
+/** GET /admin/knowledge/{id} → KnowledgeDocumentDetail */
+export interface KnowledgeDocumentDetail {
+  document: KnowledgeDocument;
+  chunks: KnowledgeChunk[];
+}
+export interface KnowledgeChunk {
+  id: number;
+  chunkIndex: number;
+  content: string;
+  tokenCount: number | null;
+  metadata: Record<string, unknown> | null;
+}
+
+/** POST /admin/knowledge (body) → IngestResult. Cùng sourceType + sourceRef với tài liệu đã có → index lại tài liệu đó */
 export interface KnowledgeRequest {
+  /** ≤ 255 ký tự */
   title: string;
   /** 2 Hướng dẫn · 3 Chính sách · 4 FAQ */
   sourceType: 2 | 3 | 4;
+  /** ≤ 50 ký tự */
   sourceRef?: string | null;
+  /** ≤ 200 000 ký tự; chia chunk ~2000 ký tự, chồng 200 */
   content: string;
   metadata?: Record<string, unknown> | null;
 }
 export interface IngestResult {
+  /** -1 khi skipped */
   documentId: number;
   chunkCount: number;
   /** true: nội dung không đổi (content_hash), bỏ qua embed lại */
   skipped: boolean;
 }
-/** POST /ai/knowledge/sync-products (perm knowledge:write) → SyncResult */
+/** DELETE /admin/knowledge/{id} → null: xóa thật chunk, tài liệu chuyển status 5 */
+
+/**
+ * POST /admin/knowledge/sync-products → SyncResult: index mọi sản phẩm ACTIVE (bỏ qua cái không đổi) và gỡ sản phẩm
+ * không còn bán. Bình thường không cần: catalog tự báo qua Kafka product.updated / product.hidden.
+ */
 export interface SyncResult {
   total: number;
   indexed: number;
   skipped: number;
+  removed: number;
+}
+
+/** GET /admin/knowledge/search?q=&category=&k= (k 1–20) → ScoredChunk[]: xem retriever lấy ra gì */
+export interface ScoredChunk {
+  chunkId: number;
+  documentId: number;
+  title: string;
+  content: string;
+  /** vd {"sku":"...","category":"GPU","brand":"MSI"} */
+  metadata: Record<string, unknown> | null;
+  vectorScore: number;
+  textScore: number;
+  /** 0.7 × vectorScore + 0.3 × textScore (thứ tự xếp hạng) */
+  score: number;
 }

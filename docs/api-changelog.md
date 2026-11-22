@@ -3,6 +3,42 @@
 Ghi lại API mới hoặc thay đổi so với `docs/api-backlog.md` / tài liệu thiết kế, mới nhất ở trên.
 Đường dẫn bắt đầu bằng `/api/v1`, đi qua gateway `:8000`.
 
+## 2026-11-21: ai-service hoàn thiện (chat SSE, lịch sử Mongo, kho tri thức admin, event sản phẩm)
+
+### Đổi đường dẫn (phá vỡ tương thích)
+
+| Cũ | Mới | Ghi chú |
+|---|---|---|
+| `POST /ai/knowledge` | `POST /admin/knowledge` | API admin về dưới `/admin/**` theo quy ước; gateway đã khai route |
+| `POST /ai/knowledge/sync-products` | `POST /admin/knowledge/sync-products` | Kết quả thêm `removed` (sản phẩm không còn bán bị gỡ); đọc hết mọi trang catalog (trước chỉ 100 sản phẩm đầu) |
+| `GET /ai/search` (public) | `GET /admin/knowledge/search` (perm knowledge:write) | `ScoredChunk.metadataJson` (chuỗi) → `metadata` (object), thêm `score` |
+
+### API mới
+
+| Request | Quyền | Kết quả |
+|---|---|---|
+| `POST /ai/chat/stream` | public | SSE, mỗi `data:` là JSON `{type, text, sessionId, requestId}`: `session` → `status`* → `token` → `done` (hoặc `error`). Hiện câu trả lời đến trong một `token` (xem dưới) |
+| `GET /ai/chat/sessions?limit=` | user | phiên chat gần đây của user |
+| `GET /ai/chat/sessions/{id}` · `DELETE` | public; phiên đã gắn user thì chỉ chủ phiên (403) | lịch sử sạch (câu hỏi + câu trả lời) / xóa thật |
+| `POST /ai/chat/feedback` `{sessionId, requestId, value}` | như trên | ghi `ai_request_logs.feedback` (1 / -1) |
+| `GET /admin/knowledge?sourceType=&status=&q=&page=&size=` | perm knowledge:write | `PageResponse<KnowledgeDocument>`; mặc định bỏ tài liệu đã gỡ (status 5) |
+| `GET /admin/knowledge/{id}` | perm knowledge:write | tài liệu + các chunk |
+| `DELETE /admin/knowledge/{id}` | perm knowledge:write | xóa thật chunk, tài liệu chuyển status 5 |
+
+### Thay đổi hành vi
+
+- `POST /ai/chat`: response thêm `requestId`; lỗi model trả 502 `EXTERNAL_SERVICE_ERROR` (trước 500 body rỗng); gửi câu mới khi câu trước
+  của cùng phiên chưa xong → 409; `sessionId` phải khớp `[A-Za-z0-9-]{8,64}`; `message` tối đa 1000 ký tự.
+- Bộ nhớ hội thoại lưu ở Mongo (database `ai`, collection `chat_sessions`), không mất khi restart; giữ 12 message gần nhất.
+  Câu hỏi cũ được cắt phần tri thức RAG chèn thêm để lượt sau không mang theo.
+- Phiên tạo khi đã đăng nhập gắn với user; phiên vãng lai được gắn khi user đăng nhập rồi hỏi tiếp.
+- catalog gửi `product.updated` (tạo/sửa/nhập Excel/chuyển sang ACTIVE) và `product.hidden` (ẩn/ngừng bán); ai-service index lại / gỡ
+  ngay. Gửi thẳng không qua outbox (Mongo không có transaction): Kafka lỗi lúc đó thì chạy `sync-products` để bù.
+- Tool mới: `checkCompatibility` gọi `POST /compatibility/check` của catalog (trước là stub), `findProducts` (danh mục, khoảng giá, từ khóa).
+- Mỗi câu trả lời ghi `ai_request_logs` (chunk đã dùng, tool đã gọi kèm kết quả, độ trễ, lỗi).
+- SSE chưa stream từng token: quarkus-langchain4j-ollama 1.0.2 đọc hỏng dòng `tool_calls` khi stream. Endpoint gửi tiến trình
+  (`status`) trong lúc model chạy rồi gửi cả câu trả lời; client nối các `token` lại nên sau này đổi sang stream thật không phải sửa.
+
 ## 2026-11-08 (rà soát): Sửa lỗi đồng thời, an toàn cấu hình, dọn dữ liệu kỹ thuật
 
 - **Thanh toán:** IPN và return URL đến cùng lúc cho một lần thanh toán → chỉ một bên ghi kết quả (UPDATE có điều kiện trạng thái),

@@ -20,7 +20,10 @@
   --accent-hover: #ff8442;
   --accent-press: #e85b0d;
   --accent-soft: rgb(255 107 26 / 0.12);
-  --on-accent: #1a0f07;
+  /* nền đặc (nút, badge, bong bóng chat): chữ trắng --on-accent đạt 4,5:1; --accent giữ cho chữ, link, viền */
+  --accent-solid: #ca4e0a;
+  --accent-solid-hover: #db5a12;
+  --on-accent: #ffffff;
 
   --sale: #ff4d6a;
   --ok: #3ecf8e;
@@ -39,6 +42,37 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   color-scheme: dark;
+}
+
+/* Chế độ sáng: cùng bộ biến, giá trị khớp lightColors trong src/theme/colors.ts */
+:root[data-theme="light"] {
+  --bg: #f5f5f7;
+  --bg-sunken: #ebebef;
+  --panel: #ffffff;
+  --panel-2: #f0f0f3;
+  --line: #e2e2e7;
+  --line-strong: #cfcfd6;
+
+  --text: #17171b;
+  --text-2: #46464f;
+  --muted: #6b6b75;
+
+  --accent: #ea5f12;
+  --accent-hover: #ff6b1a;
+  --accent-press: #c94e0a;
+  --accent-soft: rgb(234 95 18 / 0.1);
+  --accent-solid: #ca4e0a;
+  --accent-solid-hover: #b34508;
+  --on-accent: #ffffff;
+
+  --sale: #e0324f;
+  --ok: #16a06a;
+  --warn: #c88a0c;
+  --danger: #d93636;
+
+  --shadow-pop: 0 1px 2px rgb(16 16 24 / 0.08), 0 12px 32px -12px rgb(16 16 24 / 0.22);
+
+  color-scheme: light;
 }
 
 /* ==========================================================================
@@ -66,7 +100,7 @@ body {
 }
 
 ::selection {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--on-accent);
 }
 
@@ -161,48 +195,13 @@ strong.price,
 }
 
 /* ==========================================================================
-   Topline + header
+   Header
    ========================================================================== */
-.topline {
-  background: var(--bg-sunken);
-  color: var(--muted);
-  font-size: 13px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.topline .container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.topline-info {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.topline-info span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.topline-info svg {
-  color: var(--text-2);
-}
-
-.topline a:hover {
-  color: var(--text);
-}
-
 .header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgb(18 18 20 / 0.96);
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
   border-bottom: 1px solid var(--line);
 }
 
@@ -287,7 +286,7 @@ strong.price,
 .search .ant-btn {
   border: 0;
   border-radius: 7px;
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--on-accent);
   height: 36px;
   padding: 0 14px;
@@ -414,10 +413,17 @@ strong.price,
   color: var(--text-2);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 22px;
 }
 
-.nav-aside:hover {
+.nav-aside a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s ease;
+}
+
+.nav-aside a:hover {
   color: var(--text);
 }
 
@@ -452,7 +458,7 @@ strong.price,
    Section scaffolding
    ========================================================================== */
 .section {
-  padding-top: 72px;
+  padding-top: clamp(56px, 7vw, 104px);
 }
 
 .section-title {
@@ -460,11 +466,12 @@ strong.price,
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
 
 .section-title h2 {
-  font-size: clamp(22px, 2.4vw, 28px);
+  font-size: clamp(24px, 2.8vw, 34px);
+  letter-spacing: -0.01em;
   font-weight: 750;
   margin: 0;
 }
@@ -594,12 +601,13 @@ strong.price,
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.25s var(--ease-out);
 }
 
 .budget a:hover {
   border-color: var(--accent);
   background: var(--panel-2);
+  transform: translateY(-2px);
 }
 
 .budget b {
@@ -657,12 +665,21 @@ strong.price,
   border-radius: var(--radius-s);
 }
 
+.builder-promo {
+  overflow: hidden;
+}
+
 .builder-promo img {
   width: 100%;
   height: 100%;
   min-height: 300px;
   object-fit: cover;
   display: block;
+  transition: transform 0.6s var(--ease-out);
+}
+
+.builder-promo:hover img {
+  transform: scale(1.03);
 }
 
 .btn {
@@ -684,7 +701,7 @@ strong.price,
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--on-accent);
 }
 
@@ -807,7 +824,7 @@ strong.price,
   font-size: 12px;
   font-weight: 700;
   line-height: 1.4;
-  background: rgb(12 12 14 / 0.85);
+  background: color-mix(in srgb, var(--bg-sunken) 85%, transparent);
   color: var(--text);
 }
 
@@ -824,7 +841,7 @@ strong.price,
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgb(12 12 14 / 0.75);
+  background: color-mix(in srgb, var(--bg-sunken) 75%, transparent);
   border: 0;
   color: var(--text);
   font-size: 16px;
@@ -834,7 +851,7 @@ strong.price,
 }
 
 .fav:hover {
-  background: rgb(12 12 14 / 0.95);
+  background: color-mix(in srgb, var(--bg-sunken) 95%, transparent);
 }
 
 .fav.liked {
@@ -957,7 +974,7 @@ strong.price,
   height: 40px;
   border-radius: 50%;
   border: 0;
-  background: rgb(12 12 14 / 0.75);
+  background: color-mix(in srgb, var(--bg-sunken) 75%, transparent);
   color: var(--text);
   font-size: 15px;
   display: grid;
@@ -966,11 +983,11 @@ strong.price,
 }
 
 .compare-toggle:hover {
-  background: rgb(12 12 14 / 0.95);
+  background: color-mix(in srgb, var(--bg-sunken) 95%, transparent);
 }
 
 .compare-toggle[aria-pressed="true"] {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--on-accent);
 }
 
@@ -978,7 +995,7 @@ strong.price,
   margin-left: auto;
   width: 40px;
   height: 40px;
-  background: var(--accent);
+  background: var(--accent-solid);
   border: 0;
   border-radius: var(--radius-s);
   color: var(--on-accent);
@@ -1438,8 +1455,8 @@ strong.price,
   margin-top: 16px;
   padding: 12px;
   border-radius: var(--radius-s);
-  background: rgb(245 184 61 / 0.08);
-  border: 1px solid rgb(245 184 61 / 0.25);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent);
   color: var(--text-2);
   font-size: 13px;
   line-height: 1.55;
@@ -1765,7 +1782,7 @@ strong.price,
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgb(18 18 20 / 0.1) 30%, rgb(18 18 20 / 0.92) 78%, var(--bg));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 10%, transparent) 30%, color-mix(in srgb, var(--bg) 92%, transparent) 78%, var(--bg));
 }
 
 .auth-aside-body {
@@ -1919,7 +1936,7 @@ strong.price,
   height: 28px;
   margin: -34px 0 16px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-solid);
   color: var(--on-accent);
   font: 700 14px/1 var(--font-display);
 }
@@ -3015,12 +3032,12 @@ strong.price,
 
 .notif-icon.promotion {
   color: var(--sale);
-  background: rgb(255 77 106 / 0.12);
+  background: color-mix(in srgb, var(--sale) 12%, transparent);
 }
 
 .notif-icon.review {
   color: var(--ok);
-  background: rgb(62 207 142 / 0.12);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
 }
 
 .notif-text {
@@ -3961,8 +3978,8 @@ strong.price,
 
 .auth-mode .ant-segmented-item-selected,
 .auth-mode .ant-segmented-thumb {
-  background: var(--accent);
-  color: var(--bg);
+  background: var(--accent-solid);
+  color: var(--on-accent);
 }
 
 /* Nút dạng chữ có gạch chân: "(N đánh giá)", "Xóa lọc" */
@@ -3994,8 +4011,8 @@ strong.price,
   width: 44px;
   height: 44px;
   inset-inline-end: 24px;
-  inset-block-end: 24px;
-  background: rgb(25 25 28 / 0.92);
+  inset-block-end: 80px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--accent);
@@ -4105,12 +4122,6 @@ strong.price,
   }
   .container {
     width: calc(100% - 32px);
-  }
-  .topline-info {
-    display: none !important;
-  }
-  .topline .container {
-    justify-content: flex-end;
   }
   .head {
     height: 60px;

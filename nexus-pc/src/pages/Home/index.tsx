@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { BsArrowRight, BsCheck2, BsCreditCard, BsHeadset, BsShieldCheck, BsTruck } from 'react-icons/bs';
-import { Reveal } from '../../components/common/Reveal';
 import { ProductCard } from '../../components/common/ProductCard';
 import { CategoryIcon } from '../../components/common/CategoryIcon';
 import { ProductGridSkeleton } from '../../components/common/CustomSkeleton';
@@ -88,30 +87,25 @@ export const HomePage: React.FC = () => {
       </section>
 
       <section className="container section">
-        <Reveal>
           <div className="section-title">
             <h2>{t('sections.staffPicks', 'Sản phẩm nổi bật')}</h2>
             <Link to="/products" className="textlink">
               {t('common.viewAll', 'Xem tất cả')} <BsArrowRight />
             </Link>
           </div>
-        </Reveal>
 
         {loadingFeatured ? (
           <ProductGridSkeleton count={4} columns={4} />
         ) : (
           <div className="products">
-            {featuredProducts.map((product, i) => (
-              <Reveal key={product.id} delay={i * 50}>
-                <ProductCard product={product} />
-              </Reveal>
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}
       </section>
 
       <section className="container section">
-        <Reveal>
           <div className="section-title">
             <h2>{t('sections.budgetTitle', 'Mua theo ngân sách')}</h2>
           </div>
@@ -126,11 +120,9 @@ export const HomePage: React.FC = () => {
               </Link>
             ))}
           </div>
-        </Reveal>
       </section>
 
       <section className="container section">
-        <Reveal>
           <div className="builder-promo">
             <div>
               <h2>{t('sections.promoBuilderTitle', 'Tự chọn từng linh kiện, thấy tổng tiền ngay')}</h2>
@@ -151,27 +143,22 @@ export const HomePage: React.FC = () => {
             </div>
             <img src={builderImage} alt="Bộ PC đang lắp ráp với card đồ họa và tản nhiệt" loading="lazy" />
           </div>
-        </Reveal>
       </section>
 
       <section className="container section">
-        <Reveal>
           <div className="section-title">
             <h2>{t('sections.dealsTitle', 'Đang giảm giá')}</h2>
             <Link to="/products?sort=discount" className="textlink">
               {t('common.viewAll', 'Xem tất cả')} <BsArrowRight />
             </Link>
           </div>
-        </Reveal>
 
         {loadingDeals ? (
           <ProductGridSkeleton count={4} columns={4} />
         ) : (
           <div className="products">
-            {dealProducts.map((product, i) => (
-              <Reveal key={product.id} delay={i * 50}>
-                <ProductCard product={product} />
-              </Reveal>
+            {dealProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}

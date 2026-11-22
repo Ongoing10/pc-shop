@@ -1,6 +1,7 @@
 import type * as Api from '../../types/api';
 import { adminCatalogService as catalog } from '../../services/api/admin/adminCatalogService';
 import { adminInventoryService as inventory } from '../../services/api/admin/adminInventoryService';
+import { adminKnowledgeService as knowledge } from '../../services/api/admin/adminKnowledgeService';
 import { adminOrderService as ordering } from '../../services/api/admin/adminOrderService';
 import { adminPeopleService as people } from '../../services/api/admin/adminPeopleService';
 import { createQueryKeys, useApiMutation, useApiQuery } from '../BaseHook';
@@ -23,6 +24,7 @@ const k = {
   movements: createQueryKeys('admin-movements'),
   users: createQueryKeys('admin-users'),
   reviews: createQueryKeys('admin-reviews'),
+  knowledge: createQueryKeys('admin-knowledge'),
 };
 
 export const adminKeys = {
@@ -39,6 +41,7 @@ export const adminKeys = {
   movements: k.movements.all,
   users: k.users.all,
   reviews: k.reviews.all,
+  knowledge: k.knowledge.all,
 };
 
 // ======================= catalog =======================
@@ -218,3 +221,18 @@ export const useReplyReview = () =>
   useApiMutation(({ id, content }: { id: string; content: string }) => people.replyReview(id, content), {
     invalidate: [k.reviews.all],
   });
+
+// ======================= ai-service (kho tri thức) =======================
+
+export const useKnowledgeDocuments = (query: Api.KnowledgeDocumentQuery = {}) =>
+  useApiQuery(k.knowledge.of('list', query), () => knowledge.listDocuments(query));
+export const useKnowledgeDocument = (id: number | undefined) =>
+  useApiQuery(k.knowledge.of('detail', id), () => knowledge.getDocument(id as number), { enabled: id != null });
+export const useAddKnowledge = () =>
+  useApiMutation((body: Api.KnowledgeRequest) => knowledge.addDocument(body), { invalidate: [k.knowledge.all] });
+export const useRemoveKnowledge = () =>
+  useApiMutation((id: number) => knowledge.removeDocument(id), { invalidate: [k.knowledge.all] });
+export const useSyncKnowledgeProducts = () =>
+  useApiMutation(() => knowledge.syncProducts(), { invalidate: [k.knowledge.all] });
+export const useKnowledgeSearch = () =>
+  useApiMutation(({ q, category, k: limit }: { q: string; category?: string; k?: number }) => knowledge.search(q, category, limit));

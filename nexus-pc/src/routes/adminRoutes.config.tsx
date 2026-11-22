@@ -14,6 +14,7 @@ import {
   RollbackOutlined,
 } from '@ant-design/icons';
 import type { AdminAccess } from '../context/AdminSessionContext';
+import { t } from '../i18n/t';
 
 // Tách bundle: khách hàng không phải tải code trang quản trị
 const DashboardPage = lazy(() => import('../pages/Admin/Dashboard').then((m) => ({ default: m.DashboardPage })));
@@ -25,12 +26,6 @@ const RefundsPage = lazy(() => import('../pages/Admin/Refunds').then((m) => ({ d
 const InventoryPage = lazy(() => import('../pages/Admin/Inventory').then((m) => ({ default: m.InventoryPage })));
 const ReviewsPage = lazy(() => import('../pages/Admin/Reviews').then((m) => ({ default: m.ReviewsPage })));
 const AdminProductsPage = lazy(() => import('../pages/Admin/Products').then((m) => ({ default: m.AdminProductsPage })));
-const ProductFormPage = lazy(() =>
-  import('../pages/Admin/Products/ProductFormPage').then((m) => ({ default: m.ProductFormPage }))
-);
-const ImportExcelPage = lazy(() =>
-  import('../pages/Admin/ImportExcel').then((m) => ({ default: m.ImportExcelPage }))
-);
 const CategoriesPage = lazy(() =>
   import('../pages/Admin/Catalog/CategoriesPage').then((m) => ({ default: m.CategoriesPage }))
 );
@@ -53,72 +48,44 @@ export interface AdminRouteConfig {
 }
 
 export const ADMIN_MENU_GROUPS: Record<NonNullable<AdminRouteConfig['menu']>['group'], string> = {
-  operate: 'Vận hành',
-  catalog: 'Sản phẩm',
-  system: 'Hệ thống',
+  get operate() { return t('admin.menu.operations', 'Vận hành'); },
+  get catalog() { return t('admin.common.products', 'Sản phẩm'); },
+  get system() { return t('admin.common.system', 'Hệ thống'); },
 };
 
 export const adminRoutesConfig: AdminRouteConfig[] = [
-  { path: '', element: <DashboardPage />, title: 'Tổng quan', menu: { group: 'operate', icon: <DashboardOutlined /> } },
-  { path: 'orders', element: <AdminOrdersPage />, title: 'Đơn hàng', menu: { group: 'operate', icon: <ShoppingCartOutlined /> } },
-  { path: 'orders/:code', element: <AdminOrderDetailPage />, title: 'Chi tiết đơn hàng', menuKey: 'orders' },
-  { path: 'refunds', element: <RefundsPage />, title: 'Hoàn tiền', menu: { group: 'operate', icon: <RollbackOutlined /> } },
-  { path: 'inventory', element: <InventoryPage />, title: 'Tồn kho', menu: { group: 'operate', icon: <DatabaseOutlined /> } },
-  {
-    path: 'inventory/import',
-    element: <ImportExcelPage kind="inventory" />,
-    title: 'Nhập kho từ Excel',
-    access: { permission: 'inventory:write' },
-    menuKey: 'inventory',
-  },
-  { path: 'reviews', element: <ReviewsPage />, title: 'Duyệt đánh giá', menu: { group: 'operate', icon: <StarOutlined /> } },
+  { path: '', element: <DashboardPage />, get title() { return t('admin.common.overview', 'Tổng quan'); }, menu: { group: 'operate', icon: <DashboardOutlined /> } },
+  { path: 'orders', element: <AdminOrdersPage />, get title() { return t('admin.common.orders', 'Đơn hàng'); }, menu: { group: 'operate', icon: <ShoppingCartOutlined /> } },
+  { path: 'orders/:code', element: <AdminOrderDetailPage />, get title() { return t('admin.menu.orderDetails', 'Chi tiết đơn hàng'); }, menuKey: 'orders' },
+  { path: 'refunds', element: <RefundsPage />, get title() { return t('admin.common.refunds', 'Hoàn tiền'); }, menu: { group: 'operate', icon: <RollbackOutlined /> } },
+  { path: 'inventory', element: <InventoryPage />, get title() { return t('admin.common.inventory', 'Tồn kho'); }, menu: { group: 'operate', icon: <DatabaseOutlined /> } },
+  { path: 'reviews', element: <ReviewsPage />, get title() { return t('admin.common.reviewModeration', 'Duyệt đánh giá'); }, menu: { group: 'operate', icon: <StarOutlined /> } },
 
   {
     path: 'products',
     element: <AdminProductsPage />,
-    title: 'Sản phẩm',
+    get title() { return t('admin.common.products', 'Sản phẩm'); },
     access: { permission: 'product:write' },
     menu: { group: 'catalog', icon: <AppstoreOutlined /> },
   },
   {
-    path: 'products/new',
-    element: <ProductFormPage />,
-    title: 'Thêm sản phẩm',
-    access: { permission: 'product:write' },
-    menuKey: 'products',
-  },
-  {
-    path: 'products/import',
-    element: <ImportExcelPage kind="products" />,
-    title: 'Import sản phẩm từ Excel',
-    access: { permission: 'product:write' },
-    menuKey: 'products',
-  },
-  {
-    path: 'products/:sku',
-    element: <ProductFormPage />,
-    title: 'Sửa sản phẩm',
-    access: { permission: 'product:write' },
-    menuKey: 'products',
-  },
-  {
     path: 'categories',
     element: <CategoriesPage />,
-    title: 'Danh mục',
+    get title() { return t('admin.menu.categories', 'Danh mục'); },
     access: { permission: 'product:write' },
     menu: { group: 'catalog', icon: <TagsOutlined /> },
   },
   {
     path: 'brands',
     element: <BrandsPage />,
-    title: 'Thương hiệu',
+    get title() { return t('admin.common.brands', 'Thương hiệu'); },
     access: { permission: 'product:write' },
     menu: { group: 'catalog', icon: <TrademarkOutlined /> },
   },
   {
     path: 'compatibility-rules',
     element: <RulesPage />,
-    title: 'Luật tương thích',
+    get title() { return t('admin.common.compatibilityRules', 'Luật tương thích'); },
     access: { permission: 'product:write' },
     menu: { group: 'catalog', icon: <ApiOutlined /> },
   },
@@ -127,14 +94,14 @@ export const adminRoutesConfig: AdminRouteConfig[] = [
   {
     path: 'users',
     element: <UsersPage />,
-    title: 'Người dùng & phân quyền',
+    get title() { return t('admin.common.usersPermissions', 'Người dùng & phân quyền'); },
     access: { role: 'ADMIN' },
-    menu: { group: 'system', icon: <TeamOutlined />, label: 'Người dùng' },
+    menu: { group: 'system', icon: <TeamOutlined />, get label() { return t('admin.menu.users', 'Người dùng'); } },
   },
   {
     path: 'knowledge',
     element: <KnowledgePage />,
-    title: 'Kho tri thức AI',
+    get title() { return t('admin.common.aiKnowledgeBase', 'Kho tri thức AI'); },
     access: { permission: 'knowledge:write' },
     menu: { group: 'system', icon: <RobotOutlined /> },
   },

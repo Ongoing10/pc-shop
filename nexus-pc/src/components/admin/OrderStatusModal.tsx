@@ -3,6 +3,7 @@ import { Alert, Form, Input, Modal, Radio, Space, Tag, Typography } from 'antd';
 import { AdminOrder, OrderStatus } from '../../types/admin';
 import { ORDER_STATUS_META, ORDER_STATUS_NEEDS_REASON, ORDER_TRANSITIONS } from '../../utils/adminStatus';
 import type { BulkErrorItem } from './bulk';
+import { t } from '../../i18n/t';
 
 interface OrderStatusModalProps {
   open: boolean;
@@ -48,10 +49,11 @@ export const OrderStatusModal: React.FC<OrderStatusModalProps> = ({ open, orders
 
   return (
     <Modal
+      centered
       open={open}
-      title={single ? `Đổi trạng thái đơn ${single.code}` : `Đổi trạng thái ${orders.length} đơn hàng`}
-      okText="Cập nhật"
-      cancelText="Hủy"
+      title={single ? t('admin.orders.changeStatusOfOrder', 'Đổi trạng thái đơn {{code}}', { code: single.code }) : t('admin.orders.changeStatusOfOrders', 'Đổi trạng thái {{count}} đơn hàng', { count: orders.length })}
+      okText={t('admin.common.update', 'Cập nhật')}
+      cancelText={t('admin.common.cancel', 'Hủy')}
       onOk={handleOk}
       onCancel={onCancel}
       confirmLoading={submitting}
@@ -60,7 +62,7 @@ export const OrderStatusModal: React.FC<OrderStatusModalProps> = ({ open, orders
     >
       {single && (
         <Typography.Paragraph type="secondary">
-          Trạng thái hiện tại:{' '}
+          {t('admin.orders.currentStatus', 'Trạng thái hiện tại:')}{' '}
           <Tag color={ORDER_STATUS_META[single.status].color}>{ORDER_STATUS_META[single.status].label}</Tag>
         </Typography.Paragraph>
       )}
@@ -71,13 +73,13 @@ export const OrderStatusModal: React.FC<OrderStatusModalProps> = ({ open, orders
           showIcon
           title={
             single
-              ? 'Đơn đã ở trạng thái cuối, không đổi được nữa.'
-              : 'Các đơn đã chọn không có bước chuyển chung nào. Hãy chọn các đơn cùng trạng thái.'
+              ? t('admin.orders.thisOrderIsInA', 'Đơn đã ở trạng thái cuối, không đổi được nữa.')
+              : t('admin.orders.theSelectedOrdersHaveNo', 'Các đơn đã chọn không có bước chuyển chung nào. Hãy chọn các đơn cùng trạng thái.')
           }
         />
       ) : (
         <Form form={form} layout="vertical" requiredMark={false}>
-          <Form.Item name="status" label="Chuyển sang" rules={[{ required: true, message: 'Chọn trạng thái mới' }]}>
+          <Form.Item name="status" label={t('admin.orders.moveTo', 'Chuyển sang')} rules={[{ required: true, message: t('admin.orders.chooseANewStatus', 'Chọn trạng thái mới') }]}>
             <Radio.Group>
               <Space orientation="vertical">
                 {allowed.map((s) => (
@@ -90,13 +92,13 @@ export const OrderStatusModal: React.FC<OrderStatusModalProps> = ({ open, orders
           </Form.Item>
           <Form.Item
             name="reason"
-            label={needsReason ? 'Lý do (bắt buộc)' : 'Ghi chú'}
+            label={needsReason ? t('admin.orders.reasonRequired', 'Lý do (bắt buộc)') : t('admin.common.note', 'Ghi chú')}
             rules={[
-              { required: needsReason, whitespace: true, message: 'Nhập lý do hủy / trả hàng' },
-              { max: 255, message: 'Tối đa 255 ký tự' },
+              { required: needsReason, whitespace: true, message: t('admin.orders.enterTheCancelReturnReason', 'Nhập lý do hủy / trả hàng') },
+              { max: 255, message: t('admin.orders.atMost255Characters', 'Tối đa 255 ký tự') },
             ]}
           >
-            <Input.TextArea rows={3} maxLength={255} showCount placeholder="Ghi vào lịch sử trạng thái của đơn" />
+            <Input.TextArea rows={3} maxLength={255} showCount placeholder={t('admin.orders.savedToTheOrderS', 'Ghi vào lịch sử trạng thái của đơn')} />
           </Form.Item>
         </Form>
       )}
@@ -105,7 +107,7 @@ export const OrderStatusModal: React.FC<OrderStatusModalProps> = ({ open, orders
         <Alert
           type="error"
           showIcon
-          title="Không cập nhật được, chưa có đơn nào bị thay đổi"
+          title={t('admin.orders.updateFailedNoOrderWas', 'Không cập nhật được, chưa có đơn nào bị thay đổi')}
           description={
             <ul style={{ margin: 0, paddingInlineStart: 18 }}>
               {errors.map((e) => (

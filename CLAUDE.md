@@ -28,7 +28,7 @@ docker compose up -d                       # hạ tầng: Postgres+pgvector, Mon
 mvn clean install -DskipTests              # build toàn bộ, cài common/* vào Maven local (bắt buộc trước khi chạy Quarkus)
 mvn -pl ordering-service spring-boot:run -Dspring-boot.run.profiles=local        # service Spring
 cd catalog-service && mvn quarkus:dev -Dquarkus.profile=local -Ddebug=5012       # service Quarkus
-ollama pull qwen2.5:7b && ollama pull bge-m3                                      # model cho ai-service
+# ai-service tự tải model còn thiếu khi khởi động (OllamaModels); chỉ cần Ollama đang chạy
 ```
 
 Kiểm tra nhanh: `GET http://localhost:8082/api/v1/categories` trả 8 danh mục. Lấy token và các API mẫu: README mục 5–6.
@@ -79,19 +79,24 @@ Kiểm tra nhanh: `GET http://localhost:8082/api/v1/categories` trả 8 danh m�
 
 ## AI/RAG (ai-service)
 
-- Ollama local: chat `qwen2.5:7b`, embedding `bge-m3` (1024 chiều = cột `vector(1024)`).
+- Ollama local: chat `qwen2.5:7b`, embedding `bge-m3` (1024 chiều = cột `vector(1024)`). `OllamaModels` tự pull model thiếu lúc khởi động
+  (chạy nền, `/q/health/ready`), tự tạo alias CPU `pcshop-qwen` (`pcshop.ai.models.custom.*`) khi chat model-id là tên đó; đang tải thì chat
+  và nạp RAG báo "đang tải model" qua `requireReady()`. Dev Services của langchain4j vẫn TẮT (nạp sẵn model làm kẹt dev mode).
 - Ingest: sản phẩm = 1 chunk; tài liệu dài chia ~2000 ký tự, overlap 200. Bỏ qua re-embed nếu `content_hash` không đổi.
 - Retrieval hybrid 2 bước: 50 ứng viên theo vector (HNSW) rồi xếp lại 0.7 vector + 0.3 full-text; lọc metadata.
 - **Giá và tồn kho KHÔNG lấy từ vector store**, luôn qua tool calling (`getPrice`, `checkStock` gọi catalog/inventory).
 - Kiểm tra tương thích phải do **rule engine tất định** (catalog, `compatibility_rules`), LLM chỉ diễn giải.
 - Sản phẩm chuyển HIDDEN/DISCONTINUED → event `product.hidden` → xóa thật chunk khỏi pgvector.
+- Bộ nhớ hội thoại: Mongo `ai.chat_sessions` (`ChatSessionStore`); `ShopAssistant` PHẢI `@ApplicationScoped` (mặc định RequestScoped xóa bộ nhớ
+  sau mỗi request). SSE `/ai/chat/stream` gửi tiến trình rồi cả câu trả lời, chưa stream token (quarkiverse ollama 1.0.2 hỏng `tool_calls`).
 
 ## Việc tiếp theo (theo thứ tự)
 
 1. Build toàn bộ, sửa lỗi compile/khởi động; chạy profile `local` cho từng service; xác nhận các API mẫu trong README mục 6.
 2. ~~Saga đặt hàng qua Kafka + outbox (ordering ↔ inventory)~~ (xong 2026-11-08, kèm thanh toán VNPay + cổng giả lập, hoàn tiền, sold_count). Còn: MoMo thật, API hoàn tiền của cổng.
 3. Rule engine tương thích + PC Builder; tool `checkCompatibility`.
-4. Consumer `product.updated`/`product.hidden` ở ai-service; chat stream (SSE); lịch sử chat vào Mongo.
+4. ~~Consumer `product.updated`/`product.hidden` ở ai-service; chat stream (SSE); lịch sử chat vào Mongo~~ (xong 2026-11-21, kèm kho tri thức admin,
+   `ai_request_logs` + phản hồi). Còn: stream từng token (lỗi thư viện, xem `ShopAssistant`), nạp tài liệu từ file, eval RAG, rate limit `/ai/**`.
 5. Frontend Next.js + `keycloak-js`; CI GitHub Actions.
 
 ## Frontend (`nexus-pc`, Vite + React + antd + TanStack Query)
@@ -104,7 +109,18 @@ Kiểm tra nhanh: `GET http://localhost:8082/api/v1/categories` trả 8 danh m�
   chuyển sang trang của Keycloak (backend không có API). Cấu hình `VITE_API_BASE_URL`, `VITE_KEYCLOAK_*` (xem `.env.example`).
 - Đã ghép API: catalog, giỏ hàng, checkout/đơn/thanh toán, địa chỉ, review, thông báo (SSE), PC Builder, hồ sơ, và khu admin
   (`services/api/admin/*`, hook `hooks/admin/useAdminApi.ts`; đăng nhập admin = Keycloak + `GET /me` lấy role/permission, chung token với phía khách).
-  Chỉ còn trang Knowledge (ai-service) là giả. Admin tải toàn bộ danh sách (`getAllPages`, tối đa 1000 dòng) rồi lọc/phân trang phía FE.
+  Admin tải toàn bộ danh sách (`getAllPages`, tối đa 1000 dòng) rồi lọc/phân trang phía FE.
+- Theme chung sáng/tối cho cả khách và admin: bảng màu `darkColors`/`lightColors` (`theme/colors.ts`), theme antd dựng bằng
+  `createAntdTheme`/`createAdminTheme` (`theme/themeConfig.ts`), chế độ ở `ThemeContext` (`useAppTheme().mode/colors/toggleMode`,
+  lưu `localStorage.nexus_theme`, gắn `<html data-theme>`). CSS chỉ dùng biến (`index.css`: `:root` = tối, `[data-theme="light"]` = sáng),
+  nền mờ dùng `color-mix(in srgb, var(--bg) 90%, transparent)`; nền cam đặc có chữ (nút primary, badge) dùng `--accent-solid` + chữ trắng
+  `--on-accent` (đạt 4,5:1), `--accent` chỉ cho chữ/link/viền/icon; TSX cần màu thật (biểu đồ, token) thì lấy `useAppTheme().colors`, không import tĩnh.
+- i18n admin: dùng `t('admin.<khu>.<khóa>', 'mặc định tiếng Việt', { biến })` import từ `i18n/t` (hàm thường, không hook),
+  khóa ở `i18n/locales/admin/{vi,en}.json` (chuỗi dùng ở ≥2 khu nằm trong `admin.common`). Hằng cấp module (bảng trạng thái, menu)
+  để `t()` trong getter `get label() { return t(...) }`. `AdminRoot` dựng lại cây trang khi đổi ngôn ngữ. Phía khách vẫn dùng `useTranslation`.
+- Admin: thêm / sửa / import mở `Modal` antd ngay trên trang danh sách (không có route `/new`, `/:id`, `/import`), form trong modal
+  dùng `Row`/`Col` (`xs={24}` rồi chia cột từ `sm`/`md`). Nút xóa cạnh nút Sửa + "Xóa" hàng loạt khi chọn checkbox
+  (`components/admin/DeleteActions`). Xóa theo vòng đời: sản phẩm → Ngừng bán (4), bảng có `is_active` → tắt.
 
 ## Lưu ý khi làm việc trên máy người dùng
 

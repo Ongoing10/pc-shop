@@ -28,7 +28,9 @@
     "loginToAddToCart": "Please sign in to add items to your cart",
     "cancel": "Cancel",
     "edit": "Edit",
-    "addedManyToCart": "Added {{count}} items to cart"
+    "addedManyToCart": "Added {{count}} items to cart",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode"
   },
   "nav": {
     "products": "Products",

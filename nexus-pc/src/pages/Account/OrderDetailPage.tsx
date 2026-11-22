@@ -386,6 +386,7 @@ export const OrderDetailPage: React.FC = () => {
       />
 
       <Modal
+        centered
         open={cancelOpen}
         title={t('orders.cancelTitle', { code: order.id, defaultValue: `Hủy đơn hàng ${order.id}` })}
         onCancel={() => setCancelOpen(false)}

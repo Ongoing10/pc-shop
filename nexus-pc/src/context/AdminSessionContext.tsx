@@ -6,6 +6,7 @@ import { authService } from '../services/api/authService';
 import { keycloakClient } from '../services/api/keycloakClient';
 import { ApiError } from '../services/api/ApiError';
 import { AUTH_EXPIRED_EVENT, decodeJwt, tokenStore } from '../services/api/tokenStore';
+import { t } from '../i18n/t';
 
 /** Điều kiện vào một màn admin: cần role hoặc permission (bỏ trống = chỉ cần STAFF/ADMIN) */
 export interface AdminAccess {
@@ -78,7 +79,7 @@ export const AdminSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     await keycloakClient.login(username.trim(), password);
     try {
       const session = await loadSessionUser();
-      if (!isStaff(session)) throw new ApiError(403, 'Tài khoản này không có quyền vào trang quản trị.', 'FORBIDDEN');
+      if (!isStaff(session)) throw new ApiError(403, t('admin.login.thisAccountIsNotAllowed', 'Tài khoản này không có quyền vào trang quản trị.'), 'FORBIDDEN');
       queryClient.clear();
       setUser(session);
       return session;

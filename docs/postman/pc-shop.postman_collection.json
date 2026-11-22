@@ -4945,14 +4945,14 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/ai/knowledge/sync-products",
+              "raw": "{{baseUrl}}/api/v1/admin/knowledge/sync-products",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "ai",
+                "admin",
                 "knowledge",
                 "sync-products"
               ]
@@ -4971,14 +4971,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/ai/knowledge",
+              "raw": "{{baseUrl}}/api/v1/admin/knowledge",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "ai",
+                "admin",
                 "knowledge"
               ]
             },
@@ -4995,19 +4995,20 @@
           }
         },
         {
-          "name": "Xem retriever trả gì",
+          "name": "[ADMIN] Xem retriever trả gì",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/ai/search?q=card chơi game 2K&category=GPU&k=5",
+              "raw": "{{baseUrl}}/api/v1/admin/knowledge/search?q=card chơi game 2K&category=GPU&k=5",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "ai",
+                "admin",
+                "knowledge",
                 "search"
               ],
               "query": [
@@ -5026,7 +5027,7 @@
                 }
               ]
             },
-            "description": "Công khai.",
+            "description": "Perm knowledge:write.",
             "auth": {
               "type": "noauth"
             }

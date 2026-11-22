@@ -1,6 +1,7 @@
 package com.pcshop.ai.rag;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pcshop.ai.model.OllamaModels;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
@@ -38,6 +39,9 @@ public class IngestionService {
     EmbeddingModel embeddingModel;
 
     @Inject
+    OllamaModels models;
+
+    @Inject
     ChunkRepository chunks;
 
     @Inject
@@ -59,6 +63,7 @@ public class IngestionService {
             return new IngestResult(-1, 0, true);                // nội dung không đổi, khỏi embed lại
         }
 
+        models.requireReady();
         List<TextSegment> segments = splitIntoChunks
                 ? SPLITTER.split(Document.from(content))
                 : List.of(TextSegment.from(content));

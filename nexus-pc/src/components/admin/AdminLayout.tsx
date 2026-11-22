@@ -1,14 +1,18 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { App, Avatar, Button, ConfigProvider, Dropdown, Flex, Layout, Menu, Spin, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, ShopOutlined, LogoutOutlined } from '@ant-design/icons';
-import { antdAdminTheme } from '../../theme/themeConfig';
+import { useAppTheme } from '../../context/ThemeContext';
+import { ThemeToggle } from '../common/ThemeToggle';
+import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { AdminSessionProvider, useAdminSession, useAdminUser } from '../../context/AdminSessionContext';
 import { ADMIN_MENU_GROUPS, adminRoutesConfig } from '../../routes/adminRoutes.config';
 import { ROLE_LABEL } from '../../utils/adminStatus';
 import { LogoMark } from '../common/LogoMark';
 import './admin.css';
+import { t } from '../../i18n/t';
 
 const { Sider, Header, Content } = Layout;
 
@@ -28,7 +32,7 @@ const PageSpinner: React.FC = () => (
   </Flex>
 );
 
-/** Route admin đang mở (khớp path dài nhất trước để /products/new không rơi vào /products/:sku) */
+/** Route admin đang mở */
 const useCurrentAdminRoute = () => {
   const { pathname } = useLocation();
   return useMemo(
@@ -48,7 +52,7 @@ const AdminShell: React.FC = () => {
   const [collapsed, setCollapsed] = useState(readCollapsed);
 
   useEffect(() => {
-    document.title = `${current.title} · Quản trị NEXUS PC`;
+    document.title = t('admin.layout.nexusPcAdmin', '{{title}} · Quản trị NEXUS PC', { title: current.title });
   }, [current.title]);
 
   const toggleCollapsed = () => {
@@ -80,9 +84,9 @@ const AdminShell: React.FC = () => {
   const isAdmin = user.realmRoles.includes('ADMIN');
 
   const userMenu: MenuProps['items'] = [
-    { key: 'shop', icon: <ShopOutlined />, label: 'Về trang khách hàng' },
+    { key: 'shop', icon: <ShopOutlined />, label: t('admin.common.backToStorefront', 'Về trang khách hàng') },
     { type: 'divider' },
-    { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
+    { key: 'logout', icon: <LogoutOutlined />, label: t('admin.layout.signOut', 'Đăng xuất'), danger: true },
   ];
 
   const handleUserMenu = ({ key }: { key: string }) => {
@@ -91,23 +95,42 @@ const AdminShell: React.FC = () => {
       return;
     }
     logout();
-    message.info('Đã đăng xuất khỏi trang quản trị');
+    message.info(t('admin.layout.signedOutOfTheAdmin', 'Đã đăng xuất khỏi trang quản trị'));
     navigate('/admin/login', { replace: true });
   };
 
   return (
     <Layout className="admin-root">
       <Sider className="admin-sider" width={232} collapsedWidth={64} collapsible collapsed={collapsed} trigger={null}>
-        <Link to="/admin" className="admin-brand" aria-label="NEXUS PC – Trang quản trị">
+        <Link to="/admin" className="admin-brand" aria-label={t('admin.layout.nexusPcAdmin2', 'NEXUS PC – Trang quản trị')}>
           <LogoMark size={32} />
           {!collapsed && (
             <span>
               NEXUS<b>PC</b>
-              <small>Quản trị</small>
+              <small>{t('admin.common.admin', 'Quản trị')}</small>
             </span>
           )}
         </Link>
         <Menu className="admin-menu" mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
+
+        {/* Tài khoản ở đáy sidebar, menu mở lên trên */}
+        <div className="admin-sider-user">
+          <Dropdown trigger={['click']} placement="topLeft" menu={{ items: userMenu, onClick: handleUserMenu }}>
+            <Button type="text" block className={collapsed ? 'admin-user is-collapsed' : 'admin-user'} aria-label={t('admin.common.account', 'Tài khoản')}>
+              <Avatar size={28}>{user.fullName.trim().split(' ').slice(-1)[0]?.charAt(0).toUpperCase()}</Avatar>
+              {!collapsed && (
+                <span>
+                  <Typography.Text strong ellipsis>
+                    {user.fullName}
+                  </Typography.Text>
+                  <Tag color={isAdmin ? 'volcano' : 'blue'} bordered={false}>
+                    {isAdmin ? ROLE_LABEL.ADMIN : ROLE_LABEL.STAFF}
+                  </Tag>
+                </span>
+              )}
+            </Button>
+          </Dropdown>
+        </div>
       </Sider>
 
       <Layout>
@@ -115,22 +138,15 @@ const AdminShell: React.FC = () => {
           <Flex align="center" justify="space-between" gap={16} style={{ height: '100%' }}>
             <Button
               type="text"
-              aria-label={collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+              aria-label={collapsed ? t('admin.layout.expandMenu', 'Mở rộng menu') : t('admin.layout.collapseMenu', 'Thu gọn menu')}
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={toggleCollapsed}
             />
 
-            <Dropdown trigger={['click']} menu={{ items: userMenu, onClick: handleUserMenu }}>
-              <Button type="text" className="admin-user">
-                <Avatar size={28}>{user.fullName.trim().split(' ').slice(-1)[0]?.charAt(0).toUpperCase()}</Avatar>
-                <span>
-                  <Typography.Text strong>{user.fullName}</Typography.Text>
-                  <Tag color={isAdmin ? 'volcano' : 'blue'} bordered={false}>
-                    {isAdmin ? ROLE_LABEL.ADMIN : ROLE_LABEL.STAFF}
-                  </Tag>
-                </span>
-              </Button>
-            </Dropdown>
+            <Flex align="center" gap={8}>
+              <ThemeToggle size="middle" />
+              <LanguageSwitcher />
+            </Flex>
           </Flex>
         </Header>
 
@@ -161,12 +177,18 @@ export const AdminLayout: React.FC = () => {
 };
 
 /** Gốc của mọi route /admin/*: theme riêng + phiên đăng nhập admin (dùng chung cho trang đăng nhập) */
-export const AdminRoot: React.FC = () => (
-  <ConfigProvider theme={antdAdminTheme}>
-    <AdminSessionProvider>
-      <Suspense fallback={<PageSpinner />}>
-        <Outlet />
-      </Suspense>
-    </AdminSessionProvider>
-  </ConfigProvider>
-);
+export const AdminRoot: React.FC = () => {
+  const { adminTheme } = useAppTheme();
+  // Admin dịch bằng t() thường (không hook): đổi ngôn ngữ thì dựng lại cây trang để mọi chuỗi đọc ngôn ngữ mới.
+  // Dữ liệu nằm trong cache TanStack Query nên không tải lại; chỉ mất trạng thái tạm (modal, bộ lọc đang mở).
+  const { i18n } = useTranslation();
+  return (
+    <ConfigProvider theme={adminTheme}>
+      <AdminSessionProvider>
+        <Suspense key={i18n.language} fallback={<PageSpinner />}>
+          <Outlet />
+        </Suspense>
+      </AdminSessionProvider>
+    </ConfigProvider>
+  );
+};

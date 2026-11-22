@@ -1,5 +1,7 @@
 package com.pcshop.ai.rag;
 
+import com.pcshop.ai.chat.ChatTracker;
+import com.pcshop.ai.model.OllamaModels;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
@@ -19,20 +21,36 @@ import java.util.List;
 public class HybridContentRetriever implements ContentRetriever {
 
     private static final Logger LOG = Logger.getLogger(HybridContentRetriever.class);
-    private static final int TOP_K = 5;
+    /** 4 đoạn × tối đa ~2000 ký tự: vừa ngữ cảnh mặc định 4096 token của Ollama cùng system prompt và bộ nhớ */
+    private static final int TOP_K = 4;
     private static final double MIN_SCORE = 0.35;
 
     @Inject
     EmbeddingModel embeddingModel;
 
     @Inject
+    OllamaModels models;
+
+    @Inject
     ChunkRepository chunks;
+
+    @Inject
+    ChatTracker tracker;
 
     @Override
     public List<Content> retrieve(Query query) {
         try {
-            return search(query.text(), null, TOP_K).stream()
+            if (query.metadata() != null) {
+                tracker.progress(query.metadata().chatMemoryId(), "Đang tra cứu kho tri thức");
+            }
+            List<ChunkRepository.ScoredChunk> hits = search(query.text(), null, TOP_K).stream()
                     .filter(c -> c.score() >= MIN_SCORE)
+                    .toList();
+            if (query.metadata() != null) {
+                tracker.chunks(query.metadata().chatMemoryId(),
+                        hits.stream().map(ChunkRepository.ScoredChunk::chunkId).toList());
+            }
+            return hits.stream()
                     .map(c -> Content.from(TextSegment.from("[" + c.title() + "]\n" + c.content())))
                     .toList();
         } catch (Exception e) {
@@ -43,6 +61,7 @@ public class HybridContentRetriever implements ContentRetriever {
     }
 
     public List<ChunkRepository.ScoredChunk> search(String text, String category, int k) throws Exception {
+        models.requireReady();
         float[] queryVector = embeddingModel.embed(text).content().vector();
         return chunks.search(queryVector, text, category, k);
     }

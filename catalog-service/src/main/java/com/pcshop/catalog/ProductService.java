@@ -86,6 +86,9 @@ public class ProductService {
     @Inject
     CurrentUser currentUser;
 
+    @Inject
+    ProductEvents events;
+
     // ------------------------------------------------------------------ công khai
 
     public PageResponse<Product> searchActive(ProductFilter f, int page, int size) {
@@ -190,7 +193,7 @@ public class ProductService {
         applyInput(p, in, null);
         products.persist(p);
         recordPrice(p, null, p.price, "INITIAL", user);
-        // TODO (đợt 2): status ACTIVE → bắn event product.updated cho ai-service
+        events.updated(p);
         return p;
     }
 
@@ -206,7 +209,7 @@ public class ProductService {
         applyInput(p, in, sku);
         touch(p, user);
         products.updateEditable(p);
-        // TODO (đợt 2): bắn event product.updated cho ai-service (re-embed nếu content_hash đổi)
+        events.updated(p);                    // ai-service tự bỏ qua nếu nội dung không đổi
         return p;
     }
 
@@ -218,6 +221,8 @@ public class ProductService {
         products.updateEditable(p);
         if (hiding) {
             notifyHidden(p);
+        } else {
+            events.updated(p);                // vd HIDDEN → ACTIVE: đưa lại vào kho tri thức
         }
         return p;
     }
@@ -280,6 +285,7 @@ public class ProductService {
                 .forEach(p -> recordPrice(p, oldPrices.get(p.sku), p.price, "BULK_IMPORT", user));
         List<Product> saved = new ArrayList<>(toCreate);
         saved.addAll(toUpdate);
+        saved.forEach(events::updated);
         return new BulkSaveResult(toCreate.size(), toUpdate.size(), saved);
     }
 
@@ -295,7 +301,7 @@ public class ProductService {
             applyInput(p, in, null);
             products.persist(p);
             recordPrice(p, null, p.price, "INITIAL", user);
-            // TODO (đợt 2): status ACTIVE → bắn event product.updated cho ai-service
+            events.updated(p);
             return ImportOutcome.CREATED;
         }
         applyInput(existing, in, existing.sku);
@@ -309,7 +315,7 @@ public class ProductService {
         if (priceChanged) {
             recordPrice(existing, oldPrice, existing.price, "IMPORT", user);
         }
-        // TODO (đợt 2): bắn event product.updated cho ai-service (re-embed nếu content_hash đổi)
+        events.updated(existing);
         return ImportOutcome.UPDATED;
     }
 
@@ -326,6 +332,7 @@ public class ProductService {
         List<Product> hidden = found.stream().filter(p -> applyStatus(p, status, user)).toList();
         products.updateEditable(found);
         hidden.forEach(this::notifyHidden);
+        found.stream().filter(p -> !hidden.contains(p)).forEach(events::updated);
         return found;
     }
 
@@ -375,7 +382,6 @@ public class ProductService {
         if (oldPrice == null || oldPrice.compareTo(newPrice) != 0) {
             recordPrice(p, oldPrice, newPrice, reason, user);
         }
-        // TODO (đợt 2): bắn event product.updated (giá không lấy từ vector store nhưng metadata hiển thị có giá)
         return p;
     }
 
@@ -427,8 +433,8 @@ public class ProductService {
     }
 
     private void notifyHidden(Product p) {
-        // TODO (đợt 2): bắn event product.hidden → ai-service xóa thật chunk của sản phẩm khỏi pgvector
-        log.infof("Sản phẩm %s chuyển sang trạng thái %d: cần bắn event product.hidden (chưa có Kafka)", p.sku, p.status);
+        // ai-service xóa thật chunk của sản phẩm khỏi pgvector
+        events.hidden(p);
     }
 
     private static void checkPriceChanged(Product p, BigDecimal newPrice, BigDecimal originalPrice) {

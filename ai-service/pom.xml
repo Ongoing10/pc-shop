@@ -73,6 +73,16 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-client-jackson</artifactId>
         </dependency>
+        <!-- product.updated / product.hidden từ catalog -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-messaging-kafka</artifactId>
+        </dependency>
+        <!-- Lịch sử chat (chat_sessions) ở Mongo database "ai" -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mongodb-client</artifactId>
+        </dependency>
         <!-- LLM + embedding chạy local bằng Ollama. Đổi sang Gemini/OpenAI: thay extension này -->
         <dependency>
             <groupId>io.quarkiverse.langchain4j</groupId>

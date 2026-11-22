@@ -10,6 +10,7 @@ import { PAYMENT_METHOD_LABEL, REFUND_STATUS_META } from '../../../utils/adminSt
 import { formatCurrency } from '../../../utils/format';
 import { formatDateTime } from '../../../utils/orderStatus';
 import { useOrderActions } from '../Orders/useOrderActions';
+import { t } from '../../../i18n/t';
 
 type Filter = 'all' | RefundStatus;
 
@@ -40,7 +41,7 @@ export const RefundsPage: React.FC = () => {
     setSaving(true);
     try {
       await completeRefund(target, providerRefundId.trim() || null);
-      message.success(`Đã ghi nhận hoàn ${formatCurrency(target.amount)} cho đơn ${target.orderCode}`);
+      message.success(t('admin.refunds.recordedARefundOfFor', 'Đã ghi nhận hoàn {{amount}} cho đơn {{orderCode}}', { amount: formatCurrency(target.amount), orderCode: target.orderCode }));
       setTarget(null);
     } catch (e) {
       message.error((e as Error).message);
@@ -51,12 +52,12 @@ export const RefundsPage: React.FC = () => {
 
   const columns: TableColumnsType<AdminRefund> = [
     {
-      title: 'Đơn hàng',
+      title: t('admin.common.orders', 'Đơn hàng'),
       dataIndex: 'orderCode',
       render: (code: string) => <Link to={`/admin/orders/${code}`}>{code}</Link>,
     },
     {
-      title: 'Lần thanh toán',
+      title: t('admin.refunds.paymentAttempt', 'Lần thanh toán'),
       dataIndex: 'paymentCode',
       render: (code: string, r) => (
         <>
@@ -65,10 +66,10 @@ export const RefundsPage: React.FC = () => {
         </>
       ),
     },
-    { title: 'Số tiền', dataIndex: 'amount', align: 'right', width: 140, render: (v: number) => <b>{formatCurrency(v)}</b> },
-    { title: 'Lý do', dataIndex: 'reason', render: (v: string | null) => v ?? '–' },
+    { title: t('admin.common.amount', 'Số tiền'), dataIndex: 'amount', align: 'right', width: 140, render: (v: number) => <b>{formatCurrency(v)}</b> },
+    { title: t('admin.common.reason', 'Lý do'), dataIndex: 'reason', render: (v: string | null) => v ?? '–' },
     {
-      title: 'Trạng thái',
+      title: t('admin.common.status', 'Trạng thái'),
       dataIndex: 'status',
       width: 120,
       render: (st: RefundStatus, r) => (
@@ -78,7 +79,7 @@ export const RefundsPage: React.FC = () => {
         </>
       ),
     },
-    { title: 'Tạo lúc', dataIndex: 'createdAt', width: 150, render: (v: string) => formatDateTime(v) },
+    { title: t('admin.refunds.createdAt', 'Tạo lúc'), dataIndex: 'createdAt', width: 150, render: (v: string) => formatDateTime(v) },
     {
       title: '',
       key: 'action',
@@ -93,7 +94,7 @@ export const RefundsPage: React.FC = () => {
               setTarget(r);
             }}
           >
-            Đã hoàn
+            {t('admin.common.refunded', 'Đã hoàn')}
           </Button>
         ) : null,
     },
@@ -101,15 +102,15 @@ export const RefundsPage: React.FC = () => {
 
   return (
     <>
-      <AdminPageHeader title="Hoàn tiền" subtitle="Yêu cầu hoàn tiền tự sinh khi hủy / trả đơn đã thu tiền" />
+      <AdminPageHeader title={t('admin.common.refunds', 'Hoàn tiền')} subtitle={t('admin.refunds.refundRequestsAreCreatedAutomatically', 'Yêu cầu hoàn tiền tự sinh khi hủy / trả đơn đã thu tiền')} />
 
       {pendingCount > 0 && (
         <Alert
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
-          title={`${pendingCount} yêu cầu chờ hoàn, tổng ${formatCurrency(pendingAmount)}`}
-          description="Hoàn trên trang quản trị của cổng thanh toán (hoặc trả tiền mặt với COD), sau đó bấm Đã hoàn để đóng yêu cầu."
+          title={t('admin.refunds.requestsAwaitingRefundTotal', '{{pendingCount}} yêu cầu chờ hoàn, tổng {{amount}}', { pendingCount, amount: formatCurrency(pendingAmount) })}
+          description={t('admin.refunds.refundInThePaymentGateway', 'Hoàn trên trang quản trị của cổng thanh toán (hoặc trả tiền mặt với COD), sau đó bấm Đã hoàn để đóng yêu cầu.')}
         />
       )}
 
@@ -119,35 +120,36 @@ export const RefundsPage: React.FC = () => {
           onChange={setFilter}
           style={{ marginBottom: 16 }}
           options={[
-            { value: 1, label: `Chờ hoàn (${pendingCount})` },
-            { value: 2, label: 'Đã hoàn' },
-            { value: 'all', label: 'Tất cả' },
+            { value: 1, label: t('admin.refunds.awaitingRefund', 'Chờ hoàn ({{pendingCount}})', { pendingCount }) },
+            { value: 2, label: t('admin.common.refunded', 'Đã hoàn') },
+            { value: 'all', label: t('admin.common.all', 'Tất cả') },
           ]}
         />
         <Table rowKey="id" columns={columns} dataSource={data} loading={isLoading} pagination={{ pageSize: 20, hideOnSinglePage: true }} />
       </Card>
 
       <Modal
+        centered
         open={Boolean(target)}
-        title={target ? `Xác nhận đã hoàn tiền đơn ${target.orderCode}` : ''}
+        title={target ? t('admin.refunds.confirmRefundForOrder', 'Xác nhận đã hoàn tiền đơn {{orderCode}}', { orderCode: target.orderCode }) : ''}
         onCancel={() => setTarget(null)}
         onOk={submit}
-        okText="Đã hoàn"
+        okText={t('admin.common.refunded', 'Đã hoàn')}
         confirmLoading={saving}
       >
         {target && (
           <>
             <p>
-              Hoàn <b>{formatCurrency(target.amount)}</b> cho lần thanh toán{' '}
+              {t('admin.common.refund', 'Hoàn')} <b>{formatCurrency(target.amount)}</b> {t('admin.refunds.forPayment', 'cho lần thanh toán')}{' '}
               <span className="admin-mono">{target.paymentCode}</span> ({PAYMENT_METHOD_LABEL[target.method]}).
             </p>
             <label>
-              Mã hoàn tiền phía cổng thanh toán (không bắt buộc)
+              {t('admin.refunds.gatewayRefundReferenceOptional', 'Mã hoàn tiền phía cổng thanh toán (không bắt buộc)')}
               <Input
                 value={providerRefundId}
                 maxLength={100}
                 onChange={(e) => setProviderRefundId(e.target.value)}
-                placeholder="Ví dụ mã giao dịch hoàn trên trang VNPay"
+                placeholder={t('admin.refunds.eGTheRefundTransaction', 'Ví dụ mã giao dịch hoàn trên trang VNPay')}
                 style={{ marginTop: 6 }}
               />
             </label>
