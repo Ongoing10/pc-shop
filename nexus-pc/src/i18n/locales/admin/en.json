@@ -101,11 +101,10 @@
   "bulk": {
     "nothingWasDoneRowsHave": "Nothing was done: {{count}} rows have errors, no changes were saved",
     "selected": "Selected",
-    "rows": "rows",
-    "clearSelection": "Clear selection",
     "delete": "Delete",
     "delete2": "Delete {{count}} {{noun}}?",
-    "atMostRowsAtA": "At most {{bulkLimit}} rows at a time"
+    "atMostRowsAtA": "At most {{bulkLimit}} rows at a time",
+    "refresh": "Refresh"
   },
   "categories": {
     "text": "Text",

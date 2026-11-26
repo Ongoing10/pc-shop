@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { DatePicker, Flex, Select, Table, Tag, Typography } from 'antd';
+import { DatePicker, Select, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { Dayjs } from 'dayjs';
 import { useAdminMovements, useAdminProducts, useAdminWarehouses } from '../../../hooks/admin/useAdminApi';
 import { StockMovement, StockMovementType } from '../../../types/admin';
 import { MOVEMENT_TYPE_META } from '../../../utils/adminStatus';
 import { formatDateTime } from '../../../utils/orderStatus';
+import { ADMIN_TABLE_STICKY, AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { t } from '../../../i18n/t';
 
 const { RangePicker } = DatePicker;
@@ -72,23 +73,27 @@ export const MovementsTab: React.FC = () => {
 
   return (
     <>
-      <Flex gap={12} wrap className="admin-filters">
-        <Select
-          allowClear
-          showSearch
-          placeholder={t('admin.inventory.filterBySku', 'Lọc theo SKU')}
-          style={{ width: 320 }}
-          value={sku}
-          onChange={setSku}
-          optionFilterProp="label"
-          options={products.map((p) => ({ value: p.sku, label: `${p.sku} · ${p.name}` }))}
-        />
-        <RangePicker format="DD/MM/YYYY" value={range} onChange={(v) => setRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} />
-      </Flex>
+      <AdminToolbar
+        filters={
+          <>
+            <Select
+              allowClear
+              showSearch
+              placeholder={t('admin.inventory.filterBySku', 'Lọc theo SKU')}
+              style={{ width: 320 }}
+              value={sku}
+              onChange={setSku}
+              optionFilterProp="label"
+              options={products.map((p) => ({ value: p.sku, label: `${p.sku} · ${p.name}` }))}
+            />
+            <RangePicker format="DD/MM/YYYY" value={range} onChange={(v) => setRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} />
+          </>
+        }
+      />
       <Table
         rowKey="id"
         size="small"
-        sticky
+        sticky={ADMIN_TABLE_STICKY}
         scroll={{ x: 1100 }}
         columns={columns}
         dataSource={data}

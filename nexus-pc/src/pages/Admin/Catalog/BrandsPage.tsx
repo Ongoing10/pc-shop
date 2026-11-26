@@ -24,7 +24,7 @@ import {
 import type { TableColumnsType } from 'antd';
 import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { BulkDeleteButton, RowDeleteButton } from '../../../components/admin/DeleteActions';
 import {
   useAdminBrands,
@@ -184,17 +184,21 @@ export const BrandsPage: React.FC = () => {
       />
 
       <Card>
-        <BulkActionBar count={selectedKeys.length} onClear={() => setSelectedKeys([])}>
-          <Button size="small" onClick={() => setActive(selectedKeys as string[], true)}>
-            {t('admin.common.enable', 'Bật')}
-          </Button>
-          <BulkDeleteButton
-            count={selectedKeys.length}
-            noun={t('admin.brands.brands2', 'thương hiệu')}
-            content={t('admin.brands.theBrandsWillBeDisabled', 'Thương hiệu sẽ bị tắt, dữ liệu cũ giữ nguyên và có thể bật lại.')}
-            onConfirm={() => remove(selectedKeys as string[])}
-          />
-        </BulkActionBar>
+        <AdminToolbar
+          selectedCount={selectedKeys.length}
+          totalCount={brands.length}
+          bulkActions={
+            <>
+              <Button onClick={() => setActive(selectedKeys as string[], true)}>{t('admin.common.enable', 'Bật')}</Button>
+              <BulkDeleteButton
+                count={selectedKeys.length}
+                noun={t('admin.brands.brands2', 'thương hiệu')}
+                content={t('admin.brands.theBrandsWillBeDisabled', 'Thương hiệu sẽ bị tắt, dữ liệu cũ giữ nguyên và có thể bật lại.')}
+                onConfirm={() => remove(selectedKeys as string[])}
+              />
+            </>
+          }
+        />
 
         <Table
           rowKey="code"

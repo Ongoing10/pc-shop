@@ -126,8 +126,17 @@ a.admin-cell-title:hover {
   font-family: var(--font-mono);
   font-size: 12.5px;
 }
-.admin-filters {
+.admin-filters,
+.admin-toolbar {
   margin-bottom: 16px;
+}
+/* nhóm bên phải (đã chọn, thao tác hàng loạt, làm mới) dồn về cuối hàng kể cả khi xuống dòng */
+.admin-toolbar-actions {
+  margin-inline-start: auto;
+}
+.admin-toolbar-count {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Dòng bảng: lỗi hàng loạt, đang xem, đã tắt */
@@ -141,8 +150,7 @@ a.admin-cell-title:hover {
   color: var(--muted);
 }
 
-/* Thanh thao tác hàng loạt và lỗi hàng loạt */
-.admin-bulkbar.ant-alert,
+/* Lỗi hàng loạt */
 .admin-bulk-errors.ant-alert {
   margin-bottom: 12px;
   padding-block: 8px;

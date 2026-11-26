@@ -29,6 +29,7 @@ import { useAdminUser } from '../../../context/AdminSessionContext';
 import { AdminUser, Permission, RealmRole } from '../../../types/admin';
 import { PERMISSION_LABEL, ROLE_LABEL } from '../../../utils/adminStatus';
 import { formatDate } from '../../../utils/orderStatus';
+import { AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { t } from '../../../i18n/t';
 
 const ROLES: RealmRole[] = ['ADMIN', 'STAFF', 'CUSTOMER'];
@@ -225,15 +226,17 @@ export const UsersPage: React.FC = () => {
       />
 
       <Card>
-        <Flex className="admin-filters">
-          <Input.Search
-            allowClear
-            placeholder={t('admin.users.usernameFullNameOrEmail', 'Tên đăng nhập, họ tên hoặc email')}
-            style={{ width: 320 }}
-            onSearch={setKeyword}
-            onChange={(e) => !e.target.value && setKeyword('')}
-          />
-        </Flex>
+        <AdminToolbar
+          filters={
+            <Input.Search
+              allowClear
+              placeholder={t('admin.users.usernameFullNameOrEmail', 'Tên đăng nhập, họ tên hoặc email')}
+              style={{ width: 320 }}
+              onSearch={setKeyword}
+              onChange={(e) => !e.target.value && setKeyword('')}
+            />
+          }
+        />
         <Table
           rowKey="id"
           columns={columns}

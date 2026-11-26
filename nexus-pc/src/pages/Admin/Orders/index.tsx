@@ -5,7 +5,7 @@ import type { TableColumnsType } from 'antd';
 import { DownloadOutlined, EyeOutlined, SwapOutlined } from '@ant-design/icons';
 import { Dayjs } from 'dayjs';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { ADMIN_TABLE_STICKY, AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { OrderStatusModal } from '../../../components/admin/OrderStatusModal';
 import { useAdminOrders } from '../../../hooks/admin/useAdminApi';
 import { adminOrderService } from '../../../services/api/admin/adminOrderService';
@@ -191,29 +191,34 @@ export const AdminOrdersPage: React.FC = () => {
           ]}
         />
 
-        <Flex gap={12} wrap className="admin-filters">
-          <Input.Search
-            allowClear
-            placeholder={t('admin.orders.orderCodePhoneOrRecipient', 'Mã đơn, SĐT hoặc tên người nhận')}
-            style={{ width: 320 }}
-            onSearch={setQ}
-            onChange={(e) => !e.target.value && setQ('')}
-          />
-          <RangePicker format="DD/MM/YYYY" value={range} onChange={(v) => setRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} />
-        </Flex>
-
-        {canUpdate && (
-          <BulkActionBar count={selectedKeys.length} onClear={() => setSelectedKeys([])}>
-            <Button size="small" type="primary" icon={<SwapOutlined />} onClick={() => setModalOrders(selectedOrders)}>
-              {t('admin.common.changeStatus', 'Đổi trạng thái')}
-            </Button>
-          </BulkActionBar>
-        )}
+        <AdminToolbar
+          filters={
+            <>
+              <Input.Search
+                allowClear
+                placeholder={t('admin.orders.orderCodePhoneOrRecipient', 'Mã đơn, SĐT hoặc tên người nhận')}
+                style={{ width: 320 }}
+                onSearch={setQ}
+                onChange={(e) => !e.target.value && setQ('')}
+              />
+              <RangePicker format="DD/MM/YYYY" value={range} onChange={(v) => setRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} />
+            </>
+          }
+          selectedCount={selectedKeys.length}
+          totalCount={data.length}
+          bulkActions={
+            canUpdate && (
+              <Button type="primary" icon={<SwapOutlined />} onClick={() => setModalOrders(selectedOrders)}>
+                {t('admin.common.changeStatus', 'Đổi trạng thái')}
+              </Button>
+            )
+          }
+        />
 
         <Table
           rowKey="code"
           size="middle"
-          sticky
+          sticky={ADMIN_TABLE_STICKY}
           scroll={{ x: 1000 }}
           columns={columns}
           dataSource={data}

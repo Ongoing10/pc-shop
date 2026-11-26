@@ -101,11 +101,10 @@
   "bulk": {
     "nothingWasDoneRowsHave": "Không thực hiện được: {{count}} dòng lỗi, chưa có thay đổi nào được lưu",
     "selected": "Đã chọn",
-    "rows": "dòng",
-    "clearSelection": "Bỏ chọn",
     "delete": "Xóa",
     "delete2": "Xóa {{count}} {{noun}}?",
-    "atMostRowsAtA": "Tối đa {{bulkLimit}} dòng mỗi lần"
+    "atMostRowsAtA": "Tối đa {{bulkLimit}} dòng mỗi lần",
+    "refresh": "Làm mới"
   },
   "categories": {
     "text": "Chuỗi",

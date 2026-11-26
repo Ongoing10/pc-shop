@@ -20,7 +20,7 @@ import {
 import type { TableColumnsType } from 'antd';
 import { CheckOutlined, CloseOutlined, SendOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { BulkErrorItem, bulkErrorsOf } from '../../../components/admin/bulk';
 import { useAdminProducts, useAdminReviews, useModerateReviews, useReplyReview } from '../../../hooks/admin/useAdminApi';
 import { AdminReview, ReviewStatus } from '../../../types/admin';
@@ -163,57 +163,59 @@ export const ReviewsPage: React.FC = () => {
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={16} xxl={15}>
           <Card>
-            <Flex gap={12} wrap className="admin-filters">
-              <Segmented<StatusFilter>
-                value={status}
-                onChange={(v) => {
-                  setStatus(v);
-                  setSelectedKeys([]);
-                }}
-                options={[
-                  { value: 1, label: t('admin.reviews.pending', 'Chờ duyệt ({{value}})', { value: counts(1) }) },
-                  { value: 2, label: t('admin.common.approved', 'Đã duyệt') },
-                  { value: 3, label: t('admin.common.rejected', 'Từ chối') },
-                  { value: 'all', label: t('admin.common.all', 'Tất cả') },
-                ]}
-              />
-              <Select
-                allowClear
-                showSearch
-                placeholder={t('admin.reviews.filterByProduct', 'Lọc theo sản phẩm')}
-                optionFilterProp="label"
-                style={{ width: 260 }}
-                value={sku}
-                onChange={setSku}
-                options={products.map((p) => ({ value: p.sku, label: p.name }))}
-              />
-            </Flex>
-
-            <BulkActionBar
-              count={selectedKeys.length}
-              onClear={() => setSelectedKeys([])}
+            <AdminToolbar
+              filters={
+                <>
+                  <Segmented<StatusFilter>
+                    value={status}
+                    onChange={(v) => {
+                      setStatus(v);
+                      setSelectedKeys([]);
+                    }}
+                    options={[
+                      { value: 1, label: t('admin.reviews.pending', 'Chờ duyệt ({{value}})', { value: counts(1) }) },
+                      { value: 2, label: t('admin.common.approved', 'Đã duyệt') },
+                      { value: 3, label: t('admin.common.rejected', 'Từ chối') },
+                      { value: 'all', label: t('admin.common.all', 'Tất cả') },
+                    ]}
+                  />
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder={t('admin.reviews.filterByProduct', 'Lọc theo sản phẩm')}
+                    optionFilterProp="label"
+                    style={{ width: 260 }}
+                    value={sku}
+                    onChange={setSku}
+                    options={products.map((p) => ({ value: p.sku, label: p.name }))}
+                  />
+                </>
+              }
+              selectedCount={selectedKeys.length}
+              totalCount={data.length}
               errors={bulkErrors}
               onCloseErrors={() => setBulkErrors([])}
-            >
-              <Button
-                size="small"
-                type="primary"
-                icon={<CheckOutlined />}
-                loading={busy}
-                onClick={() => moderate(reviews.filter((r) => selectedKeys.includes(r.id)), 2)}
-              >
-                {t('admin.reviews.approve', 'Duyệt')}
-              </Button>
-              <Button
-                size="small"
-                danger
-                icon={<CloseOutlined />}
-                loading={busy}
-                onClick={() => moderate(reviews.filter((r) => selectedKeys.includes(r.id)), 3)}
-              >
-                {t('admin.common.rejected', 'Từ chối')}
-              </Button>
-            </BulkActionBar>
+              bulkActions={
+                <>
+                  <Button
+                    type="primary"
+                    icon={<CheckOutlined />}
+                    loading={busy}
+                    onClick={() => moderate(reviews.filter((r) => selectedKeys.includes(r.id)), 2)}
+                  >
+                    {t('admin.reviews.approve', 'Duyệt')}
+                  </Button>
+                  <Button
+                    danger
+                    icon={<CloseOutlined />}
+                    loading={busy}
+                    onClick={() => moderate(reviews.filter((r) => selectedKeys.includes(r.id)), 3)}
+                  >
+                    {t('admin.common.rejected', 'Từ chối')}
+                  </Button>
+                </>
+              }
+            />
 
             <Table
               rowKey="id"

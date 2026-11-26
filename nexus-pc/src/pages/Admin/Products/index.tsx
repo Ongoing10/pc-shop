@@ -20,7 +20,7 @@ import {
 import type { TableColumnsType } from 'antd';
 import { DownloadOutlined, EditOutlined, PlusOutlined, UploadOutlined, DownOutlined, DollarOutlined } from '@ant-design/icons';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { ADMIN_TABLE_STICKY, AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { BulkErrorItem, bulkErrorsOf } from '../../../components/admin/bulk';
 import { BulkDeleteButton, RowDeleteButton } from '../../../components/admin/DeleteActions';
 import { ImportExcelModal } from '../../../components/admin/ImportExcelModal';
@@ -271,76 +271,79 @@ export const AdminProductsPage: React.FC = () => {
       />
 
       <Card>
-        <Flex gap={12} wrap className="admin-filters">
-          <Input.Search
-            allowClear
-            placeholder={t('admin.products.nameOrSku', 'Tên hoặc SKU')}
-            style={{ width: 280 }}
-            onSearch={setQ}
-            onChange={(e) => !e.target.value && setQ('')}
-          />
-          <Select
-            allowClear
-            placeholder={t('admin.common.category', 'Danh mục')}
-            style={{ width: 180 }}
-            value={category}
-            onChange={setCategory}
-            options={categories.map((c) => ({ value: c.code, label: c.name }))}
-          />
-          <Select
-            allowClear
-            placeholder={t('admin.common.status', 'Trạng thái')}
-            style={{ width: 160 }}
-            value={status}
-            onChange={setStatus}
-            options={STATUSES.map((s) => ({ value: s, label: PRODUCT_STATUS_META[s].label }))}
-          />
-        </Flex>
-
-        <BulkActionBar
-          count={selectedKeys.length}
-          onClear={() => setSelectedKeys([])}
+        <AdminToolbar
+          filters={
+            <>
+              <Input.Search
+                allowClear
+                placeholder={t('admin.products.nameOrSku', 'Tên hoặc SKU')}
+                style={{ width: 280 }}
+                onSearch={setQ}
+                onChange={(e) => !e.target.value && setQ('')}
+              />
+              <Select
+                allowClear
+                placeholder={t('admin.common.category', 'Danh mục')}
+                style={{ width: 180 }}
+                value={category}
+                onChange={setCategory}
+                options={categories.map((c) => ({ value: c.code, label: c.name }))}
+              />
+              <Select
+                allowClear
+                placeholder={t('admin.common.status', 'Trạng thái')}
+                style={{ width: 160 }}
+                value={status}
+                onChange={setStatus}
+                options={STATUSES.map((s) => ({ value: s, label: PRODUCT_STATUS_META[s].label }))}
+              />
+            </>
+          }
+          selectedCount={selectedKeys.length}
+          totalCount={data.length}
           errors={bulkErrors}
           onCloseErrors={() => setBulkErrors([])}
-        >
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: STATUSES.map((s) => ({ key: String(s), label: PRODUCT_STATUS_META[s].label })),
-              onClick: ({ key }) => applyBulkStatus(Number(key) as ProductStatus),
-            }}
-          >
-            <Button size="small">
-              {t('admin.common.changeStatus', 'Đổi trạng thái')} <DownOutlined />
-            </Button>
-          </Dropdown>
-          <Button
-            size="small"
-            type="primary"
-            icon={<DollarOutlined />}
-            onClick={() => {
-              priceForm.resetFields();
-              setPriceOpen(true);
-            }}
-          >
-            {t('admin.common.changePrice', 'Đổi giá')}
-          </Button>
-          <BulkDeleteButton
-            count={deletable.length}
-            noun={t('admin.products.products', 'sản phẩm')}
-            content={
-              <>
-                {deleteNote()}
-                {deletable.length < selected.length && <div>{t('admin.common.skipping', 'Bỏ qua')} {selected.length - deletable.length} {t('admin.products.alreadyDiscontinuedProducts', 'sản phẩm đã ngừng bán.')}</div>}
-              </>
-            }
-            onConfirm={deleteSelected}
-          />
-        </BulkActionBar>
+          bulkActions={
+            <>
+              <Dropdown
+                trigger={['click']}
+                menu={{
+                  items: STATUSES.map((s) => ({ key: String(s), label: PRODUCT_STATUS_META[s].label })),
+                  onClick: ({ key }) => applyBulkStatus(Number(key) as ProductStatus),
+                }}
+              >
+                <Button>
+                  {t('admin.common.changeStatus', 'Đổi trạng thái')} <DownOutlined />
+                </Button>
+              </Dropdown>
+              <Button
+                type="primary"
+                icon={<DollarOutlined />}
+                onClick={() => {
+                  priceForm.resetFields();
+                  setPriceOpen(true);
+                }}
+              >
+                {t('admin.common.changePrice', 'Đổi giá')}
+              </Button>
+              <BulkDeleteButton
+                count={deletable.length}
+                noun={t('admin.products.products', 'sản phẩm')}
+                content={
+                  <>
+                    {deleteNote()}
+                    {deletable.length < selected.length && <div>{t('admin.common.skipping', 'Bỏ qua')} {selected.length - deletable.length} {t('admin.products.alreadyDiscontinuedProducts', 'sản phẩm đã ngừng bán.')}</div>}
+                  </>
+                }
+                onConfirm={deleteSelected}
+              />
+            </>
+          }
+        />
 
         <Table
           rowKey="sku"
-          sticky
+          sticky={ADMIN_TABLE_STICKY}
           scroll={{ x: 1100 }}
           columns={columns}
           dataSource={data}

@@ -25,7 +25,7 @@ import type { TableColumnsType } from 'antd';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { AdminPageHeader } from '../../../components/admin/AdminPageHeader';
-import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { BulkDeleteButton, RowDeleteButton } from '../../../components/admin/DeleteActions';
 import {
   useAdminCategories,
@@ -282,30 +282,33 @@ export const VouchersPage: React.FC = () => {
       />
 
       <Card>
-        <Flex className="admin-filters">
-          <Segmented<VoucherPhase | 'all'>
-            value={phase}
-            onChange={setPhase}
-            options={[
-              { value: 'all', label: t('admin.common.all', 'Tất cả') },
-              { value: 'running', label: t('admin.common.running', 'Đang chạy') },
-              { value: 'upcoming', label: t('admin.common.notStarted', 'Chưa bắt đầu') },
-              { value: 'expired', label: t('admin.common.expired', 'Hết hạn') },
-            ]}
-          />
-        </Flex>
-
-        <BulkActionBar count={selectedKeys.length} onClear={() => setSelectedKeys([])}>
-          <Button size="small" onClick={() => setActive(selectedKeys as number[], true)}>
-            {t('admin.common.enable', 'Bật')}
-          </Button>
-          <BulkDeleteButton
-            count={selectedKeys.length}
-            noun="voucher"
-            content={t('admin.vouchers.theVouchersWillBeDisabled', 'Voucher sẽ bị tắt, khách không dùng được nữa; đơn cũ giữ nguyên và có thể bật lại.')}
-            onConfirm={() => remove(selectedKeys as number[])}
-          />
-        </BulkActionBar>
+        <AdminToolbar
+          filters={
+            <Segmented<VoucherPhase | 'all'>
+              value={phase}
+              onChange={setPhase}
+              options={[
+                { value: 'all', label: t('admin.common.all', 'Tất cả') },
+                { value: 'running', label: t('admin.common.running', 'Đang chạy') },
+                { value: 'upcoming', label: t('admin.common.notStarted', 'Chưa bắt đầu') },
+                { value: 'expired', label: t('admin.common.expired', 'Hết hạn') },
+              ]}
+            />
+          }
+          selectedCount={selectedKeys.length}
+          totalCount={data.length}
+          bulkActions={
+            <>
+              <Button onClick={() => setActive(selectedKeys as number[], true)}>{t('admin.common.enable', 'Bật')}</Button>
+              <BulkDeleteButton
+                count={selectedKeys.length}
+                noun="voucher"
+                content={t('admin.vouchers.theVouchersWillBeDisabled', 'Voucher sẽ bị tắt, khách không dùng được nữa; đơn cũ giữ nguyên và có thể bật lại.')}
+                onConfirm={() => remove(selectedKeys as number[])}
+              />
+            </>
+          }
+        />
 
         <Table
           rowKey="id"

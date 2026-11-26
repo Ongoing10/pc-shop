@@ -38,6 +38,7 @@ import { adminInventoryService } from '../../../services/api/admin/adminInventor
 import { saveDownloadedFile } from '../../../utils/download';
 import { Inventory } from '../../../types/admin';
 import { availableQty } from '../../../utils/adminStatus';
+import { ADMIN_TABLE_STICKY, AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { t } from '../../../i18n/t';
 
 interface ImportFormValues {
@@ -192,30 +193,33 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
 
   return (
     <>
-      <Flex gap={12} wrap justify="space-between" className="admin-filters">
-        <Flex gap={12} wrap align="center">
-          <Input.Search
-            allowClear
-            placeholder={t('admin.inventory.skuOrProductName', 'SKU hoặc tên sản phẩm')}
-            defaultValue={q}
-            style={{ width: 260 }}
-            onSearch={setQ}
-            onChange={(e) => !e.target.value && setQ('')}
-          />
-          <Select
-            allowClear
-            placeholder={t('admin.inventory.allWarehouses', 'Tất cả kho')}
-            style={{ width: 180 }}
-            value={warehouseId}
-            onChange={setWarehouseId}
-            options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
-          />
-          <Space>
-            <Switch checked={lowStock} onChange={setLowStock} />
-            <Typography.Text>{t('admin.inventory.lowStockOnly', 'Chỉ hàng sắp hết')}</Typography.Text>
-          </Space>
-        </Flex>
-        <Flex gap={8} wrap>
+      <AdminToolbar
+        filters={
+          <>
+            <Input.Search
+              allowClear
+              placeholder={t('admin.inventory.skuOrProductName', 'SKU hoặc tên sản phẩm')}
+              defaultValue={q}
+              style={{ width: 260 }}
+              onSearch={setQ}
+              onChange={(e) => !e.target.value && setQ('')}
+            />
+            <Select
+              allowClear
+              placeholder={t('admin.inventory.allWarehouses', 'Tất cả kho')}
+              style={{ width: 180 }}
+              value={warehouseId}
+              onChange={setWarehouseId}
+              options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
+            />
+            <Space>
+              <Switch checked={lowStock} onChange={setLowStock} />
+              <Typography.Text>{t('admin.inventory.lowStockOnly', 'Chỉ hàng sắp hết')}</Typography.Text>
+            </Space>
+          </>
+        }
+        extra={
+          <>
           <Button
             icon={<DownloadOutlined />}
             onClick={async () => {
@@ -245,12 +249,13 @@ export const StockTab: React.FC<{ onShowHistory: (sku: string) => void }> = ({ o
               </Button>
             </>
           )}
-        </Flex>
-      </Flex>
+          </>
+        }
+      />
 
       <Table
         rowKey="id"
-        sticky
+        sticky={ADMIN_TABLE_STICKY}
         columns={columns}
         dataSource={data}
         loading={isLoading}

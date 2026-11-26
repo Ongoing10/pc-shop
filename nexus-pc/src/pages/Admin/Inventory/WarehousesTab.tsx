@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { App, Button, Col, Flex, Form, Input, Modal, Row, Switch, Table, Tooltip, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { BulkActionBar } from '../../../components/admin/BulkActionBar';
+import { AdminToolbar } from '../../../components/admin/AdminToolbar';
 import { BulkDeleteButton, RowDeleteButton } from '../../../components/admin/DeleteActions';
 import {
   useAdminInventory,
@@ -135,25 +135,29 @@ export const WarehousesTab: React.FC = () => {
 
   return (
     <>
-      <Flex justify="space-between" align="center" className="admin-filters">
-        <Typography.Text type="secondary">{t('admin.inventory.disabledWarehousesAcceptNoNew', 'Kho đã tắt không nhận phiếu nhập mới nhưng vẫn giữ lịch sử.')}</Typography.Text>
-        {isAdmin && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
-            {t('admin.inventory.addWarehouse', 'Thêm kho')}
-          </Button>
-        )}
-      </Flex>
-      <BulkActionBar count={selectedKeys.length} onClear={() => setSelectedKeys([])}>
-        <Button size="small" onClick={() => setActive(selectedKeys as number[], true)}>
-          {t('admin.common.enable', 'Bật')}
-        </Button>
-        <BulkDeleteButton
-          count={selectedKeys.length}
-          noun="kho"
-          content={t('admin.inventory.theWarehouseWillBeDisabled', 'Kho sẽ bị tắt: không nhận phiếu nhập mới, tồn kho và lịch sử giữ nguyên, có thể bật lại.')}
-          onConfirm={() => setActive(selectedKeys as number[], false, t('admin.inventory.deleted', 'xóa'))}
-        />
-      </BulkActionBar>
+      <AdminToolbar
+        filters={<Typography.Text type="secondary">{t('admin.inventory.disabledWarehousesAcceptNoNew', 'Kho đã tắt không nhận phiếu nhập mới nhưng vẫn giữ lịch sử.')}</Typography.Text>}
+        selectedCount={selectedKeys.length}
+        totalCount={warehouses.length}
+        bulkActions={
+          <>
+            <Button onClick={() => setActive(selectedKeys as number[], true)}>{t('admin.common.enable', 'Bật')}</Button>
+            <BulkDeleteButton
+              count={selectedKeys.length}
+              noun="kho"
+              content={t('admin.inventory.theWarehouseWillBeDisabled', 'Kho sẽ bị tắt: không nhận phiếu nhập mới, tồn kho và lịch sử giữ nguyên, có thể bật lại.')}
+              onConfirm={() => setActive(selectedKeys as number[], false, t('admin.inventory.deleted', 'xóa'))}
+            />
+          </>
+        }
+        extra={
+          isAdmin && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm('new')}>
+              {t('admin.inventory.addWarehouse', 'Thêm kho')}
+            </Button>
+          )
+        }
+      />
       <Table
         rowKey="id"
         columns={columns}

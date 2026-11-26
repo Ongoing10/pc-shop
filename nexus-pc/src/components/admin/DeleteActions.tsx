@@ -42,12 +42,11 @@ interface BulkDeleteButtonProps {
   onConfirm: () => unknown;
 }
 
-/** Nút "Xóa" trong BulkActionBar, hỏi lại trước khi xóa */
+/** Nút "Xóa" hàng loạt trong AdminToolbar, hỏi lại trước khi xóa */
 export const BulkDeleteButton: React.FC<BulkDeleteButtonProps> = ({ count, noun, content, onConfirm }) => {
   const { modal } = App.useApp();
   return (
     <Button
-      size="small"
       danger
       icon={<DeleteOutlined />}
       disabled={count === 0}
